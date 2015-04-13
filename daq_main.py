@@ -1,0 +1,206 @@
+#!/usr/bin/ipython -i
+###!/usr/bin/python -Wignore
+import string
+import sys
+import os
+import time
+import thread
+import daq_macros
+from daq_macros import *
+import daq_lib
+from daq_lib import *
+import daq_utils
+from robot_lib import *
+import det_lib
+import beamline_support
+import beamline_lib
+from beamline_lib import *
+
+
+
+sitefilename = ""
+
+global command_list,immediate_command_list,z
+command_list = []
+immediate_command_list = []
+z = 25
+
+  
+def execute_command(command_s):
+###  from daq_macros import * #this is so macros can be reloaded on-the-fly
+
+#  refresh_screen(0,0)  
+  exec command_s
+
+
+def pybass_init():
+  global message_string_pv
+
+  daq_utils.init_environment()
+  init_var_channels()
+#  init_diffractometer()
+  det_lib.init_detector()  
+  daq_utils.message_string_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:message_string")    
+  if (1):
+#  if (daq_lib.has_beamline): # for now
+    try:
+      read_db()
+      print "init mots"
+#      beamline_support.init_motors()
+      init_mots()    #for now
+      print "init done mots"
+      init_diffractometer()
+#      init_counters() #for now
+      newfile("scandata")
+    except CaChannelException, status:
+      print ca.message(status)
+      gui_message("EPICS motor Initialization Error. Exit and try again. If problem persists, EPICS may need to be restarted.")
+  try:
+    sitefilename = os.environ["CBASS_SITE_FILE"]
+  except KeyError:
+    gui_message("\$CBASS_SITE_FILE not defined. Questionable defaults in effect.")
+  if (sitefilename != ""):    
+    if (os.path.exists(sitefilename) == 0):
+      error_msg = "\$CBASS_SITE_FILE: %s does not exist. Questionable defaults in effect." % sitefilename
+      gui_message(error_msg)
+    else:
+      process_command_file(sitefilename)
+
+
+def process_command_file(command_file_name):
+  echo_s =  "reading %s\n" % command_file_name
+  print(echo_s)
+  command_file = open(command_file_name,"r")  
+  while 1:
+    command = command_file.readline()
+    if not command:
+      break
+    else:
+      input_tokens = string.split(command)
+      if (len(input_tokens)>0):
+        command_string = "%s(" % input_tokens[0]
+        for i in range(1,len(input_tokens)):
+          command_string = command_string + "\"" + input_tokens[i] + "\""
+          if (i != (len(input_tokens)-1)):
+            command_string = command_string + ","
+        command_string = command_string + ")"
+      print(command_string)
+      try:
+        exec command_string;    
+      except NameError:
+        error_string = "Unknown command: " + command_string
+        print error_string
+      except SyntaxError:
+        print "Syntax error"
+      except KeyError:
+        print "Key error"
+#  refresh_screen(1,0)
+  command_file.close()
+  
+
+
+def process_immediate_commands(frequency):
+  while (1):
+    if (len(immediate_command_list) > 0):
+      process_input(immediate_command_list.pop(0))
+#      daq_utils.broadcast_output("Command> ")            
+##      print "Command> "
+    time.sleep(frequency)      
+
+def process_commands(frequency):
+  while (1):
+    if (len(command_list) > 0):
+      process_input(command_list.pop(0))
+#      daq_utils.broadcast_output("Command> ")            
+##      print "Command> "
+    time.sleep(frequency)      
+
+    
+def print_status_thread(frequency):
+  global count_list,ring_intensity
+
+  previous_image_started = 0
+  percent_done = 0
+  shutter_dead_time = .6
+  while 1:
+    time.sleep(frequency)
+    current_percent_done = daq_lib.get_field("state_percent")
+    if (daq_lib.image_started > 0):
+      if (start_time == 0 or daq_lib.image_started != previous_image_started):
+        previous_image_started = daq_lib.image_started
+        start_time = time.time()
+      now = time.time()
+      total_time = float(daq_lib.image_started)
+      if (total_time>0.0):
+        percent_done = int(.5+((now-start_time)/total_time*100))
+      else:
+        percent_done = 0
+    else:
+      start_time = 0
+      percent_done = 0
+    if (percent_done != current_percent_done):
+      daq_lib.set_field("state_percent",percent_done)
+
+
+def comm_cb(epics_args, user_args):
+  command = beamline_support.waveform_to_string(epics_args['pv_value'])
+  command_list.append(command)
+  
+def comm2_cb(epics_args, user_args):
+  command = beamline_support.waveform_to_string(epics_args['pv_value'])
+  if not (command == "\n"):
+    immediate_command_list.append(command)
+  
+
+
+def process_input(command_string):
+  if (command_string == ""):
+    return
+#    daq_utils.broadcast_output(time.ctime(time.time()))
+  if (command_string == "q"):
+    sys.exit()
+  daq_utils.broadcast_output(time.ctime(time.time()) + "\n" + command_string)      
+  try:
+    daq_lib.set_field("program_state","Program Busy")
+    execute_command(command_string)
+  except NameError:
+    error_string = "Unknown command: " + command_string
+    print error_string
+  except SyntaxError:
+    print "Syntax error"
+  except KeyError:
+    print "Key error"
+  except TypeError:
+    print "Type error"
+  except KeyboardInterrupt:
+    abort_data_collection()
+    print "Interrupt caught by daq server\n"
+  if (command_string != "pause_data_collection()" and command_string != "continue_data_collection()" and command_string != "abort_data_collection()" and command_string != "unmount_after_abort()" and command_string != "no_unmount_after_abort()"):
+    daq_lib.set_field("program_state","Program Ready")
+
+
+def run_server():
+#  thread.start_new_thread(print_status_thread,(.25,)) #really used to calculate percentage done of current collection
+  thread.start_new_thread(process_commands,(.05,))  
+  thread.start_new_thread(process_immediate_commands,(.25,))  
+  comm_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:command_s")
+  beamline_support.pvPut(comm_pv,"\n")
+  immediate_comm_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:immediate_command_s")
+  beamline_support.pvPut(immediate_comm_pv,"\n")  
+  beamline_support.add_callback(comm_pv,comm_cb,0)
+  beamline_support.add_callback(immediate_comm_pv,comm2_cb,0)  
+##  daq_lib.refresh_screen(0,1)
+#  while 1:
+#    if (len(command_list) > 0):
+#      command_s = command_list.pop(0)
+#      process_input(command_s)
+##      daq_utils.broadcast_output("Command> ")      
+#      print "Command> "
+#    time.sleep(.05)
+
+
+def main():
+  pybass_init()
+  run_server()
+
+main()
