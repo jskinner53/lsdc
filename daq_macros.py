@@ -15,7 +15,7 @@ from random import randint
 
 
 def hi_macro():
-  print "hey from macros\n"
+  print "hello from macros\n"
 
     
 def flipLoopShapeCoords(filename): # not used

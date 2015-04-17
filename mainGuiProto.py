@@ -2,7 +2,7 @@
 import sys
 import string
 import math
-from beamline_support import *
+import beamline_support
 import daq_utils
 from PyQt4 import QtGui
 from PyQt4 import QtCore
@@ -293,7 +293,7 @@ class DewarTree(QtGui.QTreeView):
         self.model.itemChanged.connect(self.queueSelectedSample)
 
     def keyPressEvent(self, event):
-      if event.key() == Qt.Key_Delete:
+      if (event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
         print "caught the delete key"
         self.deleteSelectedCB()
       else:
@@ -423,7 +423,7 @@ class DewarTree(QtGui.QTreeView):
           checkedSampleRequest["priority"] = 0
         item.setBackground(QtGui.QColor('white'))
         db_lib.updateRequest(checkedSampleRequest)
-        pvPut(self.parent.treeChanged_pv,1) #not sure why I don't just call the update routine, although this allows multiple guis
+        beamline_support.pvPut(self.parent.treeChanged_pv,1) #not sure why I don't just call the update routine, although this allows multiple guis
 
 
     def queueAllSelectedCB(self):
@@ -577,7 +577,7 @@ class controlMain(QtGui.QMainWindow):
         self.initUI()
         self.createSampleTab()
         self.initCallbacks()
-        self.motPos = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv),"omega":pvGet(self.omega_pv)}
+        self.motPos = {"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv),"omega":beamline_support.pvGet(self.omega_pv)}
 
 
     def initVideo2(self,frequency):
@@ -1094,9 +1094,9 @@ class controlMain(QtGui.QMainWindow):
             self.drawPolyRaster(self.rasterDefList[i])
             self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
       if (self.vectorStart != None):
-        self.processSampMove(pvGet(self.sampx_pv),"x")
-        self.processSampMove(pvGet(self.sampy_pv),"y")
-        self.processSampMove(pvGet(self.sampz_pv),"z")
+        self.processSampMove(beamline_support.pvGet(self.sampx_pv),"x")
+        self.processSampMove(beamline_support.pvGet(self.sampy_pv),"y")
+        self.processSampMove(beamline_support.pvGet(self.sampz_pv),"z")
 
 
 
@@ -1112,7 +1112,7 @@ class controlMain(QtGui.QMainWindow):
         self.capture = self.captureZoom
         self.nocapture = self.captureFull
         self.digiZoomCheckBox.setEnabled(True)
-        if (pvGet(self.camZoom_pv) == "ROI2"):
+        if (beamline_support.pvGet(self.camZoom_pv) == "ROI2"):
           fov["x"] = daq_utils.highMagFOVx/2.0
           fov["y"] = daq_utils.highMagFOVy/2.0
         else:
@@ -1148,13 +1148,13 @@ class controlMain(QtGui.QMainWindow):
       if state == QtCore.Qt.Checked:
         fov["x"] = daq_utils.highMagFOVx
         fov["y"] = daq_utils.highMagFOVy
-        if (pvGet(self.camZoom_pv) != "ROI1"):
-          pvPut(self.camZoom_pv,"ROI1")
+        if (beamline_support.pvGet(self.camZoom_pv) != "ROI1"):
+          beamline_support.pvPut(self.camZoom_pv,"ROI1")
       else:
         fov["x"] = daq_utils.highMagFOVx/2.0
         fov["y"] = daq_utils.highMagFOVy/2.0
-        if (pvGet(self.camZoom_pv) != "ROI2"):
-          pvPut(self.camZoom_pv,"ROI2")
+        if (beamline_support.pvGet(self.camZoom_pv) != "ROI2"):
+          beamline_support.pvPut(self.camZoom_pv,"ROI2")
       self.adjustGraphics4ZoomChange(fov)
 
 
@@ -1252,7 +1252,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def displayXrecRaster(self,xrecRasterFlag):
-      pvPut(self.xrecRasterFlag_pv,0)
+      beamline_support.pvPut(self.xrecRasterFlag_pv,0)
       if (xrecRasterFlag==1):#rect or poly raster
         self.rasterDef = db_lib.getNextRunRaster(0)
         self.drawPolyRaster(self.rasterDef)
@@ -1300,7 +1300,7 @@ class controlMain(QtGui.QMainWindow):
       self.choochGraph.newcurve("spline", chooch_graph_x, chooch_graph_y1)
       self.choochGraph.newcurve("fp", chooch_graph_x, chooch_graph_y2)
       self.choochGraph.replot()
-      pvPut(self.choochResultFlag_pv,0)
+      beamline_support.pvPut(self.choochResultFlag_pv,0)
 
 
     def getMaxPriority(self):
@@ -1525,7 +1525,7 @@ class controlMain(QtGui.QMainWindow):
       markWidth = 10
       marker = self.scene.addEllipse(daq_utils.screenPixCenterX-(markWidth/2),daq_utils.screenPixCenterY-(markWidth/2),markWidth,markWidth,pen,brush)
       marker.setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            
-      self.centeringMark = {"sampCoords":{"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)},"graphicsItem":marker}
+      self.centeringMark = {"sampCoords":{"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv)},"graphicsItem":marker}
       self.centeringMarksList.append(self.centeringMark)
  
 
@@ -1595,7 +1595,7 @@ class controlMain(QtGui.QMainWindow):
         fov["x"] = daq_utils.lowMagFOVx
         fov["y"] = daq_utils.lowMagFOVy
       else:
-#        if (pvGet(self.camZoom_pv) == "ROI1"):
+#        if (beamline_support.pvGet(self.camZoom_pv) == "ROI1"):
         if (self.digiZoomCheckBox.isChecked()):
           fov["x"] = daq_utils.highMagFOVx/2
           fov["y"] = daq_utils.highMagFOVy/2
@@ -1630,7 +1630,7 @@ class controlMain(QtGui.QMainWindow):
 #raster status - 0=nothing done, 1=run, 2=displayed
       beamWidth = float(self.beamWidth_ledit.text())
       beamHeight = float(self.beamHeight_ledit.text())
-      self.rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv),"omega":pvGet(self.omega_pv),"stepsize":int(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
+      self.rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv),"omega":beamline_support.pvGet(self.omega_pv),"stepsize":int(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
       numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
       numsteps_v = int(raster_h/stepsize)
       if (numsteps_h%2 == 0):
@@ -1689,7 +1689,7 @@ class controlMain(QtGui.QMainWindow):
       self.scene.addItem(newItemGroup)
       for i in range (0,len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
-      newRasterGraphicsDesc = {"coords":{"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"coords":{"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv)},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
@@ -1727,7 +1727,7 @@ class controlMain(QtGui.QMainWindow):
       for i in range (0,len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
 #      newItemGroup.addToGroup(self.rasterPoly)
-      newRasterGraphicsDesc = {"coords":{"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"coords":{"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv)},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
@@ -1916,7 +1916,7 @@ class controlMain(QtGui.QMainWindow):
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
       vecStartMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)      
-      vectorStartcoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
+      vectorStartcoords = {"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv)}
       self.vectorStart = {"coords":vectorStartcoords,"graphicsitem":vecStartMarker}
       self.send_to_server("set_vector_start()")
 #      print self.vectorStartcoords
@@ -1928,7 +1928,7 @@ class controlMain(QtGui.QMainWindow):
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
       vecEndMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)      
-      vectorEndcoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
+      vectorEndcoords = {"x":beamline_support.pvGet(self.sampx_pv),"y":beamline_support.pvGet(self.sampy_pv),"z":beamline_support.pvGet(self.sampz_pv)}
       self.vectorEnd = {"coords":vectorEndcoords,"graphicsitem":vecEndMarker}
       self.vecLine = self.scene.addLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+vecEndMarker.x(),daq_utils.screenPixCenterY+vecEndMarker.y(), pen)
       self.vecLine.setFlag(QtGui.QGraphicsItem.ItemIsMovable, True)
@@ -2069,8 +2069,8 @@ class controlMain(QtGui.QMainWindow):
     def initUI(self):               
         self.tabs= QtGui.QTabWidget()
         self.text_output = Console(parent=self)
-        self.comm_pv = pvCreate(daq_utils.beamline + "_comm:command_s")
-        self.immediate_comm_pv = pvCreate(daq_utils.beamline + "_comm:immediate_command_s")
+        self.comm_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:command_s")
+        self.immediate_comm_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:immediate_command_s")
         tab1= QtGui.QWidget()
         vBoxlayout1= QtGui.QVBoxLayout()
         splitter1 = QtGui.QSplitter(QtCore.Qt.Vertical,self)
@@ -2092,39 +2092,39 @@ class controlMain(QtGui.QMainWindow):
         self.show()
 
     def initCallbacks(self):
-      self.treeChanged_pv = pvCreate(daq_utils.beamline + "_comm:live_q_change_flag")
+      self.treeChanged_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:live_q_change_flag")
       self.connect(self, QtCore.SIGNAL("refreshTreeSignal"),self.dewarTree.refreshTree)
-      add_callback(self.treeChanged_pv,self.treeChangedCB,"")  
-      self.choochResultFlag_pv = pvCreate(daq_utils.beamline + "_comm:choochResultFlag")
+      beamline_support.add_callback(self.treeChanged_pv,self.treeChangedCB,"")  
+      self.choochResultFlag_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:choochResultFlag")
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
-      add_callback(self.choochResultFlag_pv,self.processChoochResultsCB,"")  
-      self.xrecRasterFlag_pv = pvCreate(daq_utils.beamline + "_comm:xrecRasterFlag")
-      pvPut(self.xrecRasterFlag_pv,0)
+      beamline_support.add_callback(self.choochResultFlag_pv,self.processChoochResultsCB,"")  
+      self.xrecRasterFlag_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:xrecRasterFlag")
+      beamline_support.pvPut(self.xrecRasterFlag_pv,0)
       self.connect(self, QtCore.SIGNAL("xrecRasterSignal"),self.displayXrecRaster)
-      add_callback(self.xrecRasterFlag_pv,self.processXrecRasterCB,"")  
-      self.message_string_pv = pvCreate(daq_utils.beamline + "_comm:message_string") 
+      beamline_support.add_callback(self.xrecRasterFlag_pv,self.processXrecRasterCB,"")  
+      self.message_string_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:message_string") 
       self.connect(self, QtCore.SIGNAL("serverMessageSignal"),self.printServerMessage)
-      add_callback(self.message_string_pv,self.serverMessageCB,"")  
-      self.program_state_pv = pvCreate(daq_utils.beamline + "_comm:program_state") 
+      beamline_support.add_callback(self.message_string_pv,self.serverMessageCB,"")  
+      self.program_state_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:program_state") 
       self.connect(self, QtCore.SIGNAL("programStateSignal"),self.colorProgramState)
-      add_callback(self.program_state_pv,self.programStateCB,"")  
-      self.sampx_pv = pvCreate(daq_utils.gonioPvPrefix+"X.VAL")
+      beamline_support.add_callback(self.program_state_pv,self.programStateCB,"")  
+      self.sampx_pv = beamline_support.pvCreate(daq_utils.gonioPvPrefix+"X.VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
-      add_callback(self.sampx_pv,self.processSampMoveCB,"x")
-      self.sampy_pv = pvCreate(daq_utils.gonioPvPrefix+"Y.VAL")
+      beamline_support.add_callback(self.sampx_pv,self.processSampMoveCB,"x")
+      self.sampy_pv = beamline_support.pvCreate(daq_utils.gonioPvPrefix+"Y.VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
-      add_callback(self.sampy_pv,self.processSampMoveCB,"y")
-      self.sampz_pv = pvCreate(daq_utils.gonioPvPrefix+"Z.VAL")
+      beamline_support.add_callback(self.sampy_pv,self.processSampMoveCB,"y")
+      self.sampz_pv = beamline_support.pvCreate(daq_utils.gonioPvPrefix+"Z.VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
-      add_callback(self.sampz_pv,self.processSampMoveCB,"z")
+      beamline_support.add_callback(self.sampz_pv,self.processSampMoveCB,"z")
 
-      self.omega_pv = pvCreate(daq_utils.gonioPvPrefix+"Omega.VAL")
+      self.omega_pv = beamline_support.pvCreate(daq_utils.gonioPvPrefix+"Omega.VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
-      add_callback(self.omega_pv,self.processSampMoveCB,"omega")
+      beamline_support.add_callback(self.omega_pv,self.processSampMoveCB,"omega")
 
-      self.camZoom_pv = pvCreate("FAMX-cam1:MJPGZOOM:NDArrayPort")
+      self.camZoom_pv = beamline_support.pvCreate("FAMX-cam1:MJPGZOOM:NDArrayPort")
       self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
-      add_callback(self.camZoom_pv,self.processZoomLevelChangeCB,"")
+      beamline_support.add_callback(self.camZoom_pv,self.processZoomLevelChangeCB,"")
         
 
     def printServerMessage(self,message_s):
@@ -2133,13 +2133,13 @@ class controlMain(QtGui.QMainWindow):
       if (program_starting):
         program_starting = 0
         return        
-#      message_s = pvGet(self.message_string_pv)
+#      message_s = beamline_support.pvGet(self.message_string_pv)
       print message_s
       self.text_output.showMessage(message_s)
       self.text_output.scrollContentsBy(0,1000)
 
     def colorProgramState(self,programState_s):
-#      programState_s = pvGet(self.program_state_pv)
+#      programState_s = beamline_support.pvGet(self.program_state_pv)
       if (string.find(programState_s,"Ready") == -1):
         self.statusLabel.setColor("yellow")
       else:
@@ -2151,12 +2151,12 @@ class controlMain(QtGui.QMainWindow):
     def send_to_server(self,s):
 #      if not (control_disabled):
       time.sleep(.01)
-      pvPut(self.comm_pv,s)
+      beamline_support.pvPut(self.comm_pv,s)
 
     def aux_send_to_server(self,s):
 #      if not (control_disabled):
       time.sleep(.01)
-      pvPut(self.immediate_comm_pv,s)
+      beamline_support.pvPut(self.immediate_comm_pv,s)
 
 
 def main():
