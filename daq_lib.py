@@ -20,6 +20,7 @@ var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.
 
 global x_vec_start, y_vec_start, z_vec_start, x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec
 global var_channel_list
+global message_string_pv
 var_channel_list = {}
 
 
@@ -226,9 +227,16 @@ def get_data_prefix():
 def refreshGuiTree():
   beamline_support.set_any_epics_pv(daq_utils.beamline+"_comm:live_q_change_flag","VAL",1)
 
+def broadcast_output(s):
+  time.sleep(0.01)
+  if (string.find(s,'|') == -1):
+    print s
+  beamline_support.pvPut(message_string_pv,s)
+
+
 
 def runChooch():
-  daq_utils.broadcast_output("running chooch")
+  broadcast_output("running chooch")
   time.sleep(4)
   set_field("choochResultFlag",1)
 

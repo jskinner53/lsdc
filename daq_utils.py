@@ -1,10 +1,10 @@
 import time
 import string
-import beamline_support
+#import beamline_support
 import os
 from math import *
 
-global message_string_pv
+
 
 #global det_radius
 #det_radius = 0
@@ -113,11 +113,11 @@ def init_environment():
 
 
 
-def broadcast_output(s):
-  time.sleep(0.01)
-  if (string.find(s,'|') == -1):
-    print s
-  beamline_support.pvPut(message_string_pv,s)
+#def broadcast_output(s):
+#  time.sleep(0.01)
+#  if (string.find(s,'|') == -1):
+#    print s
+#  beamline_support.pvPut(message_string_pv,s)
 
 
 def getCurrentFOVx(camera,zoom): #cam 0 = lowMag, 

@@ -16,6 +16,7 @@ from random import randint
 
 def hi_macro():
   print "hello from macros\n"
+  daq_lib.broadcast_output("broadcast hi")
 
     
 def flipLoopShapeCoords(filename): # not used
@@ -127,7 +128,7 @@ def generateGridMap(rasterDef):
     zMotAbsoluteMove = rasterStartZ-xRelativeMove
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     xMotAbsoluteMove = yxRelativeMove+rasterStartX
-    numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
+    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     for j in range (0,numsteps):
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
         zMotCellAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
@@ -163,7 +164,7 @@ def generateSingleColumnGridMap(rasterDef):
     zMotAbsoluteMove = rasterStartZ-xRelativeMove
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     xMotAbsoluteMove = yxRelativeMove+rasterStartX
-    numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
+    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     for j in range (0,numsteps):
       yxRelativeMove = stepsize*sin(omegaRad)
       yyRelativeMove = -stepsize*cos(omegaRad)
@@ -189,7 +190,7 @@ def columnRaster(): #3/10/15 - not used yet, raster would need to be defined for
   omegaRad = math.radians(omega)
   for i in range (0,len(rasterDef["rowDefs"])):
     rowCellCount = 0
-    numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
+    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
       startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
     else:
@@ -231,7 +232,7 @@ def singleColumnRaster(): #for the 90-degree step.
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-  numsteps = float(rasterDef["rowDefs"][0]["numsteps"])
+  numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
   startY = rasterDef["rowDefs"][0]["start"]["y"]+(stepsize/2.0) #- these are the simple relative moves
   startX = rasterDef["rowDefs"][0]["start"]["x"]+(stepsize/2.0)
   xRelativeMove = startX
