@@ -1,9 +1,10 @@
 #!/usr/bin/python
 import pickle
 import time
-
+import uuid
 import functools
 import mongoengine as mongo
+
 from odm_templates import (Sample, Container, Raster)
 
 
@@ -12,17 +13,8 @@ from odm_templates import (Sample, Container, Raster)
 ### !!!!  are only unique per group.
 
 
-mongo_conn = mongo.connect('john_mongo')
+mongo_conn = mongo.connect('matt_tmp_mongo')
 
-#def _ensure_connection(func):
-#    @functools.wraps(func)
-#    def inner(*args, **kwargs):
-#        mongo.connect('john_mongo')
-#        return func(*args, **kwargs)
-#    return inner
-#
-#
-#@_ensure_connection
 def createContainer(container_name, type_name, capacity):
     containerObj = {"container_id": int(time.time()),
                     "containerName": container_name,
@@ -31,7 +23,7 @@ def createContainer(container_name, type_name, capacity):
 
     # the item list is a list of id's, whether they be other
     # containers or samples. This is because samples and pucks can move.
-    for i in xrange (capacity):
+    for i in xrange(capacity):
         containerObj["item_list"].append(None)
 
     #containerFile = open( "container.db", "a+" )
@@ -53,7 +45,7 @@ def getRasters():
     #    rasterFile.close()
     #return ret_list
 
-    return list(r.to_mongo() for r in Raster.objects())
+    return [r.to_mongo() for r in Raster.objects()]
 
 
 def addRaster(rasterDefObj):
@@ -128,7 +120,7 @@ def createSample(sampleName):
     return sampleObj["sample_id"]
 
 
-def getSampleByID(sample_id, as_mongo=False):
+def getSampleByID(sample_id, as_mongo_obj=False):
     #pickleFile = open( "sample.db", "r" )
     #try:
     #    while (1):
@@ -141,7 +133,7 @@ def getSampleByID(sample_id, as_mongo=False):
 
     s = Sample.objects(sample_id=sample_id)
     if s.count() == 1:
-        if as_mongo:
+        if as_mongo_obj:
             return s.first()
         else:
             return s.first().to_mongo()
@@ -152,7 +144,7 @@ def getSampleByID(sample_id, as_mongo=False):
     return None
 
 
-def getSampleIDbyName(sample_name):
+def getSampleIDbyName(sample_name, as_mongo_obj=False):
     #pickleFile = open( "sample.db", "r" )
     #try:
     #    while (1):
@@ -252,7 +244,7 @@ def addRequesttoSample(sample_id, request):
     #    pickle.dump(sampList[i], pickleFile)
     #pickleFile.close()
   
-    s = getSampleByID(sample_id, as_mongo=True)
+    s = getSampleByID(sample_id, as_mongo_obj=True)
     s.modify(push__requestList=request)
 
 
@@ -295,7 +287,7 @@ def insertIntoContainer(container_name, position, itemID):
     #else:
     #    print "bad container name"
 
-    c = getContainerByName(container_name)
+    c = getContainerByName(container_name, as_mongo_obj=True)
     if c is not None:
         c.item_list[position] = itemID
         c.save()
@@ -303,7 +295,7 @@ def insertIntoContainer(container_name, position, itemID):
         print "bad container name"
 
 
-def getContainers(): 
+def getContainers(as_mongo_obj=False): 
     #ret_list = []
     #containerFile = open( "container.db", "r" )
     #try:
@@ -314,10 +306,15 @@ def getContainers():
     #    containerFile.close()
     #return ret_list
 
-    return list(c.to_mongo() for c in Container.objects())    
+    c = Container.objects()
+
+    if as_mongo_obj:
+        return list(c)
+    else:
+        return [c.to_mongo() for c in c]
 
 
-def getContainersByType(type_name, group_name): 
+def getContainersByType(type_name, group_name, as_mongo_obj=False): 
     #ret_list = []
     #containerFile = open( "container.db", "r" )
     #try:
@@ -329,19 +326,24 @@ def getContainersByType(type_name, group_name):
     #    containerFile.close()
     #return ret_list
 
-    return list(c.to_mongo() for c in Container.objects(type_name=type_name))
+    c = Container.objects(type_name=type_name)
+
+    if as_mongo_obj:
+        return list(c)
+    else:
+        return [c.to_mongo() for c in c]
 
 
-def getAllPucks():
-    return getContainersByType("puck", "")
+def getAllPucks(as_mongo_obj=False):
+    return getContainersByType("puck", "", as_mongo_obj=as_mongo_obj)
 
 
-def getPrimaryDewar():
+def getPrimaryDewar(as_mongo_obj=False):
 #    return getContainersByType("dewar", "")[0]
-    return getContainerByName("primaryDewar2")
+    return getContainerByName("primaryDewar2", as_mongo_obj=as_mongo_obj)
 
 
-def getContainerByName(container_name): 
+def getContainerByName(container_name, as_mongo_obj=False): 
     #containerFile = open( "container.db", "r" )
     #try:
     #    while (1):
@@ -353,16 +355,21 @@ def getContainerByName(container_name):
     #    containerFile.close()
     #return None
 
-    c = Container.objects(container_name=container_name)
+    c = Container.objects(containerName=container_name)
+
     if c.count() == 1:
-        return c.first().to_mongo()
+        if as_mongo_obj:
+            return c.first()
+        else:
+            return c.first().to_mongo()
+
     elif c.count() > 1:
         raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_name))
 
     return None
 
 
-def getContainerByID(container_id): 
+def getContainerByID(container_id, as_mongo_obj=False): 
     #containerFile = open( "container.db", "r" )
     #try:
     #    while (1):
@@ -375,8 +382,13 @@ def getContainerByID(container_id):
     #return None
 
     c = Container.objects(container_id=container_id)
+
     if c.count() == 1:
-        return c.first().to_mongo()
+        if as_mongo_obj:
+            return c.first()
+        else:
+            return c.first().to_mongo()
+
     elif c.count() > 1:
         raise ValueError('got more than one container when searching for'
                          'container id ({0})!?'.format(container_id))
@@ -405,7 +417,7 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
     sampleObj = getSampleByID(sample_id)
     sampleObj["requestList"].append(colobj)
 
-    s = getSampleByID(sample_id, as_mongo=True)
+    s = getSampleByID(sample_id, as_mongo_obj=True)
     s.modify(push__requestList=colobj)
 
 #,vec_x_start,vec_y_start,vec_z_start,vec_x_end,vec_y_end,vec_z_end,vec_numframes,vec_fpp
@@ -506,7 +518,7 @@ def getAllSamples():
     #    pickleFile.close()
     #return retList
 
-    return list(s.to_mongo() for s in Sample.objects())
+    return [s.to_mongo() for s in Sample.objects()]
     
     
 #really need to generalize these update routines 
@@ -592,7 +604,7 @@ def deleteSample(samplObj):
     #    pickle.dump(retList[i],pickleFile)
     #pickleFile.close()
 
-    s = getSampleByID(sampleObj["sample_id"], as_mongo=True)
+    s = getSampleByID(sampleObj["sample_id"], as_mongo_obj=True)
     s.delete()
 
 
