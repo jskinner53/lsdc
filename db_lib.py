@@ -6,7 +6,7 @@ import functools
 import os
 import mongoengine as mongo
 
-from odm_templates import (Sample, Container, Raster)
+from odm_templates import (Sample, Container, Raster, Request)
 
 
 
@@ -27,7 +27,6 @@ mongo_conn = mongo.connect(db_name)
 
 
 def createContainer(container_name, type_name, capacity):
-
     containerObj = {"containerName": container_name,
                     "type_name": type_name,
                     "item_list": []}
@@ -114,9 +113,7 @@ def getNextDisplayRaster():
     return retRaster
 
 
-
 def createSample(sampleName):
-
     sampleObj = {"sampleName": sampleName, "requestList": []}
 
     s = Sample(**sampleObj)
@@ -126,8 +123,8 @@ def createSample(sampleName):
 
 
 def getSampleByID(sample_id, as_mongo_obj=False):
-
     s = Sample.objects(sample_id=sample_id)
+
     if s.count() == 1:
         if as_mongo_obj:
             return s.first()
@@ -141,8 +138,8 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 
 
 def getSampleIDbyName(sample_name, as_mongo_obj=False):
-
     s = Sample.objects(sampleName=sample_name)
+
     if s.count() == 1:
         return s.first().to_mongo()['sample_id']
     elif s.count() > 1:
@@ -152,8 +149,8 @@ def getSampleIDbyName(sample_name, as_mongo_obj=False):
 
 
 def getSampleNamebyID(sample_id):
-
     s = Sample.objects(sample_id=sample_id)
+
     if s.count() == 1:
         return s.first().to_mongo()['sampleName']
     elif s.count() > 1:
@@ -163,8 +160,8 @@ def getSampleNamebyID(sample_id):
 
 
 def getContainerIDbyName(container_name):
-
     c = Container.objects(containerName=container_name)
+
     if c.count() == 1:
         return c.first().to_mongo()['container_id']
     elif c.count() > 1:
@@ -174,8 +171,8 @@ def getContainerIDbyName(container_name):
 
 
 def getContainerNameByID(container_id):
-
     c = Container.objects(container_id=container_id)
+
     if c.count() == 1:
         return c.first().to_mongo()['containerName']
     elif c.count() > 1:
@@ -201,12 +198,13 @@ def addRequesttoSample(sample_id, request):
     #pickleFile.close()
   
     s = getSampleByID(sample_id, as_mongo_obj=True)
-    s.modify(push__requestList=request)
+    #s.save(push__requestList=request)
+    s.requestList.append(request)
+    s.save()
 
 
 def createDefaultRequest(sample_id):
     request = {
-               "request_id": int(time.time()),
                "sample_id" : sample_id,
                "sweep_start":0.0,  "sweep_end":0.1,
                "img_width":.1,
@@ -222,7 +220,7 @@ def createDefaultRequest(sample_id):
                "pos_x":0,  "pos_y":0,  "pos_z":0,  "pos_type":'A',
                "gridW":0,  "gridH":0,  "gridStep":10}
 
-    return request
+    return Request(**request)
 ####    addRequesttoSample(sample_id, request)
 
 
@@ -498,10 +496,8 @@ def deleteRequest(reqObj):
 
 
 def deleteSample(samplObj):
-
     s = getSampleByID(sampleObj["sample_id"], as_mongo_obj=True)
     s.delete()
-
 
 
 def removePuckFromDewar(dewarPos):
