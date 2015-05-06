@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 from db_lib import *
 
 primary_dewar_name = "primaryDewar2"
@@ -7,4 +8,4 @@ createContainer(primary_dewar_name, "dewar", 25)
 
 for i in range (1,21):
   containerName = "Puck" + str(i)
-  insertIntoContainer(primary_dewar_name,i+2,getContainerIDbyName(containerName))
+  insertIntoContainer(primary_dewar_name, i-1, getContainerIDbyName(containerName))

@@ -15,8 +15,12 @@ from odm_templates import (Sample, Container, Raster)
 
 mongo_conn = mongo.connect('matt_tmp_mongo')
 
+
 def createContainer(container_name, type_name, capacity):
-    containerObj = {"container_id": int(time.time()),
+
+    container_id = uuid.uuid1()
+
+    containerObj = {"container_id": container_id,
                     "containerName": container_name,
                     "type_name": type_name,
                     "item_list": []}
@@ -25,10 +29,6 @@ def createContainer(container_name, type_name, capacity):
     # containers or samples. This is because samples and pucks can move.
     for i in xrange(capacity):
         containerObj["item_list"].append(None)
-
-    #containerFile = open( "container.db", "a+" )
-    #pickle.dump(containerObj, containerFile)
-    #containerFile.close()
 
     c = Container(**containerObj)
     c.save()
@@ -108,7 +108,10 @@ def getNextDisplayRaster():
 
 
 def createSample(sampleName):
-    sampleObj = {"sample_id": int(time.time()), "sampleName": sampleName, "requestList": []}
+
+    sample_id = uuid.uuid1()
+
+    sampleObj = {"sample_id":  sample_id, "sampleName": sampleName, "requestList": []}
 
     #sampleFile = open( "sample.db", "a+" )
     #pickle.dump(sampleObj, sampleFile)
