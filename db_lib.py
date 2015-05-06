@@ -4,6 +4,7 @@ import time
 import uuid
 import functools
 import os
+import socket
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster, Request)
@@ -14,13 +15,30 @@ from odm_templates import (Sample, Container, Raster, Request)
 ### !!!!  are only unique per group.
 
 
+# tmp cludges instead of config :(
 
-if os.getenv('SSH_CLIENT').split()[0] == "130.199.219.44":
-    db_name = "matt_tmp_mongo"
-elif os.getenv('SSH_CLIENT').split()[0] == "130.199.219.42":
-    db_name = "john_mongo"
-else:
-    db_name = "unknown_tmp_mongo"
+# defaults
+db_host = '127.0.0.1'
+db_name = 'tmp_mongo_junk_from_db_lib'
+
+host = socket.gethostname()
+client = os.getenv('SSH_CLIENT')
+
+if host == 'fluke':
+    db_host = 'lsbr-dev'
+    db_name = 'john_mongo'
+
+elif host == 'gisele':
+    db_name = 'matt_tmp_mongo'
+
+elif client and host == 'lsbr-dev': 
+    client = client.split()[0]
+
+    if client == '130.199.219.44':
+        db_name = 'matt_tmp_mongo'
+
+    elif client == '130.199.219.42':
+        db_name = 'john_mongo'
 
 mongo_conn = mongo.connect(db_name)
 
