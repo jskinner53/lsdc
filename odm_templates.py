@@ -1,15 +1,13 @@
 from mongoengine import DynamicDocument
+from mongoengine import SequenceField
 
 
 class Sample(DynamicDocument):
-    pass
-#    sample_id = StringField(required=True, unique=True)
+    sample_id = SequenceField(required=True, unique=True)
 #    sampleName = StringField(required=True, unique_with='owner')
 
 class Container(DynamicDocument):
-    pass
-#    container_id = StringField(required=True, unique=True)
+    container_id = SequenceField(required=True, unique=True)
 
 class Raster(DynamicDocument):
-    pass
-#    raster_id = StringField(required=True, unique=True)
+    raster_id = SequenceField(required=True, unique=True)

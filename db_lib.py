@@ -3,6 +3,7 @@ import pickle
 import time
 import uuid
 import functools
+import os
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster)
@@ -13,15 +14,21 @@ from odm_templates import (Sample, Container, Raster)
 ### !!!!  are only unique per group.
 
 
-mongo_conn = mongo.connect('matt_tmp_mongo')
+
+if os.getenv('SSH_CLIENT').split()[0] == "130.199.219.44":
+    db_name = "matt_tmp_mongo"
+elif os.getenv('SSH_CLIENT').split()[0] == "130.199.219.42":
+    db_name = "john_mongo"
+else:
+    db_name = "unknown_tmp_mongo"
+
+mongo_conn = mongo.connect(db_name)
+
 
 
 def createContainer(container_name, type_name, capacity):
 
-    container_id = uuid.uuid1()
-
-    containerObj = {"container_id": container_id,
-                    "containerName": container_name,
+    containerObj = {"containerName": container_name,
                     "type_name": type_name,
                     "item_list": []}
 
@@ -32,6 +39,8 @@ def createContainer(container_name, type_name, capacity):
 
     c = Container(**containerObj)
     c.save()
+
+    return c.container_id
 
 
 def getRasters(): 
@@ -58,6 +67,8 @@ def addRaster(rasterDefObj):
 
     r = Raster(**rasterDefObj)
     r.save()
+
+    return r.raster_id
 
 
 def clearRasters():
@@ -109,9 +120,7 @@ def getNextDisplayRaster():
 
 def createSample(sampleName):
 
-    sample_id = uuid.uuid1()
-
-    sampleObj = {"sample_id":  sample_id, "sampleName": sampleName, "requestList": []}
+    sampleObj = {"sampleName": sampleName, "requestList": []}
 
     #sampleFile = open( "sample.db", "a+" )
     #pickle.dump(sampleObj, sampleFile)
@@ -120,7 +129,7 @@ def createSample(sampleName):
     s = Sample(**sampleObj)
     s.save()
 
-    return sampleObj["sample_id"]
+    return s.sample_id
 
 
 def getSampleByID(sample_id, as_mongo_obj=False):
