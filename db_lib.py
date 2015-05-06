@@ -72,9 +72,6 @@ def addRaster(rasterDefObj):
 
 
 def clearRasters():
-    #pickleFile = open( "raster.db", "w+" )    
-    #pickleFile.close()
-
     Raster.drop_collection()
 
 
@@ -122,10 +119,6 @@ def createSample(sampleName):
 
     sampleObj = {"sampleName": sampleName, "requestList": []}
 
-    #sampleFile = open( "sample.db", "a+" )
-    #pickle.dump(sampleObj, sampleFile)
-    #sampleFile.close()
-
     s = Sample(**sampleObj)
     s.save()
 
@@ -133,15 +126,6 @@ def createSample(sampleName):
 
 
 def getSampleByID(sample_id, as_mongo_obj=False):
-    #pickleFile = open( "sample.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["sample_id"] == sample_id):
-    #            pickleFile.close()
-    #            return retQ
-    #except EOFError:
-    #    pickleFile.close()
 
     s = Sample.objects(sample_id=sample_id)
     if s.count() == 1:
@@ -157,16 +141,6 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 
 
 def getSampleIDbyName(sample_name, as_mongo_obj=False):
-    #pickleFile = open( "sample.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["sampleName"] == sample_name):
-    #            pickleFile.close()
-    #            return retQ["sample_id"]
-    #except EOFError:
-    #    pickleFile.close()
-    #return -99
 
     s = Sample.objects(sampleName=sample_name)
     if s.count() == 1:
@@ -178,16 +152,6 @@ def getSampleIDbyName(sample_name, as_mongo_obj=False):
 
 
 def getSampleNamebyID(sample_id):
-    #pickleFile = open( "sample.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["sample_id"] == sample_id):
-    #            pickleFile.close()
-    #            return retQ["sampleName"]
-    #except EOFError:
-    #    pickleFile.close()
-    #return -99
 
     s = Sample.objects(sample_id=sample_id)
     if s.count() == 1:
@@ -199,20 +163,10 @@ def getSampleNamebyID(sample_id):
 
 
 def getContainerIDbyName(container_name):
-    #pickleFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["containerName"] == container_name):
-    #            pickleFile.close()
-    #            return retQ["container_id"]
-    #except EOFError:
-    #    pickleFile.close()
-    #return -99
 
-    c = Container.objects(container_name=container_name)
+    c = Container.objects(containerName=container_name)
     if c.count() == 1:
-        return c.first().to_mongo()['ContainerName']
+        return c.first().to_mongo()['container_id']
     elif c.count() > 1:
         raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_name))
 
@@ -220,16 +174,6 @@ def getContainerIDbyName(container_name):
 
 
 def getContainerNameByID(container_id):
-    #pickleFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["container_id"] == container_id):
-    #            pickleFile.close()
-    #            return retQ["containerName"]
-    #except EOFError:
-    #    pickleFile.close()
-    #return ""
 
     c = Container.objects(container_id=container_id)
     if c.count() == 1:
@@ -308,15 +252,6 @@ def insertIntoContainer(container_name, position, itemID):
 
 
 def getContainers(as_mongo_obj=False): 
-    #ret_list = []
-    #containerFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(containerFile)
-    #        ret_list.append(retQ)
-    #except EOFError:
-    #    containerFile.close()
-    #return ret_list
 
     c = Container.objects()
 
@@ -327,16 +262,6 @@ def getContainers(as_mongo_obj=False):
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
-    #ret_list = []
-    #containerFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(containerFile)
-    #        if (retQ["type_name"] == type_name):
-    #            ret_list.append(retQ)
-    #except EOFError:
-    #    containerFile.close()
-    #return ret_list
 
     c = Container.objects(type_name=type_name)
 
@@ -351,21 +276,10 @@ def getAllPucks(as_mongo_obj=False):
 
 
 def getPrimaryDewar(as_mongo_obj=False):
-#    return getContainersByType("dewar", "")[0]
     return getContainerByName("primaryDewar2", as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByName(container_name, as_mongo_obj=False): 
-    #containerFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(containerFile)
-    #        if (retQ["containerName"] == container_name):
-    #            containerFile.close()
-    #            return retQ
-    #except EOFError:
-    #    containerFile.close()
-    #return None
 
     c = Container.objects(containerName=container_name)
 
@@ -376,22 +290,13 @@ def getContainerByName(container_name, as_mongo_obj=False):
             return c.first().to_mongo()
 
     elif c.count() > 1:
-        raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_name))
+        raise ValueError('got more than one container when searching for container'
+                         'name ({0})!?'.format(container_name))
 
     return None
 
 
 def getContainerByID(container_id, as_mongo_obj=False): 
-    #containerFile = open( "container.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(containerFile)
-    #        if (retQ["container_id"] == container_id):
-    #            containerFile.close()
-    #            return retQ
-    #except EOFError:
-    #    containerFile.close()
-    #return None
 
     c = Container.objects(container_id=container_id)
 
@@ -520,15 +425,6 @@ def getRequest(reqID): #need to get this from searching the dewar I guess
 
 
 def getAllSamples():
-    #pickleFile = open( "sample.db", "r" )
-    #retList = []
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        retList.append(retQ)
-    #except EOFError:
-    #    pickleFile.close()
-    #return retList
 
     return [s.to_mongo() for s in Sample.objects()]
     
@@ -547,7 +443,7 @@ def updateSample(sampleObj):
     #    pickle.dump(sampleList[i],pickleFile)
     #pickleFile.close()
 
-    s = Sample(sampleObj)
+    s = Sample(**sampleObj)
     s.save()
     
 
@@ -562,7 +458,7 @@ def updateContainer(containerObj):
     #    pickle.dump(containerList[i],pickleFile)
     #pickleFile.close()
 
-    c = Container(containerObj)
+    c = Container(**containerObj)
     c.save()
     
     
@@ -602,19 +498,6 @@ def deleteRequest(reqObj):
 
 
 def deleteSample(samplObj):
-    #retList = []
-    #pickleFile = open( "sample.db", "a+" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["sample_id"] != samplObj["sample_id"]):
-    #            retList.append(retQ)
-    #except EOFError:
-    #    pickleFile.close()
-    #pickleFile = open( "sample.db", "w+" )
-    #for i in range (0,len(retList)):
-    #    pickle.dump(retList[i],pickleFile)
-    #pickleFile.close()
 
     s = getSampleByID(sampleObj["sample_id"], as_mongo_obj=True)
     s.delete()
