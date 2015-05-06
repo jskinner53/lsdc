@@ -177,7 +177,7 @@ def getContainerNameByID(container_id):
 
     c = Container.objects(container_id=container_id)
     if c.count() == 1:
-        return c.first().to_mongo()['ContainerName']
+        return c.first().to_mongo()['containerName']
     elif c.count() > 1:
         raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_id))
 
