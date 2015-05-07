@@ -43,7 +43,7 @@ if client:
         db_name = 'john_mongo'
 
 
-print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
+#print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
 mongo_conn = mongo.connect(db_name, host=db_host)
 
 
@@ -204,21 +204,6 @@ def getContainerNameByID(container_id):
 
 
 def addRequesttoSample(sample_id, request):
-    #pickleFile = open( "sample.db", "a+" )
-    #sampList = []
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(pickleFile)
-    #        if (retQ["sample_id"] == sample_id):
-    #            retQ["requestList"].append(request)
-    #        sampList.append(retQ)
-    #except EOFError:
-    #    pickleFile.close()
-    #pickleFile = open( "sample.db", "w+" )
-    #for i in range (0, len(sampList)):
-    #    pickle.dump(sampList[i], pickleFile)
-    #pickleFile.close()
-  
     r = Request(**request)
 
     s = getSampleByID(sample_id, as_mongo_obj=True)
@@ -245,7 +230,6 @@ def createDefaultRequest(sample_id):
                "gridW":0,  "gridH":0,  "gridStep":10}
 
     return request
-####    addRequesttoSample(sample_id, request)
 
 
 def insertIntoContainer(container_name, position, itemID):
@@ -489,20 +473,20 @@ def updateContainer(containerObj):
 
 def updateRequest(reqObj):
     found = 0
-    sample = getSampleByID(reqObj["sample_id"])
-    reqList = sample["requestList"]
+    sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
+    reqList = sample.requestList
 
     for i in range (0,len(reqList)):
         if (reqList[i] != None):
-            if (reqObj["request_id"] == reqList[i]["request_id"]):
-                sample["requestList"][i] = reqObj
-                found = 1
-                break
 
-    if (found):
-        updateSample(sample)    
-    else:
-        addRequesttoSample(reqObj["sample_id"],reqObj)
+            if (reqObj["request_id"] == reqList[i]["request_id"]):
+                sample.requestList[i] = reqObj
+                sample.save()
+    
+                found = 1
+                return
+
+    addRequesttoSample(reqObj["sample_id"],reqObj)
 
 
 
