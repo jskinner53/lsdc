@@ -24,6 +24,15 @@ db_name = 'tmp_mongo_junk_from_db_lib'
 host = socket.gethostname()
 client = os.getenv('SSH_CLIENT')
 
+if host == 'fluke.nsls2.bnl.gov':
+    db_host = 'lsbr-dev'
+    if not client:
+        db_name = 'john_mongo'
+
+elif host == 'gisele':
+    if not client:
+        db_name = 'matt_tmp_mongo'
+
 if client:
     client = client.split()[0]
 
@@ -33,14 +42,8 @@ if client:
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
 
-elif host == 'fluke':
-    db_host = 'lsbr-dev'
-    db_name = 'john_mongo'
 
-elif host == 'gisele':
-    db_name = 'matt_tmp_mongo'
-
-
+print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
 mongo_conn = mongo.connect(db_name, host=db_host)
 
 
@@ -488,12 +491,14 @@ def updateRequest(reqObj):
     found = 0
     sample = getSampleByID(reqObj["sample_id"])
     reqList = sample["requestList"]
+
     for i in range (0,len(reqList)):
         if (reqList[i] != None):
             if (reqObj["request_id"] == reqList[i]["request_id"]):
                 sample["requestList"][i] = reqObj
                 found = 1
                 break
+
     if (found):
         updateSample(sample)    
     else:
