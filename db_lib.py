@@ -215,9 +215,11 @@ def addRequesttoSample(sample_id, request):
     #    pickle.dump(sampList[i], pickleFile)
     #pickleFile.close()
   
+    r = Request(request)
+
     s = getSampleByID(sample_id, as_mongo_obj=True)
-    #s.save(push__requestList=request)
-    s.requestList.append(request)
+    #s.save(push__requestList=r)
+    s.requestList.append(r)
     s.save()
 
 
