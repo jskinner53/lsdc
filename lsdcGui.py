@@ -310,7 +310,10 @@ class DewarTree(QtGui.QTreeView):
         self.sampleRequests = db_lib.getQueue()
         for i in range (0,len(dewarContents)): #dewar contents is the list of pucks
           parentItem = self.model.invisibleRootItem()
-          puckName = db_lib.getContainerNameByID(dewarContents[i])
+          if (dewarContents[i]==None):
+            puckName = ""
+          else:
+            puckName = db_lib.getContainerNameByID(dewarContents[i])
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(str(i+1) + " " + puckName))
           parentItem.appendRow(item)
           parentItem = item
@@ -320,7 +323,7 @@ class DewarTree(QtGui.QTreeView):
               if (puckContents[j] != None):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
-                item.setData(0-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
+                item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
               else :
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
@@ -376,9 +379,9 @@ class DewarTree(QtGui.QTreeView):
           containerName = db_lib.getContainerNameByID(containerID)
           nodeString = QtCore.QString(str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
-          item.setData(0-requestedSampleList[i]) #the negated sample_id for use in row_click
+          item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
           parentItem.appendRow(item)
-          if ((0-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
+          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
           for k in range (0,len(self.orderedRequests)):
@@ -2017,16 +2020,16 @@ class controlMain(QtGui.QMainWindow):
 #      print itemData
       self.SelectedItemData = itemData # an attempt to know what is selected and preserve it when refreshing the tree
 #      sample_name = getSampleIdFromDewarPos(itemData)
-      sample_name = db_lib.getSampleNamebyID(0-itemData)
+      sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
       if (itemData == -99):
         print "nothing there"
         return
       elif (itemData == 0):
         print "I'm a puck"
         return
-      elif (itemData< -1000):
+      elif (itemData< -100):
         print "sample in pos " + str(itemData) 
-        self.selectedSampleRequest = db_lib.createDefaultRequest(0-itemData)
+        self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
       else: #collection object
         self.selectedSampleRequest = db_lib.getRequest(itemData)
       self.refreshCollectionParams(self.selectedSampleRequest)

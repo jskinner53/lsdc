@@ -40,7 +40,7 @@ elif client and host == 'lsbr-dev':
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
 
-mongo_conn = mongo.connect(db_name)
+mongo_conn = mongo.connect(db_name, db_host)
 
 
 
@@ -215,7 +215,7 @@ def addRequesttoSample(sample_id, request):
     #    pickle.dump(sampList[i], pickleFile)
     #pickleFile.close()
   
-    r = Request(request)
+    r = Request(**request)
 
     s = getSampleByID(sample_id, as_mongo_obj=True)
     #s.save(push__requestList=r)
@@ -240,7 +240,7 @@ def createDefaultRequest(sample_id):
                "pos_x":0,  "pos_y":0,  "pos_z":0,  "pos_type":'A',
                "gridW":0,  "gridH":0,  "gridStep":10}
 
-    return Request(**request)
+    return request
 ####    addRequesttoSample(sample_id, request)
 
 

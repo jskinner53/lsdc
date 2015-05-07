@@ -10,7 +10,7 @@ class Request(DynamicEmbeddedDocument):
 
 class Sample(DynamicDocument):
     sample_id = SequenceField(required=True, unique=True)
-    item_list = ListField(EmbeddedDocumentField(Request))
+    requestList = ListField(EmbeddedDocumentField(Request))
 #    sampleName = StringField(required=True, unique_with='owner')
 
 class Raster(DynamicDocument):
