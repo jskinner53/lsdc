@@ -24,14 +24,7 @@ db_name = 'tmp_mongo_junk_from_db_lib'
 host = socket.gethostname()
 client = os.getenv('SSH_CLIENT')
 
-if host == 'fluke':
-    db_host = 'lsbr-dev'
-    db_name = 'john_mongo'
-
-elif host == 'gisele':
-    db_name = 'matt_tmp_mongo'
-
-elif client and host == 'lsbr-dev': 
+if client:
     client = client.split()[0]
 
     if client == '130.199.219.44':
@@ -40,7 +33,15 @@ elif client and host == 'lsbr-dev':
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
 
-mongo_conn = mongo.connect(db_name, db_host)
+elif host == 'fluke':
+    db_host = 'lsbr-dev'
+    db_name = 'john_mongo'
+
+elif host == 'gisele':
+    db_name = 'matt_tmp_mongo'
+
+
+mongo_conn = mongo.connect(db_name, host=db_host)
 
 
 
