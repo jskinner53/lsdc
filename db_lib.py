@@ -83,26 +83,6 @@ def clearRasters():
 
 
 def getNextRunRaster(updateFlag=1):
-#    rasterList = getRasters()
-#    if (len(rasterList) == 0):
-#        return None
-#    for i in xrange(len(rasterList)):
-#        if (rasterList[i]["status"] == 0):
-#            retRaster = rasterList[i]
-#            if (updateFlag==1):
-#                rasterList[i]["status"] = 1
-#                break
-#            else:
-##                print "drawing " 
-##                print retRaster
-#                return retRaster
-#    #pickleFile = open( "raster.db", "w+" )
-#    for i in xrange(len(rasterList)):
-#        #pickle.dump(rasterList[i], pickleFile)
-#        rasterList[i].save()
-#    #pickleFile.close()
-#    return retRaster
-
     retRaster = None
 
     for rast in getRasters(as_mongo_obj=True):
@@ -111,26 +91,14 @@ def getNextRunRaster(updateFlag=1):
             if updateFlag == 1:
                 rast.status = 1
                 rast.save()
-                break
+#            else:
+##                print "drawing " 
+##                print retRaster
+            break
     return retRaster
 
 
 def getNextDisplayRaster():
-#    rasterList = getRasters()
-#    if (len(rasterList) == 0):
-#        return None
-#    #pickleFile = open( "raster.db", "w+" )
-#    for i in range (0, len(rasterList)):
-#        if (rasterList[i]["status"] == 1):
-#            retRaster = (i, rasterList[i])
-#            rasterList[i]["status"] = 2
-#            break
-#    for i in range (0, len(rasterList)):
-#        #pickle.dump(rasterList[i], pickleFile)
-#        rasterList[i].save()      
-#    #pickleFile.close()
-#    return retRaster
-
     # if getRasters() returns [] retRaster=? !
     # should it be initialized to None as in previous func?
     for i,rast in enumerate(getRasters(as_mongo_obj=True)):
@@ -309,27 +277,6 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
 
 
 def getQueue():
-#    ret_list = []
-#    dewar = getContainerByName("primaryDewar2")
-#    for i in range (0,len(dewar["item_list"])): #these are pucks
-#        if (dewar["item_list"][i] != None):
-#            puck_id = dewar["item_list"][i]
-#            if (puck_id != None): 
-#                puck = getContainerByID(puck_id)
-#                sampleList = puck["item_list"]
-#                for j in range (0,len(sampleList)):
-#                    if (sampleList[j] != None):
-##                        print "sample ID = " + str(sampleList[j])
-#                        sampleObj = getSampleByID(sampleList[j])
-#                        if (sampleObj == None): #not sure how it gets here, I think it's a server update
-#                            print "sample ID = " + str(sampleList[j])
-#                        else:
-#                            sampleReqList = sampleObj["requestList"]
-#                            for k in range (0,len(sampleReqList)):
-#                                if (sampleReqList[k] != None):
-#                                    ret_list.append(sampleReqList[k])
-#    return ret_list
-
     # seems like this would be alot simpler if it weren't for the Nones?
 
     ret_list = []
@@ -351,20 +298,6 @@ def getQueue():
 
 
 def getDewarPosfromSampleID(sample_id):
-#    dewar = getContainerByName("primaryDewar2")
-#    for i in xrange(len(dewar["item_list"])): #these are pucks
-#        if (dewar["item_list"][i] != None):
-#            puck_id = dewar["item_list"][i]
-#            if (puck_id != None): 
-#                puck = getContainerByID(puck_id)
-#                sampleList = puck["item_list"]
-#                for j in xrange(len(sampleList)):
-#                    if (sampleList[j] != None):
-#                        if (sampleList[j] == sample_id):
-#                            containerID = puck_id
-#                            position = j
-#                            return (containerID,position)    
-
     for puck_id in getContainerByName("primaryDewar2")["item_list"]:
         if puck_id is not None:
             for j,samp_id in enumerate(getContainerByID(puck_id)["item_list"]):
@@ -375,21 +308,6 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-#    dewar = getContainerByName("primaryDewar2")
-#    dewarCapacity = len(dewar["item_list"])
-#    for i in xrange(dewarCapacity): #these are pucks
-#        if (dewar["item_list"][i] != None):
-#            puck_id = dewar["item_list"][i]
-#            if (puck_id != None): 
-#                puck = getContainerByID(puck_id)
-#                sampleList = puck["item_list"]
-#                puckCapacity = len(sampleList) #puck
-#                for j in xrange(puckCapacity):
-#                    if (sampleList[j] != None):
-#                        if (sampleList[j] == sample_id):
-#                            absPosition = (i*puckCapacity) + j
-#                            return absPosition
-
     for i,puck_id in enumerate(getContainerByName("primaryDewar2")["item_list"]):
         if puck_id is not None:
             puck = getContainerByID(puck_id)
@@ -420,7 +338,9 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
 
 def getAllSamples():
     return [s.to_mongo() for s in Sample.objects()]
-    
+
+
+# update{Sample,Container} aren't needed at the moment...    
     
 #def updateSample(sampleObj):
 #    samp_id = sampleObj['sample_id']
@@ -438,7 +358,7 @@ def getAllSamples():
 #    Container.objects(container_id=cont_id).update(updated_cont)
     
 
-#this is really "update_sample" because the request is stored with the sample.
+# this is really "update_sample" because the request is stored with the sample.
 
 def updateRequest(reqObj):
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
