@@ -446,7 +446,7 @@ def updateRequest(reqObj):
     for req in sample.requestList:
         if req is not None:
             try:
-                if (reqObj["request_id"] == req.request_id):
+                if reqObj["request_id"] == req.request_id:
                     updated_req = Request(**reqObj)
                     updated_req.request_id = req.request_id
     
@@ -496,7 +496,7 @@ def getSortedPriorityList(): # mayb an intermediate to return a list of all prio
     pList = []
 
     for request in getQueue():
-        if (request["priority"] not in pList):
+        if request["priority"] not in pList:
             pList.append(request["priority"])
 
     return sorted(pList, reverse=True)
