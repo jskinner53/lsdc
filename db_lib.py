@@ -95,7 +95,7 @@ def getNextRunRaster(updateFlag=1):
 ##                print "drawing " 
 ##                print retRaster
             break
-    return retRaster
+    return retRaster.to_mongo()
 
 
 def getNextDisplayRaster():
@@ -107,7 +107,7 @@ def getNextDisplayRaster():
             rast.status = 2
             rast.save()
             break
-    return retRaster
+    return retRaster.to_mongo()
 
 
 def createSample(sampleName):
