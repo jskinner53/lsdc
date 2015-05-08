@@ -64,7 +64,10 @@ def createContainer(container_name, type_name, capacity):
     return c.container_id
 
 
-def getRasters(): 
+def getRasters(as_mongo_obj=False):
+    if as_mongo_obj:
+        return oRaster.objects()
+
     return [r.to_mongo() for r in Raster.objects()]
 
 
@@ -80,41 +83,62 @@ def clearRasters():
 
 
 def getNextRunRaster(updateFlag=1):
-    rasterList = getRasters()
-    if (len(rasterList) == 0):
-        return None
-    for i in xrange(len(rasterList)):
-        if (rasterList[i]["status"] == 0):
-            retRaster = rasterList[i]
-            if (updateFlag==1):
-                rasterList[i]["status"] = 1
+#    rasterList = getRasters()
+#    if (len(rasterList) == 0):
+#        return None
+#    for i in xrange(len(rasterList)):
+#        if (rasterList[i]["status"] == 0):
+#            retRaster = rasterList[i]
+#            if (updateFlag==1):
+#                rasterList[i]["status"] = 1
+#                break
+#            else:
+##                print "drawing " 
+##                print retRaster
+#                return retRaster
+#    #pickleFile = open( "raster.db", "w+" )
+#    for i in xrange(len(rasterList)):
+#        #pickle.dump(rasterList[i], pickleFile)
+#        rasterList[i].save()
+#    #pickleFile.close()
+#    return retRaster
+
+    retRaster = None
+
+    for rast in getRasters(as_mongo_obj=True):
+        if (rast.status == 0):
+            retRaster = rast
+            if (updateFlag == 1):
+                rast.status = 1
+                rast.save()
                 break
-            else:
-#                print "drawing " 
-#                print retRaster
-                return retRaster
-    #pickleFile = open( "raster.db", "w+" )
-    for i in xrange(len(rasterList)):
-        #pickle.dump(rasterList[i], pickleFile)
-        rasterList[i].save()
-    #pickleFile.close()
     return retRaster
 
 
 def getNextDisplayRaster():
-    rasterList = getRasters()
-    if (len(rasterList) == 0):
-        return None
-    #pickleFile = open( "raster.db", "w+" )
-    for i in range (0, len(rasterList)):
-        if (rasterList[i]["status"] == 1):
-            retRaster = (i, rasterList[i])
-            rasterList[i]["status"] = 2
+#    rasterList = getRasters()
+#    if (len(rasterList) == 0):
+#        return None
+#    #pickleFile = open( "raster.db", "w+" )
+#    for i in range (0, len(rasterList)):
+#        if (rasterList[i]["status"] == 1):
+#            retRaster = (i, rasterList[i])
+#            rasterList[i]["status"] = 2
+#            break
+#    for i in range (0, len(rasterList)):
+#        #pickle.dump(rasterList[i], pickleFile)
+#        rasterList[i].save()      
+#    #pickleFile.close()
+#    return retRaster
+
+    # if getRasters() returns [] retRaster=? !
+    # should it be initialized to None as in previous func?
+    for i,rast in enumerate(getRasters(as_mongo_obj=True)):
+        if (rast.status == 1):
+            retRaster = (i, rast)
+            rast.status = 2
+            rast.save()
             break
-    for i in range (0, len(rasterList)):
-        #pickle.dump(rasterList[i], pickleFile)
-        rasterList[i].save()      
-    #pickleFile.close()
     return retRaster
 
 
@@ -275,9 +299,6 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
               "pos_type": pos_type, "gridW": gridW, "gridH": gridH, "gridStep": gridStep}
 
     ######### need to insert this into the request List for the sample
-    sampleObj = getSampleByID(sample_id)
-    sampleObj["requestList"].append(colobj)
-
     s = getSampleByID(sample_id, as_mongo_obj=True)
     s.modify(push__requestList=colobj)
 
@@ -288,74 +309,109 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
 
 
 def getQueue():
+#    ret_list = []
+#    dewar = getContainerByName("primaryDewar2")
+#    for i in range (0,len(dewar["item_list"])): #these are pucks
+#        if (dewar["item_list"][i] != None):
+#            puck_id = dewar["item_list"][i]
+#            if (puck_id != None): 
+#                puck = getContainerByID(puck_id)
+#                sampleList = puck["item_list"]
+#                for j in range (0,len(sampleList)):
+#                    if (sampleList[j] != None):
+##                        print "sample ID = " + str(sampleList[j])
+#                        sampleObj = getSampleByID(sampleList[j])
+#                        if (sampleObj == None): #not sure how it gets here, I think it's a server update
+#                            print "sample ID = " + str(sampleList[j])
+#                        else:
+#                            sampleReqList = sampleObj["requestList"]
+#                            for k in range (0,len(sampleReqList)):
+#                                if (sampleReqList[k] != None):
+#                                    ret_list.append(sampleReqList[k])
+#    return ret_list
+
+    # seems like this would be alot simpler if it weren't for the Nones?
+
     ret_list = []
-    dewar = getContainerByName("primaryDewar2")
-    for i in range (0,len(dewar["item_list"])): #these are pucks
-        if (dewar["item_list"][i] != None):
-            puck_id = dewar["item_list"][i]
-            if (puck_id != None): 
-                puck = getContainerByID(puck_id)
-                sampleList = puck["item_list"]
-                for j in range (0,len(sampleList)):
-                    if (sampleList[j] != None):
-#                        print "sample ID = " + str(sampleList[j])
-                        sampleObj = getSampleByID(sampleList[j])
-                        if (sampleObj == None): #not sure how it gets here, I think it's a server update
-                            print "sample ID = " + str(sampleList[j])
-                        else:
-                            sampleReqList = sampleObj["requestList"]
-                            for k in range (0,len(sampleReqList)):
-                                if (sampleReqList[k] != None):
-                                    ret_list.append(sampleReqList[k])
+    items = getContainerByName("primaryDewar2")["item_list"]  #these are pucks
+    for item_id in items:
+        if item_id is not None:
+            puck = getContainerByID(item_id)
+            for sample_id in puck["item_list"]:
+                if sample_id is not None:
+#                    print "sample ID = " + str(sample_id)
+                    sampleObj = getSampleByID(sample_id)
+                    if sampleObj is None:  #not sure how it gets here, I think it's a server update
+                        print "sample ID = " + str(sample_id)
+                    else:
+                        for request in sampleObj["requestList"]:
+                            if request is not None:
+                                ret_list.append(request)
     return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
-    dewar = getContainerByName("primaryDewar2")
-    for i in range (0,len(dewar["item_list"])): #these are pucks
-        if (dewar["item_list"][i] != None):
-            puck_id = dewar["item_list"][i]
-            if (puck_id != None): 
-                puck = getContainerByID(puck_id)
-                sampleList = puck["item_list"]
-                for j in range (0,len(sampleList)):
-                    if (sampleList[j] != None):
-                        if (sampleList[j] == sample_id):
-                            containerID = puck_id
-                            position = j
-                            return (containerID,position)    
+#    dewar = getContainerByName("primaryDewar2")
+#    for i in xrange(len(dewar["item_list"])): #these are pucks
+#        if (dewar["item_list"][i] != None):
+#            puck_id = dewar["item_list"][i]
+#            if (puck_id != None): 
+#                puck = getContainerByID(puck_id)
+#                sampleList = puck["item_list"]
+#                for j in xrange(len(sampleList)):
+#                    if (sampleList[j] != None):
+#                        if (sampleList[j] == sample_id):
+#                            containerID = puck_id
+#                            position = j
+#                            return (containerID,position)    
+
+    for puck_id in getContainerByName("primaryDewar2")["item_list"]:
+        if puck_id is not None:
+            for j,samp_id in enumerate(getContainerByID(puck_id)["item_list"]):
+                if samp_id is not None and samp_id == sample_id:
+                    containerID = puck_id
+                    position = j
+                    return (containerID, position)    
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    dewar = getContainerByName("primaryDewar2")
-    dewarCapacity = len(dewar["item_list"])
-    for i in range (0,dewarCapacity): #these are pucks
-        if (dewar["item_list"][i] != None):
-            puck_id = dewar["item_list"][i]
-            if (puck_id != None): 
-                puck = getContainerByID(puck_id)
-                sampleList = puck["item_list"]
-                puckCapacity = len(sampleList) #puck
-                for j in range (0,puckCapacity):
-                    if (sampleList[j] != None):
-                        if (sampleList[j] == sample_id):
-                            absPosition = (i*puckCapacity) + j
-                            return absPosition
+#    dewar = getContainerByName("primaryDewar2")
+#    dewarCapacity = len(dewar["item_list"])
+#    for i in xrange(dewarCapacity): #these are pucks
+#        if (dewar["item_list"][i] != None):
+#            puck_id = dewar["item_list"][i]
+#            if (puck_id != None): 
+#                puck = getContainerByID(puck_id)
+#                sampleList = puck["item_list"]
+#                puckCapacity = len(sampleList) #puck
+#                for j in xrange(puckCapacity):
+#                    if (sampleList[j] != None):
+#                        if (sampleList[j] == sample_id):
+#                            absPosition = (i*puckCapacity) + j
+#                            return absPosition
 
+    for i,puck_id in enumerate(getContainerByName("primaryDewar2")["item_list"]):
+        if puck_id is not None:
+            puck = getContainerByID(puck_id)
+            sampleList = puck["item_list"]
+            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
+
+            for j,samp_id in enumerate(sampleList):
+                if samp_id is not None and samp_id == sample_id:
+                    absPosition = (i*puckCapacity) + j
+                    return absPosition
 
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
-    if (orderedRequests[0]["priority"] > 0):
+    if orderedRequests[0]["priority"] > 0:
         return orderedRequests[0]
     else:
         return {}
 
 
 def getRequest(reqID): #need to get this from searching the dewar I guess
-    reqList = getQueue()
-    for i in range (0,len(reqList)):
-        req = reqList[i]
-        if (req["request_id"] == int(reqID)):
+    for req in getQueue():
+        if req["request_id"] == int(reqID):
             return req
     return None
 
@@ -428,28 +484,28 @@ def removePuckFromDewar(dewarPos):
     
 
 def emptyLiveQueue(): #a convenience to say nothing is ready to be run
-    q = getQueue()
-    for i in range (0,len(q)):
-        q[i]["priority"] = 0
-        updateRequest(q[i])
+    for request in getQueue():
+        request["priority"] = 0
+        updateRequest(request)
 
 
 def getSortedPriorityList(): # mayb an intermediate to return a list of all priorities.
     pList = []
-    requestsList = getQueue()
-    for i in range (0,len(requestsList)):
-        if (requestsList[i]["priority"] not in pList):
-            pList.append(requestsList[i]["priority"])
-    return sorted(pList,reverse=True)
+
+    for request in getQueue():
+        if (request["priority"] not in pList):
+            pList.append(request["priority"])
+
+    return sorted(pList, reverse=True)
 
 
 def getOrderedRequestList():
     orderedRequestsList = []
-    priorityList = getSortedPriorityList() #just sorts priorities
-    requestsList = getQueue() #this is everything in the dewar
-#    dewarDict = getDewar()
-    for i in range (0,len(priorityList)):
-        for j in range (0,len(requestsList)):
-            if (requestsList[j]["priority"] == priorityList[i]):
-                orderedRequestsList.append(requestsList[j])
+    requestsList = getQueue()  # this is everything in the dewar
+
+    for priority in getSortedPriorityList():  # just sorts priorities 
+        for request in requestsList:
+            if request["priority"] == priority:
+                orderedRequestsList.append(request)
+
     return orderedRequestsList
