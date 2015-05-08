@@ -66,7 +66,7 @@ def createContainer(container_name, type_name, capacity):
 
 def getRasters(as_mongo_obj=False):
     if as_mongo_obj:
-        return oRaster.objects()
+        return Raster.objects()
 
     return [r.to_mongo() for r in Raster.objects()]
 
