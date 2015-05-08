@@ -106,9 +106,9 @@ def getNextRunRaster(updateFlag=1):
     retRaster = None
 
     for rast in getRasters(as_mongo_obj=True):
-        if (rast.status == 0):
+        if rast.status == 0:
             retRaster = rast
-            if (updateFlag == 1):
+            if updateFlag == 1:
                 rast.status = 1
                 rast.save()
                 break
@@ -134,7 +134,7 @@ def getNextDisplayRaster():
     # if getRasters() returns [] retRaster=? !
     # should it be initialized to None as in previous func?
     for i,rast in enumerate(getRasters(as_mongo_obj=True)):
-        if (rast.status == 1):
+        if rast.status == 1:
             retRaster = (i, rast)
             rast.status = 2
             rast.save()
@@ -158,7 +158,7 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
         if as_mongo_obj:
             return query_set.first()
         else:
-            if dict_key:
+            if dict_key is not None:
                 # could eliminate this 'to_mongo' conversion if move
                 # this out to calling func which can access mongo_obj.dict_key?
                 # or even better fetch only the needed fields in the query
@@ -401,6 +401,7 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
                     absPosition = (i*puckCapacity) + j
                     return absPosition
 
+
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
     if orderedRequests[0]["priority"] > 0:
@@ -409,9 +410,10 @@ def popNextRequest():
         return {}
 
 
-def getRequest(reqID): #need to get this from searching the dewar I guess
+def getRequest(reqID):  # need to get this from searching the dewar I guess
+    r_id = int(reqID)
     for req in getQueue():
-        if req["request_id"] == int(reqID):
+        if req["request_id"] == r_id:
             return req
     return None
 
@@ -442,7 +444,7 @@ def updateRequest(reqObj):
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
 
     for req in sample.requestList:
-        if req:
+        if req is not None:
             try:
                 if (reqObj["request_id"] == req.request_id):
                     updated_req = Request(**reqObj)
@@ -462,10 +464,11 @@ def updateRequest(reqObj):
 
 def deleteRequest(reqObj):
     sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
+    r_id = reqObj['request_id']
 
     # maybe there's a slicker way to get the req with a query and remove it?
     for req in sample.requestList:
-        if req.request_id == reqObj['request_id']:
+        if req.request_id == r_id:
             print "found the request to delete"
             sample.requestList.remove(req)
             sample.save()
