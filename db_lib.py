@@ -438,83 +438,81 @@ def getAllSamples():
 #really need to generalize these update routines 
 
 
-def updateSample(sampleObj):
-    #sampleList = getAllSamples()
-    #for i in range (0,len(sampleList)):
-    #    if (sampleList[i]["sample_id"] == sampleObj["sample_id"]):
-    #        sampleList[i] = sampleObj
-    #        break
-    #pickleFile = open( "sample.db", "w+" )
-    #for i in range (0,len(sampleList)):
-    #    pickle.dump(sampleList[i],pickleFile)
-    #pickleFile.close()
-
-    s = Sample(**sampleObj)
-    s.save()
+#def updateSample(sampleObj):
+#    samp_id = sampleObj['sample_id']
+#
+#    updated_samp = Sample(**sampleObj)
+#    updated_samp.sample_id = samp_id
+#    Sample.objects(sample_id=samp_id).update(updated_samp)
     
 
-def updateContainer(containerObj):
-    #containerList = getContainers()
-    #for i in range (0,len(containerList)):
-    #    if (containerList[i]["container_id"] == containerObj["container_id"]):
-    #        containerList[i] = containerObj
-    #        break
-    #pickleFile = open( "container.db", "w+" )
-    #for i in range (0,len(containerList)):
-    #    pickle.dump(containerList[i],pickleFile)
-    #pickleFile.close()
-
-    c = Container(**containerObj)
-    c.save()
-    
+#def updateContainer(containerObj):
+#    cont_id = containerObj['container_id']
+#
+#    updated_cont = Container(**containerObj)
+#    updated_cont.container_id = cont_id
+#    Container.objects(container_id=cont_id).update(updated_cont)
     
 
 #this is really "update_sample" because the request is stored with the sample.
 
 def updateRequest(reqObj):
-    found = 0
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
-    reqList = sample.requestList
 
-    for i in range (0,len(reqList)):
-        if (reqList[i] != None):
-
-            if (reqObj["request_id"] == reqList[i]["request_id"]):
-                sample.requestList[i] = reqObj
-                sample.save()
+    for req in sample.requestList:
+        if req:
+            try:
+                if (reqObj["request_id"] == req.request_id):
+                    updated_req = Request(**reqObj)
+                    updated_req.request_id = req.request_id
     
-                found = 1
-                return
+                    #sample.requestList.remove(req)
+                    #sample.requestList.append(updated_req)
+                    #sample.save()
+                    Sample.objects(requestList__request_id=req.request_id
+                                   ).update(set__requestList__S=updated_req)
+                    return
+            except KeyError:
+                pass
 
-    addRequesttoSample(reqObj["sample_id"],reqObj)
+    addRequesttoSample(reqObj["sample_id"], reqObj)
 
 
 
 def deleteRequest(reqObj):
-    origQ = getQueue()
-    found = 0
-    for i in range (0,len(origQ)):
-        if (origQ[i]["request_id"] == reqObj["request_id"]):
-            print "found the request to delete 1"
-            s = getSampleByID(reqObj["sample_id"])
-            for i in range (0,len(s["requestList"])):
-                if (s["requestList"][i] != None):
-                    if (s["requestList"][i]["request_id"] == reqObj["request_id"]):
-                        print "trying to delete request"
-                        s["requestList"][i] = None
-                        updateSample(s)
+#    origQ = getQueue()
+#    found = 0
+#    for i in range (0,len(origQ)):
+#        if (origQ[i]["request_id"] == reqObj["request_id"]):
+#            print "found the request to delete 1"
+#            s = getSampleByID(reqObj["sample_id"])
+#            for i in range (0,len(s["requestList"])):
+#                if (s["requestList"][i] != None):
+#                    if (s["requestList"][i]["request_id"] == reqObj["request_id"]):
+#                        print "trying to delete request"
+#                        s["requestList"][i] = None
+#                        updateSample(s)
+
+    sample = getSampleByID(reqObj['sample_id'])
+
+    # maybe there's a slicker way to get the req with a query and remove it?
+    for req in sample.requestList:
+        if req.request_id == reqObj['request_id']:
+            print "found the request to delete"
+            sample.requestList.remove(req)
+            sample.save()
+            break
 
 
-def deleteSample(samplObj):
+def deleteSample(sampleObj):
     s = getSampleByID(sampleObj["sample_id"], as_mongo_obj=True)
     s.delete()
 
 
 def removePuckFromDewar(dewarPos):
-    dewar = getPrimaryDewar()
-    dewar["item_list"][dewarPos] = None
-    updateContainer(dewar)
-
+    dewar = getPrimaryDewar(as_mongo_obj=True)
+    dewar.item_list[dewarPos] = None
+    dewar.save()
     
 
 def emptyLiveQueue(): #a convenience to say nothing is ready to be run
