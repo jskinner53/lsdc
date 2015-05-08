@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import pickle
 import time
 import uuid
 import functools
