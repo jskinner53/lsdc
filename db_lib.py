@@ -15,6 +15,7 @@ from odm_templates import (Sample, Container, Raster, Request)
 ### !!!!  are only unique per group.
 
 
+
 # tmp cludges instead of config :(
 
 # defaults
@@ -144,63 +145,54 @@ def createSample(sampleName):
     return s.sample_id
 
 
+def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, as_mongo_obj=False, dict_key=None):
+
+    if query_set.count() == 1:
+        if as_mongo_obj:
+            return query_set.first()
+        else:
+            if dict_key:
+                # could eliminate this 'to_mongo' conversion
+                # if move this out to calling func which can access mongo_obj.dict_key?
+                return query_set.first().to_mongo()[dict_key]
+            return query_set.first().to_mongo()
+
+    elif query_set.count() > 1:
+        raise ValueError('got more than one {2} when searching'
+                         ' for {1} ({0})!?'.format(search_key_val, search_key_str,
+                                                   obj_type_str))
+
+    return def_retval
+    
+
 def getSampleByID(sample_id, as_mongo_obj=False):
     s = Sample.objects(sample_id=sample_id)
-
-    if s.count() == 1:
-        if as_mongo_obj:
-            return s.first()
-        else:
-            return s.first().to_mongo()
-
-    elif s.count() > 1:
-        raise ValueError('got more than one sample when searching for sample id ({0})!?'.format(sample_id))
-
-    return None
+    return _check_only_one(s, 'sample', 'sample_id', sample_id, None, as_mongo_obj=as_mongo_obj)
 
 
-def getSampleIDbyName(sample_name, as_mongo_obj=False):
+# should fetch only the needed field(s)! :(
+
+def getSampleIDbyName(sample_name):
     s = Sample.objects(sampleName=sample_name)
-
-    if s.count() == 1:
-        return s.first().to_mongo()['sample_id']
-    elif s.count() > 1:
-        raise ValueError('got more than one sample when searching for sample name ({0})!?'.format(sample_name))
-
-    return -99
+    return _check_only_one(s, 'sample', 'sampleName', sample_name, -99, dict_key='sample_id')
 
 
 def getSampleNamebyID(sample_id):
     s = Sample.objects(sample_id=sample_id)
-
-    if s.count() == 1:
-        return s.first().to_mongo()['sampleName']
-    elif s.count() > 1:
-        raise ValueError('got more than one sample when searching for sample id ({0})!?'.format(sample_id))
-
-    return -99
+    return _check_only_one(s, 'sample', 'sample_id', sample_id, -99, dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
     c = Container.objects(containerName=container_name)
-
-    if c.count() == 1:
-        return c.first().to_mongo()['container_id']
-    elif c.count() > 1:
-        raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_name))
-
-    return -99
+    return _check_only_one(c, 'container', 'containerName', container_name, -99,
+                           dict_key='container_id')
 
 
 def getContainerNameByID(container_id):
     c = Container.objects(container_id=container_id)
-
-    if c.count() == 1:
-        return c.first().to_mongo()['containerName']
-    elif c.count() > 1:
-        raise ValueError('got more than one container when searching for container name ({0})!?'.format(container_id))
-
-    return ""
+    return _check_only_one(c, 'container', 'container_id', container_id, '',
+                           dict_key='containerName')
 
 
 def addRequesttoSample(sample_id, request):
@@ -257,24 +249,21 @@ def insertIntoContainer(container_name, position, itemID):
         print "bad container name"
 
 
-def getContainers(as_mongo_obj=False): 
-
-    c = Container.objects()
-
+def _ret_list(objects, as_mongo_obj=False):
     if as_mongo_obj:
-        return list(c)
+        return list(objects)
     else:
-        return [c.to_mongo() for c in c]
+        return [obj.to_mongo() for obj in objects]
+
+
+def getContainers(as_mongo_obj=False): 
+    c = Container.objects()
+    _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
-
     c = Container.objects(type_name=type_name)
-
-    if as_mongo_obj:
-        return list(c)
-    else:
-        return [c.to_mongo() for c in c]
+    _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getAllPucks(as_mongo_obj=False):
@@ -286,37 +275,15 @@ def getPrimaryDewar(as_mongo_obj=False):
 
 
 def getContainerByName(container_name, as_mongo_obj=False): 
-
     c = Container.objects(containerName=container_name)
-
-    if c.count() == 1:
-        if as_mongo_obj:
-            return c.first()
-        else:
-            return c.first().to_mongo()
-
-    elif c.count() > 1:
-        raise ValueError('got more than one container when searching for container'
-                         'name ({0})!?'.format(container_name))
-
-    return None
+    return _check_only_one(c, 'container', 'containerName', container_name,
+                           None, as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByID(container_id, as_mongo_obj=False): 
-
     c = Container.objects(container_id=container_id)
-
-    if c.count() == 1:
-        if as_mongo_obj:
-            return c.first()
-        else:
-            return c.first().to_mongo()
-
-    elif c.count() > 1:
-        raise ValueError('got more than one container when searching for'
-                         'container id ({0})!?'.format(container_id))
-
-    return None
+    return _check_only_one(c, 'container', 'container_id', container_id,
+                           None, as_mongo_obj=as_mongo_obj)
 
 
 #stuff I forgot - alignment type?, what about some sort of s.sample lock?,
@@ -349,7 +316,6 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
 #pinpos, sweep_start, numimages, sweep_inc, exposure_time, protocol, file_prefix, file_number_start, wavelength, resolution, xtal_id,    slit_height, slit_width, attenuation,priority
 
 
-
 def getQueue():
     ret_list = []
     dewar = getContainerByName("primaryDewar2")
@@ -373,8 +339,6 @@ def getQueue():
     return ret_list
 
 
-
-
 def getDewarPosfromSampleID(sample_id):
     dewar = getContainerByName("primaryDewar2")
     for i in range (0,len(dewar["item_list"])): #these are pucks
@@ -389,7 +353,6 @@ def getDewarPosfromSampleID(sample_id):
                             containerID = puck_id
                             position = j
                             return (containerID,position)    
-
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
@@ -409,15 +372,12 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
                             return absPosition
 
 
-
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
     if (orderedRequests[0]["priority"] > 0):
         return orderedRequests[0]
     else:
         return {}
-
-
 
 
 def getRequest(reqID): #need to get this from searching the dewar I guess
@@ -429,15 +389,10 @@ def getRequest(reqID): #need to get this from searching the dewar I guess
     return None
 
 
-
 def getAllSamples():
-
     return [s.to_mongo() for s in Sample.objects()]
     
     
-#really need to generalize these update routines 
-
-
 #def updateSample(sampleObj):
 #    samp_id = sampleObj['sample_id']
 #
@@ -478,22 +433,8 @@ def updateRequest(reqObj):
     addRequesttoSample(reqObj["sample_id"], reqObj)
 
 
-
 def deleteRequest(reqObj):
-#    origQ = getQueue()
-#    found = 0
-#    for i in range (0,len(origQ)):
-#        if (origQ[i]["request_id"] == reqObj["request_id"]):
-#            print "found the request to delete 1"
-#            s = getSampleByID(reqObj["sample_id"])
-#            for i in range (0,len(s["requestList"])):
-#                if (s["requestList"][i] != None):
-#                    if (s["requestList"][i]["request_id"] == reqObj["request_id"]):
-#                        print "trying to delete request"
-#                        s["requestList"][i] = None
-#                        updateSample(s)
-
-    sample = getSampleByID(reqObj['sample_id'])
+    sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
 
     # maybe there's a slicker way to get the req with a query and remove it?
     for req in sample.requestList:
@@ -522,7 +463,6 @@ def emptyLiveQueue(): #a convenience to say nothing is ready to be run
         updateRequest(q[i])
 
 
-
 def getSortedPriorityList(): # mayb an intermediate to return a list of all priorities.
     pList = []
     requestsList = getQueue()
@@ -530,7 +470,6 @@ def getSortedPriorityList(): # mayb an intermediate to return a list of all prio
         if (requestsList[i]["priority"] not in pList):
             pList.append(requestsList[i]["priority"])
     return sorted(pList,reverse=True)
-
 
 
 def getOrderedRequestList():
@@ -543,15 +482,3 @@ def getOrderedRequestList():
             if (requestsList[j]["priority"] == priorityList[i]):
                 orderedRequestsList.append(requestsList[j])
     return orderedRequestsList
-
-
-                    
-
-
-
-            
-
-
-
-
-
