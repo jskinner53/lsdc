@@ -87,7 +87,7 @@ def getNextRunRaster(updateFlag=1):
 
     for rast in getRasters(as_mongo_obj=True):
         if rast.status == 0:
-            retRaster = rast
+            retRaster = rast.to_mongo()
             if updateFlag == 1:
                 rast.status = 1
                 rast.save()
@@ -95,7 +95,7 @@ def getNextRunRaster(updateFlag=1):
 ##                print "drawing " 
 ##                print retRaster
             break
-    return retRaster.to_mongo()
+    return retRaster
 
 
 def getNextDisplayRaster():
@@ -103,11 +103,11 @@ def getNextDisplayRaster():
     # should it be initialized to None as in previous func?
     for i,rast in enumerate(getRasters(as_mongo_obj=True)):
         if rast.status == 1:
-            retRaster = (i, rast)
+            retRaster = (i, rast.to_mongo())
             rast.status = 2
             rast.save()
             break
-    return retRaster.to_mongo()
+    return retRaster
 
 
 def createSample(sampleName):
