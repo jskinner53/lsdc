@@ -66,27 +66,10 @@ def createContainer(container_name, type_name, capacity):
 
 
 def getRasters(): 
-    #ret_list = []
-    #rasterFile = open( "raster.db", "r" )
-    #try:
-    #    while (1):
-    #        retQ = pickle.load(rasterFile)
-    #        ret_list.append(retQ)
-    #except EOFError:
-    #    rasterFile.close()
-    #return ret_list
-
     return [r.to_mongo() for r in Raster.objects()]
 
 
 def addRaster(rasterDefObj):
-    #rasterList = getRasters()
-    #rasterList.append(rasterDefObj)
-    #pickleFile = open( "raster.db", "w+" )
-    #for i in range (0, len(rasterList)):
-    #    pickle.dump(rasterList[i], pickleFile)
-    #pickleFile.close()
-
     r = Raster(**rasterDefObj)
     r.save()
 
@@ -153,8 +136,9 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
             return query_set.first()
         else:
             if dict_key:
-                # could eliminate this 'to_mongo' conversion
-                # if move this out to calling func which can access mongo_obj.dict_key?
+                # could eliminate this 'to_mongo' conversion if move
+                # this out to calling func which can access mongo_obj.dict_key?
+                # or even better fetch only the needed fields in the query
                 return query_set.first().to_mongo()[dict_key]
             return query_set.first().to_mongo()
 
@@ -168,25 +152,28 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
 
 def getSampleByID(sample_id, as_mongo_obj=False):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, None, as_mongo_obj=as_mongo_obj)
+    return _check_only_one(s, 'sample', 'sample_id', sample_id, None,
+                           as_mongo_obj=as_mongo_obj)
 
 
 # should fetch only the needed field(s)! :(
 
 def getSampleIDbyName(sample_name):
     s = Sample.objects(sampleName=sample_name)
-    return _check_only_one(s, 'sample', 'sampleName', sample_name, -99, dict_key='sample_id')
+    return _check_only_one(s, 'sample', 'sampleName', sample_name, -99, 
+                           dict_key='sample_id')
 
 
 def getSampleNamebyID(sample_id):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, -99, dict_key='sampleName')
+    return _check_only_one(s, 'sample', 'sample_id', sample_id, -99,
+                           dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
     c = Container.objects(containerName=container_name)
-    return _check_only_one(c, 'container', 'containerName', container_name, -99,
-                           dict_key='container_id')
+    return _check_only_one(c, 'container', 'containerName', container_name,
+                           -99, dict_key='container_id')
 
 
 def getContainerNameByID(container_id):
@@ -212,7 +199,8 @@ def createDefaultRequest(sample_id):
                "exposure_time":.1,
                "priority":0,
                "protocol":"standard",
-               "directory":"/",  "file_prefix":getSampleNamebyID(sample_id)+"_data",
+               "directory":"/",
+               "file_prefix":getSampleNamebyID(sample_id)+"_data",
                "file_number_start":1,
                "wavelength":1.1,
                "resolution":3.0,
@@ -225,22 +213,6 @@ def createDefaultRequest(sample_id):
 
 
 def insertIntoContainer(container_name, position, itemID):
-    #origQ = getContainers()
-    #found = 0
-    #for i in range (0, len(origQ)):
-    #    if (origQ[i]["containerName"] == container_name):
-    #        origQ[i]["item_list"][position] = itemID
-    #        found = 1
-    #        break
-    #if (found):
-    #    containerFile = open( "container.db", 
-    #"w+" )
-    #    for i in range (0, len(origQ)):
-    #        pickle.dump(origQ[i], containerFile)
-    #    containerFile.close()
-    #else:
-    #    print "bad container name"
-
     c = getContainerByName(container_name, as_mongo_obj=True)
     if c is not None:
         c.item_list[position] = itemID
