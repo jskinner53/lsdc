@@ -310,7 +310,10 @@ class DewarTree(QtGui.QTreeView):
         self.sampleRequests = db_lib.getQueue()
         for i in range (0,len(dewarContents)): #dewar contents is the list of pucks
           parentItem = self.model.invisibleRootItem()
-          puckName = db_lib.getContainerNameByID(dewarContents[i])
+          if (dewarContents[i]==None):
+            puckName = ""
+          else:
+            puckName = db_lib.getContainerNameByID(dewarContents[i])
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(str(i+1) + " " + puckName))
           parentItem.appendRow(item)
           parentItem = item
@@ -320,7 +323,7 @@ class DewarTree(QtGui.QTreeView):
               if (puckContents[j] != None):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
-                item.setData(0-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
+                item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
               else :
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
@@ -376,9 +379,9 @@ class DewarTree(QtGui.QTreeView):
           containerName = db_lib.getContainerNameByID(containerID)
           nodeString = QtCore.QString(str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
-          item.setData(0-requestedSampleList[i]) #the negated sample_id for use in row_click
+          item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
           parentItem.appendRow(item)
-          if ((0-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
+          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
           for k in range (0,len(self.orderedRequests)):
@@ -1832,12 +1835,13 @@ class controlMain(QtGui.QMainWindow):
       colRequest["img_width"] = float(self.osc_range_ledit.text())
       colRequest["exposure_time"] = float(self.exp_time_ledit.text())
       colRequest["resolution"] = float(self.resolution_ledit.text())
-      colRequest["file_prefix"] = self.dataPathGB.prefix_ledit.text()
+      colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
+      colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
       colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
-      colRequest["gridStep"] = self.rasterStepEdit.text()
-      colRequest["attenuation"] = self.transmission_ledit.text()
-      colRequest["slit_width"] = self.beamWidth_ledit.text()
-      colRequest["slit_height"] = self.beamHeight_ledit.text()
+#      colRequest["gridStep"] = self.rasterStepEdit.text()
+      colRequest["attenuation"] = int(self.transmission_ledit.text())
+      colRequest["slit_width"] = float(self.beamWidth_ledit.text())
+      colRequest["slit_height"] = float(self.beamHeight_ledit.text())
       wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
       colRequest["wavelength"] = wave
       colRequest["protocol"] = str(self.protoComboBox.currentText())
@@ -1861,18 +1865,19 @@ class controlMain(QtGui.QMainWindow):
              colRequest["img_width"] = float(self.osc_range_ledit.text())
              colRequest["exposure_time"] = float(self.exp_time_ledit.text())
              colRequest["resolution"] = float(self.resolution_ledit.text())
-             colRequest["file_prefix"] = self.dataPathGB.prefix_ledit.text()+"_C"+str(i+1)
+             colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text()+"_C"+str(i+1))
+             colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
              colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
-             colRequest["gridStep"] = self.rasterStepEdit.text()
-             colRequest["attenuation"] = self.transmission_ledit.text()
-             colRequest["slit_width"] = self.beamWidth_ledit.text()
-             colRequest["slit_height"] = self.beamHeight_ledit.text()
+#             colRequest["gridStep"] = self.rasterStepEdit.text()
+             colRequest["attenuation"] = int(self.transmission_ledit.text())
+             colRequest["slit_width"] = float(self.beamWidth_ledit.text())
+             colRequest["slit_height"] = float(self.beamHeight_ledit.text())
              wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
              colRequest["wavelength"] = wave
              colRequest["protocol"] = str(self.protoComboBox.currentText())
-             colRequest["pos_x"] = self.centeringMarksList[i]["sampCoords"]["x"]
-             colRequest["pos_y"] = self.centeringMarksList[i]["sampCoords"]["y"]
-             colRequest["pos_z"] = self.centeringMarksList[i]["sampCoords"]["z"]
+             colRequest["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
+             colRequest["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
+             colRequest["pos_z"] = float(self.centeringMarksList[i]["sampCoords"]["z"])
              db_lib.updateRequest(colRequest)
              time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -1886,15 +1891,17 @@ class controlMain(QtGui.QMainWindow):
         colRequest["img_width"] = float(self.osc_range_ledit.text())
         colRequest["exposure_time"] = float(self.exp_time_ledit.text())
         colRequest["resolution"] = float(self.resolution_ledit.text())
-        colRequest["file_prefix"] = self.dataPathGB.prefix_ledit.text()
+        colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
+        colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
-        colRequest["gridStep"] = self.rasterStepEdit.text()
-        colRequest["attenuation"] = self.transmission_ledit.text()
-        colRequest["slit_width"] = self.beamWidth_ledit.text()
-        colRequest["slit_height"] = self.beamHeight_ledit.text()
+#        colRequest["gridStep"] = self.rasterStepEdit.text()
+        colRequest["attenuation"] = int(self.transmission_ledit.text())
+        colRequest["slit_width"] = float(self.beamWidth_ledit.text())
+        colRequest["slit_height"] = float(self.beamHeight_ledit.text())
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
         colRequest["wavelength"] = wave
         colRequest["protocol"] = str(self.protoComboBox.currentText())
+#        print colRequest
         db_lib.updateRequest(colRequest)
 #      self.eraseCB()
       self.dewarTree.refreshTree()
@@ -1988,6 +1995,7 @@ class controlMain(QtGui.QMainWindow):
       dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,selectedSampleRequest["resolution"],1.1,0))
       self.colResoCalcDistance_ledit.setText(str(dist_s))
       self.dataPathGB.setFilePrefix_ledit(str(selectedSampleRequest["file_prefix"]))
+      self.dataPathGB.setBasePath_ledit(str(selectedSampleRequest["directory"]))
       self.rasterStepEdit.setText(str(selectedSampleRequest["gridStep"]))
       rasterStep = int(selectedSampleRequest["gridStep"])
 #      self.eraseCB()
@@ -2017,16 +2025,16 @@ class controlMain(QtGui.QMainWindow):
 #      print itemData
       self.SelectedItemData = itemData # an attempt to know what is selected and preserve it when refreshing the tree
 #      sample_name = getSampleIdFromDewarPos(itemData)
-      sample_name = db_lib.getSampleNamebyID(0-itemData)
+      sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
       if (itemData == -99):
         print "nothing there"
         return
       elif (itemData == 0):
         print "I'm a puck"
         return
-      elif (itemData< -1000):
+      elif (itemData< -100):
         print "sample in pos " + str(itemData) 
-        self.selectedSampleRequest = db_lib.createDefaultRequest(0-itemData)
+        self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
       else: #collection object
         self.selectedSampleRequest = db_lib.getRequest(itemData)
       self.refreshCollectionParams(self.selectedSampleRequest)
