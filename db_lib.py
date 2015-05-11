@@ -350,11 +350,11 @@ def popNextRequest():
 def getRequest(reqID):  # need to get this from searching the dewar I guess
     r_id = int(reqID)
 
-    sample_id = Sample.objects(requestList__request_id=reqID).only('sample_id')
-    sample_id =  _check_only_one(sample_id, 'sample', 'sample_id', sample_id, None,
-                                 as_mongo_obj=True)
+    sample = Sample.objects(requestList__request_id=reqID).only('requestList')
+    req_list = _check_only_one(sample, 'request', 'request_id', reqID, None,
+                               as_mongo_obj=True, dict_key='requestList')
     
-    for req in sample_id.requestList:
+    for req in req_list:
         if req.request_id == r_id:
             return req.to_mongo()
     return None
