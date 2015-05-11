@@ -2,6 +2,7 @@
 import time
 import uuid
 import functools
+import itertools
 import os
 import socket
 import mongoengine as mongo
@@ -55,7 +56,8 @@ def createContainer(container_name, type_name, capacity):
 
     # the item list is a list of id's, whether they be other
     # containers or samples. This is because samples and pucks can move.
-    for i in xrange(capacity):
+    #for i in xrange(capacity):
+    for _ in itertools.repeat(None, capacity):  # fastest idiom
         containerObj["item_list"].append(None)
 
     c = Container(**containerObj)
@@ -85,28 +87,33 @@ def clearRasters():
 def getNextRunRaster(updateFlag=1):
     retRaster = None
 
-    for rast in getRasters(as_mongo_obj=True):
-        if rast.status == 0:
-            retRaster = rast.to_mongo()
-            if updateFlag == 1:
-                rast.status = 1
-                rast.save()
-#            else:
-##                print "drawing " 
-##                print retRaster
-            break
+    # would it be better to skip the loop entirely by using .first(), and check for None?
+
+    #for rast in getRasters(as_mongo_obj=True):
+    for rast in Raster.objects(status=0):
+        #if rast.status == 0:
+        retRaster = rast.to_mongo()
+        if updateFlag == 1:
+            rast.status = 1
+            rast.save()
+#        else:
+##            print "drawing " 
+##            print retRaster
+        #break  # shouldn't need this anymore?
     return retRaster
 
 
 def getNextDisplayRaster():
     # if getRasters() returns [] retRaster=? !
     # should it be initialized to None as in previous func?
-    for i,rast in enumerate(getRasters(as_mongo_obj=True)):
-        if rast.status == 1:
-            retRaster = (i, rast.to_mongo())
-            rast.status = 2
-            rast.save()
-            break
+
+    #for i,rast in enumerate(getRasters(as_mongo_obj=True)):
+    for i,rast in enumerate(Raster.objects(status=1)):
+        #if rast.status == 1:
+        retRaster = (i, rast.to_mongo())
+        rast.status = 2
+        rast.save()
+        #break
     return retRaster
 
 
@@ -124,7 +131,8 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
 
     if query_set.count() == 1:
         if as_mongo_obj:
-            return query_set.first()
+            #return query_set.first()
+            return query_set[0]  # seems like this could be faster?
         else:
             if dict_key is not None:
                 # could eliminate this 'to_mongo' conversion if move
@@ -280,27 +288,37 @@ def getQueue():
     # seems like this would be alot simpler if it weren't for the Nones?
 
     ret_list = []
-    items = getContainerByName("primaryDewar2")["item_list"]  #these are pucks
-    for item_id in items:
+    #items = getContainerByName("primaryDewar2")["item_list"]  #these are pucks
+
+    # try to only retrieve what we need...
+    items = Container.objects(containerName='primaryDewar2').only('item_list').first()
+    #for item_id in items['item_list']:
+    for item_id in items.item_list:
         if item_id is not None:
-            puck = getContainerByID(item_id)
-            for sample_id in puck["item_list"]:
+            #puck = getContainerByID(item_id)
+            puck = Container.objects(container_id=item_id).only('item_list').first()
+            #for sample_id in puck['item_list']:
+            for sample_id in puck.item_list:
                 if sample_id is not None:
 #                    print "sample ID = " + str(sample_id)
-                    sampleObj = getSampleByID(sample_id)
+                    #sampleObj = getSampleByID(sample_id)
+                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').first()
                     if sampleObj is None:  #not sure how it gets here, I think it's a server update
                         print "sample ID = " + str(sample_id)
                     else:
-                        for request in sampleObj["requestList"]:
+                        #for request in sampleObj["requestList"]:
+                        for request in sampleObj.requestList:
                             if request is not None:
-                                ret_list.append(request)
+                                ret_list.append(request.to_mongo())
     return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
-    for puck_id in getContainerByName("primaryDewar2")["item_list"]:
+    #for puck_id in getContainerByName("primaryDewar2")["item_list"]:
+    for puck_id in Container.objects(containerName='primaryDewar2').only('item_list').first().item_list:
         if puck_id is not None:
-            for j,samp_id in enumerate(getContainerByID(puck_id)["item_list"]):
+            #for j,samp_id in enumerate(getContainerByID(puck_id)["item_list"]):
+            for j,samp_id in enumerate(Container.objects(container_id=puck_id).only('item_list').first().item_list):
                 if samp_id is not None and samp_id == sample_id:
                     containerID = puck_id
                     position = j
@@ -308,7 +326,8 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    for i,puck_id in enumerate(getContainerByName("primaryDewar2")["item_list"]):
+    #for i,puck_id in enumerate(getContainerByName("primaryDewar2")["item_list"]):
+    for i,puck_id in enumerate(Container.objects(containerName="primaryDewar2").only('item_list').first().item_list):
         if puck_id is not None:
             puck = getContainerByID(puck_id)
             sampleList = puck["item_list"]
@@ -330,9 +349,14 @@ def popNextRequest():
 
 def getRequest(reqID):  # need to get this from searching the dewar I guess
     r_id = int(reqID)
-    for req in getQueue():
-        if req["request_id"] == r_id:
-            return req
+
+    sample_id = Sample.objects(requestList__request_id=reqID).only('sample_id')
+    sample_id =  _check_only_one(sample_id, 'sample', 'sample_id', sample_id, None,
+                                 as_mongo_obj=True)
+    
+    for req in sample_id.requestList:
+        if req.request_id == r_id:
+            return req.to_mongo()
     return None
 
 
@@ -383,6 +407,8 @@ def updateRequest(reqObj):
 
 
 def deleteRequest(reqObj):
+    #req
+
     sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
     r_id = reqObj['request_id']
 
@@ -412,22 +438,27 @@ def emptyLiveQueue(): #a convenience to say nothing is ready to be run
         updateRequest(request)
 
 
-def getSortedPriorityList(): # mayb an intermediate to return a list of all priorities.
+def getSortedPriorityList(with_requests=False): # mayb an intermediate to return a list of all priorities.
     pList = []
+    requests = getQueue()
 
-    for request in getQueue():
+    for request in requests:
         if request["priority"] not in pList:
             pList.append(request["priority"])
 
+    if with_requests:
+        return sorted(pList, reverse=True), requests
     return sorted(pList, reverse=True)
 
 
 def getOrderedRequestList():
     orderedRequestsList = []
-    requestsList = getQueue()  # this is everything in the dewar
+    #requestsList = getQueue()  # this is everything in the dewar
 
-    for priority in getSortedPriorityList():  # just sorts priorities 
-        for request in requestsList:
+    (priorities, requests) = getSortedPriorityList(with_requests=True)
+
+    for priority in priorities:  # just sorts priorities 
+        for request in requests:
             if request["priority"] == priority:
                 orderedRequestsList.append(request)
 
