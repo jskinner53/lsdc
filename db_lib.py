@@ -27,8 +27,8 @@ client = os.getenv('SSH_CLIENT')
 
 if host == 'fluke.nsls2.bnl.gov':
     db_host = 'lsbr-dev'
-    if not client:
-        db_name = 'john_mongo'
+    #if not client:
+    db_name = 'john_mongo'
 
 elif host == 'gisele':
     if not client:
