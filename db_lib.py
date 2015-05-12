@@ -45,6 +45,7 @@ if client:
 
 
 #print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
+print "---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host)
 mongo_conn = mongo.connect(db_name, host=db_host)
 
 
@@ -88,10 +89,7 @@ def getNextRunRaster(updateFlag=1):
     retRaster = None
 
     # would it be better to skip the loop entirely by using .first(), and check for None?
-
-    #for rast in getRasters(as_mongo_obj=True):
     for rast in Raster.objects(status=0):
-        #if rast.status == 0:
         retRaster = rast.to_mongo()
         if updateFlag == 1:
             rast.status = 1
@@ -107,13 +105,14 @@ def getNextDisplayRaster():
     # if getRasters() returns [] retRaster=? !
     # should it be initialized to None as in previous func?
 
-    #for i,rast in enumerate(getRasters(as_mongo_obj=True)):
+    # Would it be better to skip the loop entirely by using .first(), and check for None?
+    # What is 'i' doing?  if we were 'break'ing, we should only ever have one
+    # iteration and i would *always* be 0?
     for i,rast in enumerate(Raster.objects(status=1)):
-        #if rast.status == 1:
         retRaster = (i, rast.to_mongo())
         rast.status = 2
         rast.save()
-        #break
+        #break  # shouldn't need this anymore?
     return retRaster
 
 
@@ -129,17 +128,18 @@ def createSample(sampleName):
 def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, as_mongo_obj=False, dict_key=None):
 
+    # dict_keys are ignored if as_mongo_obj==True, otherwise we'd have to eval
+
     if query_set.count() == 1:
         if as_mongo_obj:
-            #return query_set.first()
             return query_set[0]  # seems like this could be faster?
         else:
             if dict_key is not None:
                 # could eliminate this 'to_mongo' conversion if move
                 # this out to calling func which can access mongo_obj.dict_key?
                 # or even better fetch only the needed fields in the query
-                return query_set.first().to_mongo()[dict_key]
-            return query_set.first().to_mongo()
+                return query_set[0].to_mongo()[dict_key]
+            return query_set[0].to_mongo()
 
     elif query_set.count() > 1:
         raise ValueError('got more than one {2} when searching'
@@ -288,60 +288,61 @@ def getQueue():
     # seems like this would be alot simpler if it weren't for the Nones?
 
     ret_list = []
-    #items = getContainerByName("primaryDewar2")["item_list"]  #these are pucks
 
     # try to only retrieve what we need...
+    # Use .first() instead of [0] here because when the query returns nothing,
+    # .first() returns None while [0] generates an IndexError
     items = Container.objects(containerName='primaryDewar2').only('item_list').first()
-    #for item_id in items['item_list']:
-    for item_id in items.item_list:
-        if item_id is not None:
-            #puck = getContainerByID(item_id)
-            puck = Container.objects(container_id=item_id).only('item_list').first()
-            #for sample_id in puck['item_list']:
-            for sample_id in puck.item_list:
-                if sample_id is not None:
-#                    print "sample ID = " + str(sample_id)
-                    #sampleObj = getSampleByID(sample_id)
-                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').first()
-                    if sampleObj is None:  #not sure how it gets here, I think it's a server update
-                        print "sample ID = " + str(sample_id)
-                    else:
-                        #for request in sampleObj["requestList"]:
-                        for request in sampleObj.requestList:
-                            if request is not None:
-                                ret_list.append(request.to_mongo())
+    if items is not None:
+        for item_id in items.item_list:
+            if item_id is not None:
+                puck = Container.objects(container_id=item_id).only('item_list').first()
+                if puck is not None:
+                    for sample_id in puck.item_list:
+                        if sample_id is not None:
+        #                    print "sample ID = " + str(sample_id)
+                            sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').first()
+                            if sampleObj is None:  #not sure how it gets here, I think it's a server update
+                                print "sample ID = " + str(sample_id)
+                            else:
+                                for request in sampleObj.requestList:
+                                    if request is not None:
+                                        ret_list.append(request.to_mongo())
     return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
-    #for puck_id in getContainerByName("primaryDewar2")["item_list"]:
-    for puck_id in Container.objects(containerName='primaryDewar2').only('item_list').first().item_list:
-        if puck_id is not None:
-            #for j,samp_id in enumerate(getContainerByID(puck_id)["item_list"]):
-            for j,samp_id in enumerate(Container.objects(container_id=puck_id).only('item_list').first().item_list):
-                if samp_id is not None and samp_id == sample_id:
-                    containerID = puck_id
-                    position = j
-                    return (containerID, position)    
+    cont = Container.objects(containerName='primaryDewar2').only('item_list').first()
+    if cont is not None:
+        for puck_id in cont.item_list:
+            if puck_id is not None:
+                puck = Container.objects(container_id=puck_id).only('item_list').first()
+                if puck is not None:
+                    for j,samp_id in enumerate(puck.item_list):
+                        if samp_id is not None and samp_id == sample_id:
+                            containerID = puck_id
+                            position = j
+                            return (containerID, position)    
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    #for i,puck_id in enumerate(getContainerByName("primaryDewar2")["item_list"]):
-    for i,puck_id in enumerate(Container.objects(containerName="primaryDewar2").only('item_list').first().item_list):
-        if puck_id is not None:
-            puck = getContainerByID(puck_id)
-            sampleList = puck["item_list"]
-            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
-
-            for j,samp_id in enumerate(sampleList):
-                if samp_id is not None and samp_id == sample_id:
-                    absPosition = (i*puckCapacity) + j
-                    return absPosition
+    cont = Container.objects(containerName="primaryDewar2").only('item_list').first()
+    if cont is not None:
+        for i,puck_id in enumerate(cont.item_list):
+            if puck_id is not None:
+                puck = getContainerByID(puck_id)
+                sampleList = puck["item_list"]
+                puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
+    
+                for j,samp_id in enumerate(sampleList):
+                    if samp_id is not None and samp_id == sample_id:
+                        absPosition = (i*puckCapacity) + j
+                        return absPosition
 
 
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
-    if orderedRequests[0]["priority"] > 0:
+    if orderedRequests != [] and orderedRequests[0]["priority"] > 0:
         return orderedRequests[0]
     else:
         return {}
@@ -352,7 +353,7 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
 
     sample = Sample.objects(requestList__request_id=reqID).only('requestList')
     req_list = _check_only_one(sample, 'request', 'request_id', reqID, None,
-                               as_mongo_obj=True, dict_key='requestList')
+                               as_mongo_obj=True, dict_key='requestList').requestList
     
     for req in req_list:
         if req.request_id == r_id:
@@ -394,9 +395,6 @@ def updateRequest(reqObj):
                     updated_req = Request(**reqObj)
                     updated_req.request_id = req.request_id
     
-                    #sample.requestList.remove(req)
-                    #sample.requestList.append(updated_req)
-                    #sample.save()
                     Sample.objects(requestList__request_id=req.request_id
                                    ).update(set__requestList__S=updated_req)
                     return
@@ -407,8 +405,6 @@ def updateRequest(reqObj):
 
 
 def deleteRequest(reqObj):
-    #req
-
     sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
     r_id = reqObj['request_id']
 
@@ -453,7 +449,6 @@ def getSortedPriorityList(with_requests=False): # mayb an intermediate to return
 
 def getOrderedRequestList():
     orderedRequestsList = []
-    #requestsList = getQueue()  # this is everything in the dewar
 
     (priorities, requests) = getSortedPriorityList(with_requests=True)
 
