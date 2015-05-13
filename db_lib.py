@@ -130,7 +130,9 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
 
     # dict_keys are ignored if as_mongo_obj==True, otherwise we'd have to eval
 
-    if query_set.count() == 1:
+    num_results = len(query_set)
+
+    if num_results == 1:
         if as_mongo_obj:
             return query_set[0]  # seems like this could be faster?
         else:
@@ -141,7 +143,7 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
                 return query_set[0].to_mongo()[dict_key]
             return query_set[0].to_mongo()
 
-    elif query_set.count() > 1:
+    elif num_results > 1:
         raise ValueError('got more than one {2} when searching'
                          ' for {1} ({0})!?'.format(search_key_val, search_key_str,
                                                    obj_type_str))
