@@ -1,16 +1,29 @@
 from mongoengine import (DynamicDocument, DynamicEmbeddedDocument)
 from mongoengine import (SequenceField, ListField, EmbeddedDocumentField) 
+import mongoengine
+
+from distutils.version import StrictVersion
+
+args_dict = {}
+if StrictVersion(mongoengine.__version__) > StrictVersion('0.7.0'):
+    args_dict['sequence_name'] = 'None'
 
 
 class Container(DynamicDocument):
-    container_id = SequenceField(required=True, unique=True)
+    container_id = SequenceField(#collection_name='mongoengine.counters',
+                                 #sequence_name='container',
+                                 required=True, unique=True, **args_dict)
 
 class Request(DynamicEmbeddedDocument):
-    request_id = SequenceField(required=True, unique=True)
+    request_id = SequenceField(#collection_name='mongoengine.counters',
+                               #sequence_name='request',
+                               required=True, unique=True, **args_dict)
     # unique doesn't seem to be enforced!?
 
 class Sample(DynamicDocument):
-    sample_id = SequenceField(required=True, unique=True)
+    sample_id = SequenceField(#collection_name='mongoengine.counters',
+                              #sequence_name='sample',
+                              required=True, unique=True, **args_dict)
     requestList = ListField(EmbeddedDocumentField(Request))
 #    sampleName = StringField(required=True, unique_with='owner')
     # unique on request_id doesn't seem to be enforced even trying this
@@ -20,4 +33,6 @@ class Sample(DynamicDocument):
             ]}
 
 class Raster(DynamicDocument):
-    raster_id = SequenceField(required=True, unique=True)
+    raster_id = SequenceField(#collection_name='mongoengine.counters',
+                              #sequence_name='raster',
+                              required=True, unique=True, **args_dict)
