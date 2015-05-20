@@ -194,21 +194,21 @@ def addRequesttoSample(sample_id, request):
 
 def createDefaultRequest(sample_id):
     request = {
-               "sample_id" : sample_id,
-               "sweep_start":0.0,  "sweep_end":0.1,
-               "img_width":.1,
-               "exposure_time":.1,
-               "priority":0,
-               "protocol":"standard",
-               "directory":"/",
-               "file_prefix":getSampleNamebyID(sample_id)+"_data",
-               "file_number_start":1,
-               "wavelength":1.1,
-               "resolution":3.0,
-               "slit_height":30.0,  "slit_width":30.0,
-               "attenuation":0,
-               "pos_x":0,  "pos_y":0,  "pos_z":0,  "pos_type":'A',
-               "gridW":0,  "gridH":0,  "gridStep":10}
+               "sample_id": sample_id,
+               "sweep_start": 0.0,  "sweep_end": 0.1,
+               "img_width": .1,
+               "exposure_time": .1,
+               "priority": 0,
+               "protocol": "standard",
+               "directory": "/",
+               "file_prefix": str(getSampleNamebyID(sample_id)) + "_data",
+               "file_number_start": 1,
+               "wavelength": 1.1,
+               "resolution": 3.0,
+               "slit_height": 30.0,  "slit_width": 30.0,
+               "attenuation": 0,
+               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A',
+               "gridW": 0,  "gridH": 0,  "gridStep": 10}
 
     return request
 
