@@ -307,22 +307,19 @@ def getQueue():
     # try to only retrieve what we need...
     # Use .first() instead of [0] here because when the query returns nothing,
     # .first() returns None while [0] generates an IndexError
-    items = Container.objects(containerName='primaryDewar2').only('item_list').first()
-    if items is not None:
-        for item_id in items.item_list:
-            if item_id is not None:
-                puck = Container.objects(container_id=item_id).only('item_list').first()
-                if puck is not None:
-                    for sample_id in puck.item_list:
-                        if sample_id is not None:
-        #                    print "sample ID = " + str(sample_id)
-                            sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').first()
-                            if sampleObj is None:  #not sure how it gets here, I think it's a server update
-                                print "sample ID = " + str(sample_id)
-                            else:
-                                for request in sampleObj.requestList:
-                                    if request is not None:
-                                        ret_list.append(request.to_mongo())
+    items = Container.objects(containerName='primaryDewar2').only('item_list').get()
+    for item_id in items.item_list:
+        if item_id is not None:
+            puck = Container.objects(container_id=item_id).only('item_list').get()
+            for sample_id in puck.item_list:
+                if sample_id is not None:
+                    #print "sample ID = " + str(sample_id)
+                    # If we don't request sample_id it gets set to the next id in the sequence!?
+                    # maybe that doesn't matter if we don't use or return it?
+                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').get()
+                    for request in sampleObj.requestList:
+                        if request is not None:
+                            ret_list.append(request.to_mongo())
     return ret_list
 
 
