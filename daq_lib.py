@@ -255,7 +255,7 @@ def runChooch():
 # need to be able to pause/abort this at any time
 
 
-def runDCQueue():
+def runDCQueue(): #maybe don't run rasters from here???
   global abort_flag
 
   print "running queue in daq server"
@@ -269,12 +269,15 @@ def runDCQueue():
     sampleID = currentRequest["sample_id"]
     samplePos = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
     print str(sampleID) + " in " + str(samplePos)
-    robot_lib.mountSample(samplePos)
+    if (get_field("mounted_pin") != samplePos):
+      robot_lib.unmountSample()
+      robot_lib.mountSample(samplePos)
+      set_field("mounted_pin",samplePos)
     currentRequest["priority"] = -999
     db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
     colStatus = collectData(currentRequest)
-    robot_lib.unmountSample()
+
 
 def stopDCQueue():
   print "stopping queue in daq server"
@@ -284,13 +287,16 @@ def stopDCQueue():
 def collectData(currentRequest):
 #  sampleName = sampleNameFromID(currentRequest["sample_id"])
   running_autoalign = 0 #nsls2 for now
+  if (currentRequest["protocol"] == "raster"):
+    daq_macros.snakeRaster(currentRequest["request_id"])
+    return
   if (currentRequest["pos_x"] != 0):
     beamline_lib.mva("X",currentRequest["pos_x"])
     beamline_lib.mva("Y",currentRequest["pos_y"])
     beamline_lib.mva("Z",currentRequest["pos_z"])
   else:
     print "autoRaster"
-    daq_macros.autoRasterLoop()    
+    daq_macros.autoRasterLoop(currentRequest["sample_id"])    
   sweep_start = currentRequest["sweep_start"]
   sweep_end = currentRequest["sweep_end"]
   img_width = currentRequest["img_width"]

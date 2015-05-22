@@ -1,5 +1,7 @@
 #!/usr/bin/python
+#foo
 import sys
+import os
 import string
 import math
 from epics import PV
@@ -24,11 +26,11 @@ from PyMca.QtBlissGraph import QtBlissGraph
 from PyMca.McaAdvancedFit import McaAdvancedFit
 import numpy as np
 import thread
-
+import lsdcOlog
 
 class snapCommentDialog(QDialog):
-    def __init__(self):
-        QDialog.__init__(self)
+    def __init__(self,parent = None):
+        QDialog.__init__(self,parent)
         self.setWindowTitle("Snapshot Comment")
         self.setModal(True)
         vBoxColParams1 = QtGui.QVBoxLayout()
@@ -45,12 +47,20 @@ class snapCommentDialog(QDialog):
         self.setLayout(vBoxColParams1)
 
     def cancelCB(self):
-      self.hide()
+      self.comment = ""
+      self.reject()
 
     def commentCB(self):
-      print self.textEdit.toPlainText()
-      self.hide()
+      self.comment = self.textEdit.toPlainText()
+#      print self.textEdit.toPlainText()
+      self.accept()
+#      self.hide()
     
+    @staticmethod
+    def getComment(parent = None):
+        dialog = snapCommentDialog(parent)
+        result = dialog.exec_()
+        return (dialog.comment, result == QDialog.Accepted)
 
 
 
@@ -294,7 +304,7 @@ class DewarTree(QtGui.QTreeView):
 
     def keyPressEvent(self, event):
       if (event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
-        print "caught the delete key"
+#        print "caught the delete key"
         self.deleteSelectedCB()
       else:
         super(DewarTree,self).keyPressEvent(event)  
@@ -304,6 +314,7 @@ class DewarTree(QtGui.QTreeView):
 
     def refreshTreeDewarView(self):
         selectedIndex = None
+        selectedSampleIndex = None
         collectionRunning = False
         self.model.clear()
         dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
@@ -324,16 +335,25 @@ class DewarTree(QtGui.QTreeView):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
                 item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
+#                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+#                item.setCheckState(Qt.Unchecked)
+                parentItem.appendRow(item)
+#                samplePos = db_lib.getAbsoluteDewarPosfromSampleID(puckContents[j])  #thinking about comparing this to mountedPin, but maybe want this in the DB instead, not in comm_ioc.
+     
+                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
+                  print "found " + str(self.parent.SelectedItemData)
+                  selectedSampleIndex = self.model.indexFromItem(item)
               else :
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
                 item.setData(-99)
-              item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-              item.setCheckState(Qt.Unchecked)
-              parentItem.appendRow(item)
+                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+                item.setCheckState(Qt.Unchecked)
+                parentItem.appendRow(item)
+
               for k in range (0,len(self.sampleRequests)): 
                 if (self.sampleRequests[k]["sample_id"] == puckContents[j]):
-                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["file_prefix"]))
+                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["file_prefix"]+"_"+self.sampleRequests[k]["protocol"]))
 #                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["protocol"]))
                   col_item.setData(self.sampleRequests[k]["request_id"])
                   col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
@@ -355,10 +375,15 @@ class DewarTree(QtGui.QTreeView):
                   if (self.sampleRequests[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item
                     selectedIndex = self.model.indexFromItem(col_item)
         self.setModel(self.model)
+        if (selectedSampleIndex != None and collectionRunning == False):
+          print "selectedSampleIndex = " + str(selectedSampleIndex)
+          self.setCurrentIndex(selectedSampleIndex)
+          self.parent.row_clicked(selectedSampleIndex)
         if (selectedIndex != None and collectionRunning == False):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
         self.expandAll()
+        self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
 
 
     def refreshTreePriorityView(self): #"item" is a sample, "col_items" are requests which are children of samples.
@@ -386,7 +411,7 @@ class DewarTree(QtGui.QTreeView):
           parentItem = item
           for k in range (0,len(self.orderedRequests)):
             if (self.orderedRequests[k]["sample_id"] == requestedSampleList[i]):
-              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["file_prefix"]))
+              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["file_prefix"]+"_"+self.orderedRequests[k]["protocol"]))
 #              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["protocol"]))
               col_item.setData(self.orderedRequests[k]["request_id"])
               col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
@@ -414,6 +439,7 @@ class DewarTree(QtGui.QTreeView):
         if (selectedIndex != None and collectionRunning == False):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
+        self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
         self.expandAll()
 
 
@@ -427,7 +453,7 @@ class DewarTree(QtGui.QTreeView):
         item.setBackground(QtGui.QColor('white'))
         db_lib.updateRequest(checkedSampleRequest)
         self.parent.treeChanged_pv.put(1) #not sure why I don't just call the update routine, although this allows multiple guis
-
+#        self.refreshTree()        
 
     def queueAllSelectedCB(self):
       selmod = self.selectionModel()
@@ -435,7 +461,13 @@ class DewarTree(QtGui.QTreeView):
       indexes = selection.indexes()
       for i in range (0,len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
-        item.setCheckState(Qt.Checked)
+        itemData = item.data().toInt()[0]
+        selectedSampleRequest = db_lib.getRequest(itemData)
+        selectedSampleRequest["priority"] = 5000
+        db_lib.updateRequest(selectedSampleRequest)
+#      self.refreshTree()
+      self.parent.treeChanged_pv.put(1)
+
 
     def deQueueAllSelectedCB(self):
       selmod = self.selectionModel()
@@ -443,7 +475,13 @@ class DewarTree(QtGui.QTreeView):
       indexes = selection.indexes()
       for i in range (0,len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
-        item.setCheckState(Qt.Unchecked)
+        itemData = item.data().toInt()[0]
+        selectedSampleRequest = db_lib.getRequest(itemData)
+        selectedSampleRequest["priority"] = 0
+        db_lib.updateRequest(selectedSampleRequest)
+#        item.setCheckState(Qt.Unchecked)
+#      self.refreshTree()
+      self.parent.treeChanged_pv.put(1)
 
     def deleteSelectedCB(self):
       selmod = self.selectionModel()
@@ -454,7 +492,14 @@ class DewarTree(QtGui.QTreeView):
         itemData = item.data().toInt()[0]
         selectedSampleRequest = db_lib.getRequest(itemData)
         db_lib.deleteRequest(selectedSampleRequest)
-      self.refreshTree()
+        if (selectedSampleRequest["protocol"] == "raster"):
+          for i in range (0,len(self.parent.rasterList)):
+            if (self.parent.rasterList[i] != None):
+              if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
+                self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
+                self.parent.rasterList[i] = None
+#      self.refreshTree()
+      self.parent.treeChanged_pv.put(1)
       
 
 
@@ -519,8 +564,9 @@ class rasterCell(QtGui.QGraphicsRectItem):
 
 
 class rasterGroup(QtGui.QGraphicsItemGroup):
-    def __init__(self):
+    def __init__(self,parent = None):
         super(rasterGroup, self).__init__()
+        self.parent=parent
         self.setHandlesChildEvents(False)
 #        self.setFlag(QtGui.QGraphicsItem.ItemIsMovable, True)
 #        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)
@@ -528,7 +574,14 @@ class rasterGroup(QtGui.QGraphicsItemGroup):
 
     def mousePressEvent(self, e):
       super(rasterGroup, self).mousePressEvent(e)
-#      print "mouse pressed on group"
+      print "mouse pressed on group"
+      for i in range(0,len(self.parent.rasterList)):
+        if (self.parent.rasterList[i] != None):
+          if (self.parent.rasterList[i]["graphicsItem"].isSelected()):
+            print "found selected raster"
+            self.parent.SelectedItemData = self.parent.rasterList[i]["request_id"]
+            self.parent.treeChanged_pv.put(1)
+
 
 
 
@@ -580,6 +633,7 @@ class controlMain(QtGui.QMainWindow):
         self.initUI()
         self.createSampleTab()
         self.initCallbacks()
+        self.dewarTree.refreshTreeDewarView()
         self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}
 
 
@@ -624,6 +678,10 @@ class controlMain(QtGui.QMainWindow):
         stopRunButton = QtGui.QPushButton("Stop Collection")        
         stopRunButton.clicked.connect(self.stopRunCB)
         puckToDewarButton = QtGui.QPushButton("Puck to Dewar...")        
+        mountSampleButton = QtGui.QPushButton("Mount Sample")        
+        mountSampleButton.clicked.connect(self.mountSampleCB)
+        unmountSampleButton = QtGui.QPushButton("Unmount Sample")        
+        unmountSampleButton.clicked.connect(self.unmountSampleCB)
         puckToDewarButton.clicked.connect(self.puckToDewarCB)
         removePuckButton = QtGui.QPushButton("Remove Puck...")        
         removePuckButton.clicked.connect(self.removePuckCB)
@@ -632,6 +690,8 @@ class controlMain(QtGui.QMainWindow):
         self.statusLabel.getEntry().setAlignment(QtCore.Qt.AlignCenter) 
         vBoxDFlayout.addWidget(runQueueButton)
         vBoxDFlayout.addWidget(stopRunButton)
+        vBoxDFlayout.addWidget(mountSampleButton)
+        vBoxDFlayout.addWidget(unmountSampleButton)
         vBoxDFlayout.addWidget(puckToDewarButton)
         vBoxDFlayout.addWidget(removePuckButton)
         vBoxDFlayout.addWidget(queueSelectedButton)
@@ -873,12 +933,17 @@ class controlMain(QtGui.QMainWindow):
         self.mainSetupFrame.setLayout(vBoxMainSetup)
         self.VidFrame = QFrame()
         vBoxVidLayout= QtGui.QVBoxLayout()
-        thread.start_new_thread(self.initVideo2,(.25,))
-        self.captureFull=cv2.VideoCapture("http://lob1-h:8080/C1.MJPG.mjpg")
+        if (daq_utils.has_xtalview):
+          thread.start_new_thread(self.initVideo2,(.25,))
+          self.captureFull=cv2.VideoCapture("http://lob1-h:8080/C1.MJPG.mjpg")
+        else:
+          self.captureFull = None
+          self.captureZoom = None
         time.sleep(1)
         self.capture = self.captureFull
         self.nocapture = self.captureZoom
-        self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway is use milliseconds
+        if (daq_utils.has_xtalview):
+          self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway is use milliseconds
         self.centeringMarksList = []
         self.rasterList = []
         self.rasterDefList = []
@@ -976,7 +1041,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
         hBoxSampleAlignLayout.addWidget(rasterLoopButton)
         hBoxSampleAlignLayout.addWidget(loopShapeButton)
-        hBoxSampleAlignLayout.addWidget(runRastersButton)
+###        hBoxSampleAlignLayout.addWidget(runRastersButton) #maybe not a good idea to have multiple ways to run a raster. Force the collect button.
         hBoxSampleAlignLayout.addWidget(clearGraphicsButton)
         hBoxSampleAlignLayout.addWidget(self.click3Button)
         hBoxSampleAlignLayout.addWidget(saveCenteringButton)
@@ -1052,7 +1117,7 @@ class controlMain(QtGui.QMainWindow):
 #        splitter1.setSizes(splitterSizes)
         vBoxlayout.addWidget(splitter1)
         sampleTab.setLayout(vBoxlayout)   
-        self.dewarTree.refreshTreeDewarView()
+#        self.dewarTree.refreshTreeDewarView()
         self.XRFTab = QtGui.QFrame()        
         XRFhBox = QtGui.QHBoxLayout()
         self.mcafit = McaAdvancedFit(self.XRFTab)
@@ -1080,7 +1145,10 @@ class controlMain(QtGui.QMainWindow):
               self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, False)            
       if (self.vidActionRasterDefRadio.isChecked()):
         self.click_positions = []
-  
+        self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
+        self.showProtParams()
+
+
 
 
     def adjustGraphics4ZoomChange(self,fov):
@@ -1096,7 +1164,8 @@ class controlMain(QtGui.QMainWindow):
             rasterYPixels = float(saveRasterList[i]["graphicsItem"].y())
             self.rasterXmicrons = rasterXPixels * (fov["x"]/daq_utils.screenPixX)
             self.rasterYmicrons = rasterYPixels * (fov["y"]/daq_utils.screenPixY)
-            self.drawPolyRaster(self.rasterDefList[i])
+            self.drawPolyRaster(db_lib.getRequest(saveRasterList[i]["request_id"]))
+#            self.drawPolyRaster(self.rasterDefList[i])
             self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
       if (self.vectorStart != None):
         self.processSampMove(self.sampx_pv.get(),"x")
@@ -1127,12 +1196,12 @@ class controlMain(QtGui.QMainWindow):
 
 
     def saveVidSnapshotButtonCB(self): 
-      self.saveVidSnapshotCB()
-      self.snapComment = snapCommentDialog()
-      self.snapComment.show()
+      comment,ok = snapCommentDialog.getComment()
+      if (ok):
+        self.saveVidSnapshotCB(comment)
 
 
-    def saveVidSnapshotCB(self):
+    def saveVidSnapshotCB(self,comment=""):
       totalRect = QtCore.QRectF(self.view.frameRect())
       width = 646
       height = 482
@@ -1145,7 +1214,9 @@ class controlMain(QtGui.QMainWindow):
 #      self.scene.render(painter, totalRect)
       self.scene.render(painter, targetrect,sourcerect)
       now = time.time()
-      pix.save("snapshots/capture"+str(int(now))+".jpg", "JPG")
+      imagePath = os.getcwd()+"/snapshots/capture"+str(int(now))+".jpg"
+      pix.save(imagePath, "JPG")
+      lsdcOlog.toOlog(imagePath,comment,self.omegaRBV_pv)
       del painter
 
     def changeZoomCB(self, state):
@@ -1259,10 +1330,11 @@ class controlMain(QtGui.QMainWindow):
     def displayXrecRaster(self,xrecRasterFlag):
       self.xrecRasterFlag_pv.put(0)
       if (xrecRasterFlag==1):#rect or poly raster
-        self.rasterDef = db_lib.getNextRunRaster(0)
-        self.drawPolyRaster(self.rasterDef)
+        rasterDef = db_lib.getNextRunRaster(0)
+        self.drawPolyRaster(rasterDef)
       elif (xrecRasterFlag==2): #fill the raster
-        self.fillPolyRaster("raster_spots.txt")
+#        self.fillPolyRaster("raster_spots.txt")
+        pass
       elif (xrecRasterFlag==100):
         for i in range (0,len(self.rasterList)):
           if (self.rasterList[i] != None):
@@ -1270,11 +1342,24 @@ class controlMain(QtGui.QMainWindow):
 #        self.eraseDisplayCB()
 #        self.eraseCB()
       elif (xrecRasterFlag==3): #column raster
-        self.rasterDef = db_lib.getNextRunRaster(0)
+        rasterDef = db_lib.getNextRunRaster(0)
 #        self.eraseDisplayCB()
-        self.drawColumnRaster(self.rasterDef)
+        self.drawColumnRaster(rasterDef)
       else:
-        pass
+        rasterReq = db_lib.getRequest(xrecRasterFlag)
+        rasterDef = rasterReq["rasterDef"]
+#        print "in rasterReqFlag " + str(rasterDef["status"])
+#        print rasterReq
+        if (rasterDef["status"] == 1):
+          self.drawPolyRaster(rasterReq)
+        elif (rasterDef["status"] == 2):        
+          self.fillPolyRaster(rasterReq)
+          db_lib.deleteRequest(rasterReq)
+          self.treeChanged_pv.put(1) #not sure about this
+        elif (rasterDef["status"] == 3):        
+          self.drawColumnRaster(rasterReq)
+        else:
+          pass
 
 
 
@@ -1348,6 +1433,9 @@ class controlMain(QtGui.QMainWindow):
     def protoComboActivatedCB(self, text):
 #      print "protocol = " + str(text)
       self.showProtParams()
+      protocol = str(self.protoComboBox.currentText())
+      if (protocol == "raster"):
+        self.vidActionRasterDefRadio.setChecked(True)        
 
 
     def  popBaseDirectoryDialogCB(self):
@@ -1364,7 +1452,8 @@ class controlMain(QtGui.QMainWindow):
           else:
             self.selectedSampleRequest["priority"] = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
-      self.dewarTree.refreshTree()
+      self.parent.treeChanged_pv.put(1)
+#      self.dewarTree.refreshTree()
             
       
     def downPriorityCB(self):
@@ -1376,7 +1465,8 @@ class controlMain(QtGui.QMainWindow):
           else:
             self.selectedSampleRequest["priority"] = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
-      self.dewarTree.refreshTree()
+#      self.dewarTree.refreshTree()
+      self.parent.treeChanged_pv.put(1)
 
 
     def topPriorityCB(self):
@@ -1384,7 +1474,8 @@ class controlMain(QtGui.QMainWindow):
       priority = priority+100
       self.selectedSampleRequest["priority"] = priority
       db_lib.updateRequest(self.selectedSampleRequest)     
-      self.dewarTree.refreshTree()
+      self.treeChanged_pv.put(1)
+#      self.dewarTree.refreshTree()
 
 
     def bottomPriorityCB(self):
@@ -1392,7 +1483,8 @@ class controlMain(QtGui.QMainWindow):
       priority = priority-100
       self.selectedSampleRequest["priority"] = priority
       db_lib.updateRequest(self.selectedSampleRequest)     
-      self.dewarTree.refreshTree()
+      self.parent.treeChanged_pv.put(1)
+#      self.dewarTree.refreshTree()
       
 
     def dewarViewToggledCB(self,identifier):
@@ -1427,11 +1519,14 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server("loop_center_xrec()")
       
     def autoRasterLoopCB(self):
-      print "auto center loop"
-      self.send_to_server("autoRasterLoop()")
+      selectedSampleID = self.selectedSampleRequest["sample_id"]
+      comm_s = "autoRasterLoop(" + str(selectedSampleID) + ")"
+      self.send_to_server(comm_s)
+#      self.send_to_server("autoRasterLoop()")
 
     def runRastersCB(self):
-      self.send_to_server("snakeRaster()")
+      comm_s = "snakeRaster(" + str(self.selectedSampleRequest["request_id"]) + ")"
+      self.send_to_server(comm_s)
       
     def drawInteractiveRasterCB(self): # any polygon for now, interactive or from xrec
       for i in range (0,len(self.polyPointItems)):
@@ -1476,8 +1571,17 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server("mva(\"Omega\",0)")
       
 
-    def fillPolyRaster(self,spotfilename): #at this point I should have a drawn polyRaster
-      (rasterListIndex,self.rasterDef) = db_lib.getNextDisplayRaster()
+    def fillPolyRaster(self,rasterReq): #at this point I should have a drawn polyRaster
+#      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
+      print "filling poly for " + str(rasterReq["request_id"])
+      rasterDef = rasterReq["rasterDef"]
+      rasterListIndex = 0
+      for i in range (0,len(self.rasterList)):
+        if (self.rasterList[i] != None):
+          if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
+            rasterListIndex = i
+      spotfilename = "raster_spots.txt"
+
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
@@ -1488,9 +1592,9 @@ class controlMain(QtGui.QMainWindow):
       spotLineCounter = 0
       cellIndex=0
       rowStartIndex = 0
-      for i in range (0,len(self.rasterDef["rowDefs"])):
+      for i in range (0,len(rasterDef["rowDefs"])):
         rowStartIndex = spotLineCounter
-        numsteps = self.rasterDef["rowDefs"][i]["numsteps"]
+        numsteps = rasterDef["rowDefs"][i]["numsteps"]
         for j in range (0,numsteps):
           spotline = spotfile.readline()
           (spotcount_s,filename) = spotline.split()
@@ -1506,9 +1610,9 @@ class controlMain(QtGui.QMainWindow):
       floor = np.amin(my_array)
       ceiling = np.amax(my_array)
       cellCounter = 0     
-      for i in range (0,len(self.rasterDef["rowDefs"])):
+      for i in range (0,len(rasterDef["rowDefs"])):
         rowCellCount = 0
-        for j in range (0,self.rasterDef["rowDefs"][i]["numsteps"]):
+        for j in range (0,rasterDef["rowDefs"][i]["numsteps"]):
           spotcount = int(my_array[cellCounter])
           filenameArrayIndex = cellCounter
           cellFilename = filename_array[filenameArrayIndex]
@@ -1520,7 +1624,7 @@ class controlMain(QtGui.QMainWindow):
           self.currentRasterCellList[cellCounter*2].setData(0,spotcount)
           self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
           cellCounter+=1
-      self.saveVidSnapshotCB()
+      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["file_prefix"]))
       spotfile.close()
       
 
@@ -1568,11 +1672,11 @@ class controlMain(QtGui.QMainWindow):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
         self.rasterList = []
         self.rasterDefList = []
-        db_lib.clearRasters()
       self.clearVectorCB()
       if (self.rasterPoly != None):      
         self.scene.removeItem(self.rasterPoly)
       self.rasterPoly =  None
+      db_lib.clearRasters()
 
 
     def eraseDisplayCB(self): #use this for things like zoom change. This is not the same as getting rid of all rasters.
@@ -1635,7 +1739,7 @@ class controlMain(QtGui.QMainWindow):
 #raster status - 0=nothing done, 1=run, 2=displayed
       beamWidth = float(self.beamWidth_ledit.text())
       beamHeight = float(self.beamHeight_ledit.text())
-      self.rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":int(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
+      rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":int(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
       numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
       numsteps_v = int(raster_h/stepsize)
       if (numsteps_h%2 == 0):
@@ -1657,13 +1761,29 @@ class controlMain(QtGui.QMainWindow):
             rowCellCount = rowCellCount+1
         if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
           newRowDef = {"start":{"x": self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}
-          self.rasterDef["rowDefs"].append(newRowDef)
-      db_lib.addRaster(self.rasterDef)
-      self.rasterDefList.append(self.rasterDef)
-      self.drawPolyRaster(self.rasterDef)
+          rasterDef["rowDefs"].append(newRowDef)
+      selectedSampleID = self.selectedSampleRequest["sample_id"]
+      tempnewRasterRequest = db_lib.createDefaultRequest(selectedSampleID)
+      tempnewRasterRequest["protocol"] = "raster"
+      tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+#      db_lib.updateRequest(newRasterRequest)
+      newRasterRequest =db_lib.addRequesttoSample(selectedSampleID,tempnewRasterRequest)
+      self.treeChanged_pv.put(1)      
+#      db_lib.addRaster(rasterDef)
+      self.rasterDefList.append(newRasterRequest)
+      self.drawPolyRaster(newRasterRequest)
+
+    def rasterIsDrawn(self,rasterReq):
+      for i in range (0,len(self.rasterList)):
+        if (self.rasterList[i] != None):
+          if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
+            return True
+      return False
+          
 
 
-    def drawPolyRaster(self,rasterDef): #rasterDef in microns,offset from center, need to convert to pixels to draw
+    def drawPolyRaster(self,rasterReq): #rasterDef in microns,offset from center, need to convert to pixels to draw
+      rasterDef = rasterReq["rasterDef"]
       beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
       stepsize = self.screenXmicrons2pixels(rasterDef["stepsize"])
       penBeam = QtGui.QPen(QtCore.Qt.green)
@@ -1690,15 +1810,16 @@ class controlMain(QtGui.QMainWindow):
           newCell.setPen(pen)
           newCellBeam.setPen(penBeam)
           rowCellCount = rowCellCount+1 #really just for test of new row
-      newItemGroup = rasterGroup()
+      newItemGroup = rasterGroup(self)
       self.scene.addItem(newItemGroup)
       for i in range (0,len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
-      newRasterGraphicsDesc = {"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
-    def drawColumnRaster(self,rasterDef): #rows are really columns here
+    def drawColumnRaster(self,rasterReq): #rows are really columns here
+      rasterDef = rasterReq["rasterDef"]
       beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
       stepsize = self.screenXmicrons2pixels(rasterDef["stepsize"])
       penBeam = QtGui.QPen(QtCore.Qt.green)
@@ -1727,12 +1848,12 @@ class controlMain(QtGui.QMainWindow):
           newRasterCellList.append(newCellBeam)
 ###          self.currentRasterCellList.append(newCell) 
           rowCellCount = rowCellCount+1
-      newItemGroup = rasterGroup()
+      newItemGroup = rasterGroup(self)
       self.scene.addItem(newItemGroup)
       for i in range (0,len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
 #      newItemGroup.addToGroup(self.rasterPoly)
-      newRasterGraphicsDesc = {"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
@@ -1774,8 +1895,13 @@ class controlMain(QtGui.QMainWindow):
           for i in range (0,len(self.rasterList)):
             if (self.rasterList[i] != None):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
+                try:
+                  db_lib.deleteRequest(db_lib.getRequest(self.rasterList[i]["request_id"]))
+                except AttributeError:
+                  pass
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
                 self.rasterList[i] = None
+                self.treeChanged_pv.put(1)
           for i in range (0,len(self.centeringMarksList)):
             if (self.centeringMarksList[i] != None):
               if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
@@ -1847,7 +1973,8 @@ class controlMain(QtGui.QMainWindow):
       colRequest["protocol"] = str(self.protoComboBox.currentText())
       db_lib.updateRequest(colRequest)
 #      self.eraseCB()
-      self.dewarTree.refreshTree()
+      self.treeChanged_pv.put(1)
+#      self.dewarTree.refreshTree()
 
 
     def addSampleRequestCB(self):
@@ -1878,8 +2005,9 @@ class controlMain(QtGui.QMainWindow):
              colRequest["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
              colRequest["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
              colRequest["pos_z"] = float(self.centeringMarksList[i]["sampCoords"]["z"])
-             db_lib.updateRequest(colRequest)
-             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
+             newSampleRequest = db_lib.addRequesttoSample(selectedSampleID,colRequest)
+#             db_lib.updateRequest(colRequest)
+#             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
           message = QtGui.QErrorMessage(self)
           message.setModal(True)
@@ -1902,9 +2030,11 @@ class controlMain(QtGui.QMainWindow):
         colRequest["wavelength"] = wave
         colRequest["protocol"] = str(self.protoComboBox.currentText())
 #        print colRequest
-        db_lib.updateRequest(colRequest)
+        newSampleRequest = db_lib.addRequesttoSample(selectedSampleID,colRequest)
+#        db_lib.updateRequest(colRequest)
 #      self.eraseCB()
-      self.dewarTree.refreshTree()
+      self.treeChanged_pv.put(1)
+#      self.dewarTree.refreshTree()
       
 
     def collectQueueCB(self):
@@ -1918,7 +2048,8 @@ class controlMain(QtGui.QMainWindow):
       if (ok):
         print ipos
         db_lib.removePuckFromDewar(ipos)
-        self.dewarTree.refreshTree()
+        self.parent.treeChanged_pv.put(1)
+#        self.dewarTree.refreshTree()
 
     def setVectorStartCB(self): #save sample x,y,z
       print "set vector start"        
@@ -1963,13 +2094,22 @@ class controlMain(QtGui.QMainWindow):
          if (ok):
            print ipos
            db_lib.insertIntoContainer("primaryDewar2",ipos,db_lib.getContainerIDbyName(puckName))
-           self.dewarTree.refreshTree()
+           self.parent.treeChanged_pv.put(1)
+#           self.dewarTree.refreshTree()
 
 
     def stopRunCB(self):
       print "stopping collection"
       self.aux_send_to_server("stopDCQueue()")
 
+    def mountSampleCB(self):
+      print "mount selected sample"
+      selectedSampleID = self.selectedSampleRequest["sample_id"]
+      dewarPos = db_lib.getAbsoluteDewarPosfromSampleID(selectedSampleID)
+      self.send_to_server("mountSample("+str(dewarPos)+")")
+
+    def unmountSampleCB(self):
+      print "unmount sample"
 
 #not used yet
     def tree_changed(self, topLeft, bottomRight):
@@ -2000,9 +2140,11 @@ class controlMain(QtGui.QMainWindow):
       rasterStep = int(selectedSampleRequest["gridStep"])
 #      self.eraseCB()
       if (str(selectedSampleRequest["protocol"])== "raster"):
-        raster_w = int(selectedSampleRequest["gridW"])        
-        raster_h = int(selectedSampleRequest["gridH"])
-        self.drawRaster(raster_w,raster_h,rasterStep,self.screenXPixels2microns(daq_utils.screenPixCenterX),self.screenXPixels2microns(daq_utils.screenPixCenterY))
+        if (not self.rasterIsDrawn(selectedSampleRequest)):
+          self.drawPolyRaster(selectedSampleRequest)
+      else: #for now, erase the rasters if a non-raster is selected, need to rationalize later
+#        self.eraseDisplayCB()
+        pass
       self.showProtParams()
 
 
@@ -2035,9 +2177,28 @@ class controlMain(QtGui.QMainWindow):
       elif (itemData< -100):
         print "sample in pos " + str(itemData) 
         self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
-      else: #collection object
+        self.refreshCollectionParams(self.selectedSampleRequest)
+        if (self.vidActionRasterDefRadio.isChecked()):
+#          self.selectedSampleRequest["protocol"] = "raster"
+          self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
+          self.showProtParams()
+
+    
+      else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
-      self.refreshCollectionParams(self.selectedSampleRequest)
+#        if (self.selectedSampleRequest["protocol"] == "raster"): #might want this, problem is that it requires "rasterSelect", and maybe we don't want that.
+#          for i in range (0,len(self.rasterList)):
+#            if (self.rasterList[i] != None):
+#              if (self.rasterList[i]["request_id"] == self.selectedSampleRequest["request_id"]):
+#                self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            
+#                self.rasterList[i]["graphicsItem"].setSelected(True)
+#              else:
+#                self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, False)            
+#                self.rasterList[i]["graphicsItem"].setSelected(False)
+
+#####        self.eraseDisplayCB()
+        self.refreshCollectionParams(self.selectedSampleRequest)
+
 #      self.dewarTree.refreshTree()
 ##      numimages = (sampleRequest["sweep_end"] - sampleRequest["sweep_start"])/sampleRequest["img_width"]
 ##      self.dcFrame.num_images_ledit.setText(str(numimages))
@@ -2106,6 +2267,9 @@ class controlMain(QtGui.QMainWindow):
       self.treeChanged_pv = PV(daq_utils.beamline + "_comm:live_q_change_flag")
       self.connect(self, QtCore.SIGNAL("refreshTreeSignal"),self.dewarTree.refreshTree)
       self.treeChanged_pv.add_callback(self.treeChangedCB)  
+#      self.mountedPin_pv = PV(daq_utils.beamline + "_comm:mounted_pin")
+#      self.connect(self, QtCore.SIGNAL("mountedPinSignal"),self.processMountedPin)
+#      self.mountedPin_pv.add_callback(self.mountedPinChangedCB)  
       self.choochResultFlag_pv = PV(daq_utils.beamline + "_comm:choochResultFlag")
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
       self.choochResultFlag_pv.add_callback(self.processChoochResultsCB)  
@@ -2130,6 +2294,7 @@ class controlMain(QtGui.QMainWindow):
       self.sampz_pv.add_callback(self.processSampMoveCB,motID="z")
 
       self.omega_pv = PV(daq_utils.gonioPvPrefix+"Omega.VAL")
+      self.omegaRBV_pv = PV(daq_utils.gonioPvPrefix+"Omega.RBV")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
