@@ -203,6 +203,7 @@ def addRequesttoSample(sample_id, request):
     #s.save(push__requestList=r)
     s.requestList.append(r)
     s.save()
+    return r.to_mongo()
 
 
 def createDefaultRequest(sample_id):
@@ -214,14 +215,14 @@ def createDefaultRequest(sample_id):
                "priority": 0,
                "protocol": "standard",
                "directory": "/",
-               "file_prefix": str(getSampleNamebyID(sample_id)) + "_data",
+               "file_prefix": str(getSampleNamebyID(sample_id)),
                "file_number_start": 1,
                "wavelength": 1.1,
                "resolution": 3.0,
                "slit_height": 30.0,  "slit_width": 30.0,
                "attenuation": 0,
                "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A',
-               "gridW": 0,  "gridH": 0,  "gridStep": 10}
+               "gridW": 0,  "gridH": 0,  "gridStep": 30}
 
     return request
 

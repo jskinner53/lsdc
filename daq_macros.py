@@ -32,13 +32,14 @@ def flipLoopShapeCoords(filename): # not used
   xrec_out_file.close() 
 
 
-def autoRasterLoop():
+def autoRasterLoop(sampleID):
+  print "auto raster " + str(sampleID)
   loop_center_xrec()
-  getXrecLoopShape()
+#  getXrecLoopShape(sampleID)
   time.sleep(1) #looks like I really need this sleep
-  runRasterScan()
-  runRasterScan("Fine")
-  runRasterScan("Line")  
+  runRasterScan(sampleID,"LoopShape")
+  runRasterScan(sampleID,"Fine")
+  runRasterScan(sampleID,"Line")  
 
 
 
@@ -179,7 +180,7 @@ def generateSingleColumnGridMap(rasterDef):
 
 
 
-def columnRaster(): #3/10/15 - not used yet, raster would need to be defined for column orientation. Address later if needed.
+def columnRasterNOTUSED(): #3/10/15 - not used yet, raster would need to be defined for column orientation. Address later if needed.
   rasterDef = db_lib.getRasters()[0]
 #  print rasterDef
   stepsize = float(rasterDef["stepsize"])
@@ -218,14 +219,14 @@ def columnRaster(): #3/10/15 - not used yet, raster would need to be defined for
   mva("X",rasterStartX,"Y",rasterStartY,"Z",rasterStartZ)
   generateGridMap()
 #  gotoMaxRaster("raster_spots.txt","raster_map.txt")
-  set_field("xrecRasterFlag",2)  
+  set_field("xrecRasterFlag",2)  #routine not used? 5/14
 
 
-def singleColumnRaster(): #for the 90-degree step.
+def singleColumnRaster(rasterReqID): #for the 90-degree step.
   time.sleep(0.2) #maybe need this??
-###  time.sleep(2)
-  rasterDef = db_lib.getNextRunRaster()
-#  print rasterDef
+#  rasterDef = db_lib.getNextRunRaster()
+  rasterRequest = db_lib.getRequest(rasterReqID)
+  rasterDef = rasterRequest["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
   rasterStartX = float(rasterDef["x"])
@@ -253,10 +254,17 @@ def singleColumnRaster(): #for the 90-degree step.
 #  mva("X",rasterStartX,"Y",rasterStartY,"Z",rasterStartZ)
   generateSingleColumnGridMap(rasterDef) #this might need to be different depending on scan direction
   gotoMaxRaster("raster_spots.txt","raster_map.txt")
-  set_field("xrecRasterFlag",2)  
+#  set_field("xrecRasterFlag",2)  
+  rasterRequest["rasterDef"]["status"] = 2
+  db_lib.updateRequest(rasterRequest)
+  set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
-def snakeRaster(grain=""):
-  rasterDef = db_lib.getNextRunRaster()
+
+def snakeRaster(rasterReqID,grain=""):
+#  rasterDef = db_lib.getNextRunRaster()
+#  rasterRequest = db_lib.popNextRequest()
+  rasterRequest = db_lib.getRequest(rasterReqID)
+  rasterDef = rasterRequest["rasterDef"]
 #  print rasterDef
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
@@ -294,24 +302,33 @@ def snakeRaster(grain=""):
 #  mva("Y",rasterStartY)
 #  mva("Z",rasterStartZ)
   generateGridMap(rasterDef)
+  rasterRequest["rasterDef"]["status"] = 2
   gotoMaxRaster("raster_spots.txt","raster_map.txt")
-  set_field("xrecRasterFlag",2)  
+  db_lib.updateRequest(rasterRequest)
+  set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
-def runRasterScan(rasterType=""):
+#  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+
+
+
+def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
   if (rasterType=="Fine"):
     set_field("xrecRasterFlag",100)    
-    defineRectRaster(50,50,10)
-    snakeRaster()
+    rasterReqID = defineRectRaster(sampleID,50,50,10) 
+    snakeRaster(rasterReqID)
 #    gotoMaxRaster("raster_spots.txt","raster_map.txt")
 #    set_field("xrecRasterFlag",2)  
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
     mvr("Omega",90)
-    defineColumnRaster(10,150,10)
-    singleColumnRaster()
+    rasterReqID = defineColumnRaster(sampleID,10,150,10)
+    singleColumnRaster(rasterReqID)
     set_field("xrecRasterFlag",100)    
   else:
-    snakeRaster()
+    rasterReqID = getXrecLoopShape(sampleID)
+    print "snake raster " + str(rasterReqID)
+    snakeRaster(rasterReqID)
+#    set_field("xrecRasterFlag",100)    
 
 
 def gotoMaxRaster(spotfilename,mapfilename):
@@ -369,7 +386,7 @@ def screenYPixels2microns(pixels):
 #  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
-def defineColumnRaster(raster_w,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
+def defineColumnRaster(sampleID,raster_w,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
   raster_h = float(raster_h_s)
   stepsizeMicrons = float(stepsizeMicrons_s)
   beamWidth = stepsizeMicrons
@@ -384,11 +401,21 @@ def defineColumnRaster(raster_w,raster_h_s,stepsizeMicrons_s): #maybe point_x an
   rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
-  db_lib.addRaster(rasterDef) 
-  set_field("xrecRasterFlag",3)
+
+  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest["protocol"] = "raster"
+  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+  tempnewRasterRequest["rasterDef"]["status"] = 3 # this will tell clients that the raster should be displayed.
+  tempnewRasterRequest["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest)
+  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
+  return newRasterRequest["request_id"]
+
+#  db_lib.addRaster(rasterDef) 
+#  set_field("xrecRasterFlag",3)
 
 
-def defineRectRaster(raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
+def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
   stepsize = float(stepsizeMicrons_s)
@@ -404,12 +431,20 @@ def defineRectRaster(raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x an
     rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
-  db_lib.addRaster(rasterDef)
-  set_field("xrecRasterFlag",1)
+  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest["protocol"] = "raster"
+  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+  tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
+  tempnewRasterRequest["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest)
+  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
+#  db_lib.addRaster(rasterDef)
+#  set_field("xrecRasterFlag",1)
   time.sleep(1)
+  return newRasterRequest["request_id"]
 
 
-def definePolyRaster(raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
+def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
   newRowDef = {}
 #  print "draw raster " + str(raster_w) + " " + str(raster_h) + " " + str(stepsizeMicrons)
   beamWidth = stepsizeMicrons
@@ -440,13 +475,20 @@ def definePolyRaster(raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPol
       rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
-  db_lib.addRaster(rasterDef)
-  set_field("xrecRasterFlag",1)
-##      self.drawPolyRaster(self.rasterDef)
+  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest["protocol"] = "raster"
+  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+  tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
+  tempnewRasterRequest["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest)
+  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
+  return newRasterRequest["request_id"]
+#  daq_lib.refreshGuiTree() # not sure
 
 
 
-def getXrecLoopShape():
+
+def getXrecLoopShape(sampleID):
   beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   for i in range(0,4):
     if (daq_lib.abort_flag == 1):
@@ -482,8 +524,8 @@ def getXrecLoopShape():
   center_x = int(polyBoundingRect.center().x())
   center_y = int(polyBoundingRect.center().y())
   stepsizeMicrons = 30.0 #for now.
-  definePolyRaster(raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
-
+  rasterReqID = definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
+  return rasterReqID
 
 def vectorScan(numPoints_s): #bogus for now until we figure out what we want
   numPoints = int(numPoints_s)
