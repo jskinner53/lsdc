@@ -303,7 +303,7 @@ class QPeriodicTable(QWidget):
             #, 6, 10, 0, 0, "PTLayout")
             self.gridLayout.addItem(QSpacerItem(0, 5), 7, 0)
 
-        for idx in range(10):
+        for idx in xrange(10):
             self.gridLayout.setRowStretch(idx, 3)
         self.gridLayout.setRowStretch(7, 2)
 
@@ -554,10 +554,10 @@ class QPeriodicList(MyQListView):
         self.emit(PYSIGNAL("selectionChanged"), (self.getSelection(),))
     
     def getSelection(self):
-        return [ Elements[idx][0] for idx in range(len(self.items)) if self.items[idx].isSelected() ]   
+        return [ Elements[idx][0] for idx in xrange(len(self.items)) if self.items[idx].isSelected() ]   
 
     def setSelection(self, symbolList):
-        for idx in range(len(self.items)):
+        for idx in xrange(len(self.items)):
             self.items[idx].setSelected(Elements[idx][0] in symbolList)
     """
     def __selectionChanged(self):
@@ -568,17 +568,17 @@ class QPeriodicList(MyQListView):
     
     def getSelection(self):
         if QTVERSION < "4.0.0":
-            return [ Elements[idx][0] for idx in range(len(self.items)) \
+            return [ Elements[idx][0] for idx in xrange(len(self.items)) \
                     if self.items[idx].isSelected() ]
         else:
-            return [ Elements[idx][0] for idx in range(len(self.items)) \
+            return [ Elements[idx][0] for idx in xrange(len(self.items)) \
                     if self.isItemSelected(self.items[idx]) ]
             
             #return self.selectedItems()
 
     if QTVERSION < "4.0.0":
         def setSelection(self, symbolList):
-            for idx in range(len(self.items)):
+            for idx in xrange(len(self.items)):
                 if QTVERSION < "4.0.0":
                     self.items[idx].setSelected(Elements[idx][0] in symbolList)
 

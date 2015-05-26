@@ -187,12 +187,12 @@ class PuckDialog(QtGui.QDialog):
         puckList = db_lib.getAllPucks()
         data = []
 #if you have to, you could store the puck_id in the item data
-        for i in range (0,len(puckList)):
+        for i in xrange(len(puckList)):
           data.append(puckList[i]["containerName"])
         self.model = QtGui.QStandardItemModel()
         labels = QtCore.QStringList(("Name"))
         self.model.setHorizontalHeaderLabels(labels)
-        for i in range(len(data)):
+        for i in xrange(len(data)):
             name = QtGui.QStandardItem(data[i])
             self.model.appendRow(name)
 
@@ -256,7 +256,7 @@ class DewarDialog(QtGui.QDialog):
       dewarObj = db_lib.getPrimaryDewar()
       puckLocs = dewarObj["item_list"]
       self.data = []
-      for i in range (0,len(puckLocs)):
+      for i in xrange(len(puckLocs)):
         if (puckLocs[i] != None):
           self.data.append(db_lib.getContainerNameByID(puckLocs[i]))
         else:
@@ -267,7 +267,7 @@ class DewarDialog(QtGui.QDialog):
         self.buttons = QDialogButtonBox(
             Qt.Horizontal, self)
 #        dewarMax = len(self.data)
-        for i in range (len(self.data),0,-1):
+        for i in xrange(len(self.data),0,-1):
           print i
           self.buttons.addButton(str(self.data[i-1]),0)
           self.buttons.buttons()[len(self.data)-i].clicked.connect(functools.partial(self.on_button,str(i)))
@@ -319,7 +319,7 @@ class DewarTree(QtGui.QTreeView):
         self.model.clear()
         dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
         self.sampleRequests = db_lib.getQueue()
-        for i in range (0,len(dewarContents)): #dewar contents is the list of pucks
+        for i in xrange(len(dewarContents)): #dewar contents is the list of pucks
           parentItem = self.model.invisibleRootItem()
           if (dewarContents[i]==None):
             puckName = ""
@@ -330,7 +330,7 @@ class DewarTree(QtGui.QTreeView):
           parentItem = item
           if (puckName != ""):
             puckContents = db_lib.getContainerByID(dewarContents[i])["item_list"]
-            for j in range (0,len(puckContents)):#should be the list of samples
+            for j in xrange(len(puckContents)):#should be the list of samples
               if (puckContents[j] != None):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
@@ -352,7 +352,7 @@ class DewarTree(QtGui.QTreeView):
                 item.setCheckState(Qt.Unchecked)
                 parentItem.appendRow(item)
 
-              for k in range (0,len(self.sampleRequests)): 
+              for k in xrange(len(self.sampleRequests)): 
                 if (self.sampleRequests[k]["sample_id"] == puckContents[j]):
                   col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["file_prefix"]+"_"+self.sampleRequests[k]["protocol"]))
 #                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["protocol"]))
@@ -396,10 +396,10 @@ class DewarTree(QtGui.QTreeView):
         dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
         maxPucks = len(dewarContents)
         requestedSampleList = []
-        for i in range (0,len(self.orderedRequests)): # I need a list of samples for parent nodes
+        for i in xrange(len(self.orderedRequests)): # I need a list of samples for parent nodes
           if (self.orderedRequests[i]["sample_id"] not in requestedSampleList):
             requestedSampleList.append(self.orderedRequests[i]["sample_id"])
-        for i in range (0,len(requestedSampleList)):
+        for i in xrange(len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
           (containerID,samplePositionInContainer) = db_lib.getDewarPosfromSampleID(requestedSampleList[i])
           containerName = db_lib.getContainerNameByID(containerID)
@@ -411,7 +411,7 @@ class DewarTree(QtGui.QTreeView):
 #          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
-          for k in range (0,len(self.orderedRequests)):
+          for k in xrange(len(self.orderedRequests)):
             if (self.orderedRequests[k]["sample_id"] == requestedSampleList[i]):
               col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["file_prefix"]+"_"+self.orderedRequests[k]["protocol"]))
 #              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["protocol"]))
@@ -461,7 +461,7 @@ class DewarTree(QtGui.QTreeView):
       selmod = self.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
-      for i in range (0,len(indexes)):
+      for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         selectedSampleRequest = db_lib.getRequest(itemData)
@@ -475,7 +475,7 @@ class DewarTree(QtGui.QTreeView):
       selmod = self.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
-      for i in range (0,len(indexes)):
+      for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         selectedSampleRequest = db_lib.getRequest(itemData)
@@ -489,14 +489,14 @@ class DewarTree(QtGui.QTreeView):
       selmod = self.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
-      for i in range (0,len(indexes)):
+      for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         selectedSampleRequest = db_lib.getRequest(itemData)
         self.selectedSampleID = selectedSampleRequest["sample_id"]
         db_lib.deleteRequest(selectedSampleRequest)
         if (selectedSampleRequest["protocol"] == "raster"):
-          for i in range (0,len(self.parent.rasterList)):
+          for i in xrange(len(self.parent.rasterList)):
             if (self.parent.rasterList[i] != None):
               if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
                 self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
@@ -578,7 +578,7 @@ class rasterGroup(QtGui.QGraphicsItemGroup):
     def mousePressEvent(self, e):
       super(rasterGroup, self).mousePressEvent(e)
       print "mouse pressed on group"
-      for i in range(0,len(self.parent.rasterList)):
+      for i in xrange(len(self.parent.rasterList)):
         if (self.parent.rasterList[i] != None):
           if (self.parent.rasterList[i]["graphicsItem"].isSelected()):
             print "found selected raster"
@@ -1136,14 +1136,14 @@ class controlMain(QtGui.QMainWindow):
       if (len(self.rasterList) > 0):
    
 #        if (self.vidActionRasterMoveRadio.isChecked()):
-#          for i in range (0,len(self.rasterList)):
+#          for i in xrange(len(self.rasterList)):
 #            self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsMovable, True)
         if (self.vidActionRasterSelectRadio.isChecked()):
-          for i in range (0,len(self.rasterList)):
+          for i in xrange(len(self.rasterList)):
             if (self.rasterList[i] != None):
               self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            
         else:
-          for i in range (0,len(self.rasterList)):
+          for i in xrange(len(self.rasterList)):
             if (self.rasterList[i] != None):
               self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsMovable, False)
               self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, False)            
@@ -1159,8 +1159,8 @@ class controlMain(QtGui.QMainWindow):
       if (self.rasterList != []):
         saveRasterList = self.rasterList
         self.eraseDisplayCB()
-#        for i in range (0,len(self.rasterDefList)): #rasterdef b/c the erase got rid of raster graphics.
-        for i in range (0,len(saveRasterList)):
+#        for i in xrange(len(self.rasterDefList)): #rasterdef b/c the erase got rid of raster graphics.
+        for i in xrange(len(saveRasterList)):
           if (saveRasterList[i] == None): 
             self.rasterList.append(None)
           else:
@@ -1264,7 +1264,7 @@ class controlMain(QtGui.QMainWindow):
 #      print "new " + motID + " pos=" + str(posRBV)
       self.motPos[motID] = posRBV
       if (len(self.centeringMarksList)>0):
-        for i in range (0,len(self.centeringMarksList)):
+        for i in xrange(len(self.centeringMarksList)):
           if (motID == "z"):
             startX = self.centeringMarksList[i]["sampCoords"]["z"]
             startX_pixels = 0
@@ -1277,7 +1277,7 @@ class controlMain(QtGui.QMainWindow):
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)
       if (len(self.rasterList)>0):
-        for i in range (0,len(self.rasterList)):
+        for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             if (motID == "z"):
               startX = self.rasterList[i]["coords"]["z"]
@@ -1340,7 +1340,7 @@ class controlMain(QtGui.QMainWindow):
 #        self.fillPolyRaster("raster_spots.txt")
         pass
       elif (xrecRasterFlag==100):
-        for i in range (0,len(self.rasterList)):
+        for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
 #        self.eraseDisplayCB()
@@ -1401,7 +1401,7 @@ class controlMain(QtGui.QMainWindow):
     def getMaxPriority(self):
       orderedRequests = db_lib.getOrderedRequestList()      
       priorityMax = 0
-      for i in range (0,len(orderedRequests)):
+      for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["priority"] > priorityMax):
           priorityMax = orderedRequests[i]["priority"]
       return priorityMax
@@ -1409,7 +1409,7 @@ class controlMain(QtGui.QMainWindow):
     def getMinPriority(self):
       orderedRequests = db_lib.getOrderedRequestList()      
       priorityMin = 10000000
-      for i in range (0,len(orderedRequests)):
+      for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["priority"] < priorityMin):
           priorityMin = orderedRequests[i]["priority"]
       return priorityMin
@@ -1450,7 +1450,7 @@ class controlMain(QtGui.QMainWindow):
 
     def upPriorityCB(self):
       orderedRequests = db_lib.getOrderedRequestList()
-      for i in range (0,len(orderedRequests)):
+      for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if (i<2):
             self.topPriorityCB()
@@ -1463,7 +1463,7 @@ class controlMain(QtGui.QMainWindow):
       
     def downPriorityCB(self):
       orderedRequests = db_lib.getOrderedRequestList()
-      for i in range (0,len(orderedRequests)):
+      for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if ((len(orderedRequests)-i) < 3):
             self.bottomPriorityCB()
@@ -1534,7 +1534,7 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server(comm_s)
       
     def drawInteractiveRasterCB(self): # any polygon for now, interactive or from xrec
-      for i in range (0,len(self.polyPointItems)):
+      for i in xrange(len(self.polyPointItems)):
         self.scene.removeItem(self.polyPointItems[i])
       polyPointItems = []
       pen = QtGui.QPen(QtCore.Qt.red)
@@ -1581,7 +1581,7 @@ class controlMain(QtGui.QMainWindow):
       print "filling poly for " + str(rasterReq["request_id"])
       rasterDef = rasterReq["rasterDef"]
       rasterListIndex = 0
-      for i in range (0,len(self.rasterList)):
+      for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
           if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
             rasterListIndex = i
@@ -1591,16 +1591,16 @@ class controlMain(QtGui.QMainWindow):
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
       numLines = sum(1 for line in open(spotfilename))
-      filename_array = ["" for i in range(numLines)]
+      filename_array = ["" for i in xrange(numLines)]
       my_array = np.zeros(numLines)
       spotfile = open(spotfilename,"r")
       spotLineCounter = 0
       cellIndex=0
       rowStartIndex = 0
-      for i in range (0,len(rasterDef["rowDefs"])):
+      for i in xrange(len(rasterDef["rowDefs"])):
         rowStartIndex = spotLineCounter
         numsteps = rasterDef["rowDefs"][i]["numsteps"]
-        for j in range (0,numsteps):
+        for j in xrange(numsteps):
           spotline = spotfile.readline()
           (spotcount_s,filename) = spotline.split()
           spotcount = int(spotcount_s)
@@ -1615,9 +1615,9 @@ class controlMain(QtGui.QMainWindow):
       floor = np.amin(my_array)
       ceiling = np.amax(my_array)
       cellCounter = 0     
-      for i in range (0,len(rasterDef["rowDefs"])):
+      for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
-        for j in range (0,rasterDef["rowDefs"][i]["numsteps"]):
+        for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           spotcount = int(my_array[cellCounter])
           filenameArrayIndex = cellCounter
           cellFilename = filename_array[filenameArrayIndex]
@@ -1665,14 +1665,14 @@ class controlMain(QtGui.QMainWindow):
 
     def eraseCB(self):
       self.click_positions = []
-      for i in range (0,len(self.centeringMarksList)):
+      for i in xrange(len(self.centeringMarksList)):
         self.scene.removeItem(self.centeringMarksList[i]["graphicsItem"])        
       self.centeringMarksList = []
-      for i in range (0,len(self.polyPointItems)):
+      for i in xrange(len(self.polyPointItems)):
         self.scene.removeItem(self.polyPointItems[i])
       self.polyPointItems = []
       if (self.rasterList != []):
-        for i in range (0,len(self.rasterList)):
+        for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
         self.rasterList = []
@@ -1686,19 +1686,19 @@ class controlMain(QtGui.QMainWindow):
 
     def eraseDisplayCB(self): #use this for things like zoom change. This is not the same as getting rid of all rasters.
       if (self.rasterList != []):
-        for i in range (0,len(self.rasterList)):
+        for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
         self.rasterList = []
         return   #short circuit
 #      if (self.vectorPointsList != []):      
-#        for i in range (0,len(self.vectorPointsList)):
+#        for i in xrange(len(self.vectorPointsList)):
 #          self.scene.removeItem(self.vectorPointsList[i])
 #        self.vectorPointsList = []
 #      if (self.polyPointItems != []):      
       if (self.rasterPoly != None):      
         self.scene.removeItem(self.rasterPoly)
-#        for i in range (0,len(self.polyPointItems)):
+#        for i in xrange(len(self.polyPointItems)):
 #          self.scene.removeItem(self.polyPointItems[i])
 #        self.polyPointItems = []
 
@@ -1754,9 +1754,9 @@ class controlMain(QtGui.QMainWindow):
       point_offset_x = -(numsteps_h*stepsize)/2
       point_offset_y = -(numsteps_v*stepsize)/2
       newRasterCellList = []
-      for i in range (0,numsteps_v):
+      for i in xrange(numsteps_v):
         rowCellCount = 0
-        for j in range (0,numsteps_h):
+        for j in xrange(numsteps_h):
           newCellX = point_x+(j*stepsize)+point_offset_x
           newCellY = point_y+(i*stepsize)+point_offset_y
           if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsize/2.0),newCellY+(stepsize/2.0)))):
@@ -1779,7 +1779,7 @@ class controlMain(QtGui.QMainWindow):
       self.drawPolyRaster(newRasterRequest)
 
     def rasterIsDrawn(self,rasterReq):
-      for i in range (0,len(self.rasterList)):
+      for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
           if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
             return True
@@ -1799,9 +1799,9 @@ class controlMain(QtGui.QMainWindow):
       pen = QtGui.QPen(QtCore.Qt.green)
       pen.setStyle(QtCore.Qt.NoPen)
       newRasterCellList = []
-      for i in range (0,len(rasterDef["rowDefs"])):
+      for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
-        for j in range (0,rasterDef["rowDefs"][i]["numsteps"]):
+        for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsize)+daq_utils.screenPixCenterX
           newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+daq_utils.screenPixCenterY
 #          print str(newCellX) + "  " + str(newCellY)
@@ -1817,7 +1817,7 @@ class controlMain(QtGui.QMainWindow):
           rowCellCount = rowCellCount+1 #really just for test of new row
       newItemGroup = rasterGroup(self)
       self.scene.addItem(newItemGroup)
-      for i in range (0,len(newRasterCellList)):
+      for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
       newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
@@ -1836,9 +1836,9 @@ class controlMain(QtGui.QMainWindow):
       pen.setStyle(QtCore.Qt.NoPen)
       newRasterCellList = []
 ###      self.currentRasterCellList = []
-      for i in range (0,len(rasterDef["rowDefs"])):
+      for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
-        for j in range (0,rasterDef["rowDefs"][i]["numsteps"]):
+        for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsize)+daq_utils.screenPixCenterY
           newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+daq_utils.screenPixCenterX
 #          print str(newCellX) + "  " + str(newCellY)
@@ -1855,7 +1855,7 @@ class controlMain(QtGui.QMainWindow):
           rowCellCount = rowCellCount+1
       newItemGroup = rasterGroup(self)
       self.scene.addItem(newItemGroup)
-      for i in range (0,len(newRasterCellList)):
+      for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
 #      newItemGroup.addToGroup(self.rasterPoly)
       newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
@@ -1897,7 +1897,7 @@ class controlMain(QtGui.QMainWindow):
 
     def sceneKey(self, event):
         if (event.key() == QtCore.Qt.Key_Delete or event.key() == QtCore.Qt.Key_Backspace):
-          for i in range (0,len(self.rasterList)):
+          for i in xrange(len(self.rasterList)):
             if (self.rasterList[i] != None):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
                 try:
@@ -1909,7 +1909,7 @@ class controlMain(QtGui.QMainWindow):
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
                 self.rasterList[i] = None
                 self.treeChanged_pv.put(1)
-          for i in range (0,len(self.centeringMarksList)):
+          for i in xrange(len(self.centeringMarksList)):
             if (self.centeringMarksList[i] != None):
               if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
                 self.scene.removeItem(self.centeringMarksList[i]["graphicsItem"])        
@@ -1990,7 +1990,7 @@ class controlMain(QtGui.QMainWindow):
 #      if (centeringOption == "Interactive"):
       if (len(self.centeringMarksList) != 0): 
         selectedCenteringFound = 0
-        for i in range (0,len(self.centeringMarksList)):
+        for i in xrange(len(self.centeringMarksList)):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
              colRequest = db_lib.createDefaultRequest(self.selectedSampleID)
@@ -2160,7 +2160,7 @@ class controlMain(QtGui.QMainWindow):
       selmod = self.dewarTree.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
-#      for i in range (0,len(indexes)):
+#      for i in xrange(len(indexes)):
       i = 0
       item = self.dewarTree.model.itemFromIndex(indexes[i])
 
@@ -2196,7 +2196,7 @@ class controlMain(QtGui.QMainWindow):
         self.selectedSampleRequest = db_lib.getRequest(itemData)
         self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #        if (self.selectedSampleRequest["protocol"] == "raster"): #might want this, problem is that it requires "rasterSelect", and maybe we don't want that.
-#          for i in range (0,len(self.rasterList)):
+#          for i in xrange(len(self.rasterList)):
 #            if (self.rasterList[i] != None):
 #              if (self.rasterList[i]["request_id"] == self.selectedSampleRequest["request_id"]):
 #                self.rasterList[i]["graphicsItem"].setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            

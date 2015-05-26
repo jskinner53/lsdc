@@ -48,7 +48,7 @@ def feedback(motor_code,step_size,counter_number,iterations): #we never use this
   countdwell(.1)
   ri() 
   count_old = CNT[counter]
-  for i in range(0,numloops):
+  for i in xrange(numloops):
     mvr(motor_code,stepsize)
     if (daq_lib.abort_flag):
       return
@@ -74,7 +74,7 @@ def ri():
 
 #  CNT = beamline_support.get_counts(beamline_support.get_count_time())
   local_count = beamline_support.get_counts(beamline_support.get_count_time())  #index0=timer,1=chan2,...
-  for i in range(1,number_of_counter_readouts+1):
+  for i in xrange(1,number_of_counter_readouts+1):
     CNT[i] = local_count[i-1]   
     update_s = "channel %d: %d" % (i,CNT[i])
     daq_utils.broadcast_output(update_s)
@@ -95,7 +95,7 @@ def read_intensity(time_to_count):
   
 #  CNT = beamline_support.get_counts(time_to_count)
   local_count = beamline_support.get_counts(time_to_count)  #index0=timer,1=chan2,...
-  for i in range(1,number_of_counter_readouts+1):
+  for i in xrange(1,number_of_counter_readouts+1):
     CNT[i] = local_count[i-1]       
     update_s = "channel %d: %d" % (i,CNT[i])
     daq_utils.broadcast_output(update_s)
@@ -117,7 +117,7 @@ def get_counts(ctime,count_list):
 
   oldcount = beamline_support.get_count_time()
   CNT = beamline_support.get_counts(ctime)    
-  for i in range(0,len(count_list)):    
+  for i in xrange(len(count_list)):    
     count_list[i] = CNT[i]
   countdwell(oldcount)
 
