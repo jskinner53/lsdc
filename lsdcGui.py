@@ -340,7 +340,8 @@ class DewarTree(QtGui.QTreeView):
                 parentItem.appendRow(item)
 #                samplePos = db_lib.getAbsoluteDewarPosfromSampleID(puckContents[j])  #thinking about comparing this to mountedPin, but maybe want this in the DB instead, not in comm_ioc.
      
-                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
+                if (puckContents[j] == self.parent.selectedSampleID): #looking for the selected item
+#                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
                   selectedSampleIndex = self.model.indexFromItem(item)
               else :
@@ -406,7 +407,8 @@ class DewarTree(QtGui.QTreeView):
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
           item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
           parentItem.appendRow(item)
-          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
+          if (requestedSampleList[i] == self.parent.selectedSampleID): #looking for the selected item
+#          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
           for k in range (0,len(self.orderedRequests)):
@@ -491,6 +493,7 @@ class DewarTree(QtGui.QTreeView):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         selectedSampleRequest = db_lib.getRequest(itemData)
+        self.selectedSampleID = selectedSampleRequest["sample_id"]
         db_lib.deleteRequest(selectedSampleRequest)
         if (selectedSampleRequest["protocol"] == "raster"):
           for i in range (0,len(self.parent.rasterList)):
@@ -649,6 +652,7 @@ class controlMain(QtGui.QMainWindow):
         self.dewarTreeFrame = QFrame()
         vBoxDFlayout= QtGui.QVBoxLayout()
         self.selectedSampleRequest = {}
+        self.selectedSampleID = -1
         self.dewarTree   = DewarTree(self)
 #        self.connect(self.dewarTree.model, QtCore.SIGNAL('dataChanged(QModelIndex,QModelIndex)'), self.tree_changed)
         QtCore.QObject.connect(self.dewarTree, QtCore.SIGNAL("clicked (QModelIndex)"),self.row_clicked)
@@ -1354,6 +1358,7 @@ class controlMain(QtGui.QMainWindow):
           self.drawPolyRaster(rasterReq)
         elif (rasterDef["status"] == 2):        
           self.fillPolyRaster(rasterReq)
+          self.selectedSampleID = rasterReq["sample_id"]
           db_lib.deleteRequest(rasterReq)
           self.treeChanged_pv.put(1) #not sure about this
         elif (rasterDef["status"] == 3):        
@@ -1519,8 +1524,8 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server("loop_center_xrec()")
       
     def autoRasterLoopCB(self):
-      selectedSampleID = self.selectedSampleRequest["sample_id"]
-      comm_s = "autoRasterLoop(" + str(selectedSampleID) + ")"
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+      comm_s = "autoRasterLoop(" + str(self.selectedSampleID) + ")"
       self.send_to_server(comm_s)
 #      self.send_to_server("autoRasterLoop()")
 
@@ -1762,12 +1767,12 @@ class controlMain(QtGui.QMainWindow):
         if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
           newRowDef = {"start":{"x": self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}
           rasterDef["rowDefs"].append(newRowDef)
-      selectedSampleID = self.selectedSampleRequest["sample_id"]
-      tempnewRasterRequest = db_lib.createDefaultRequest(selectedSampleID)
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+      tempnewRasterRequest = db_lib.createDefaultRequest(self.selectedSampleID)
       tempnewRasterRequest["protocol"] = "raster"
       tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
 #      db_lib.updateRequest(newRasterRequest)
-      newRasterRequest =db_lib.addRequesttoSample(selectedSampleID,tempnewRasterRequest)
+      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,tempnewRasterRequest)
       self.treeChanged_pv.put(1)      
 #      db_lib.addRaster(rasterDef)
       self.rasterDefList.append(newRasterRequest)
@@ -1896,7 +1901,9 @@ class controlMain(QtGui.QMainWindow):
             if (self.rasterList[i] != None):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
                 try:
-                  db_lib.deleteRequest(db_lib.getRequest(self.rasterList[i]["request_id"]))
+                  sceneReq = db_lib.getRequest(self.rasterList[i]["request_id"])
+                  self.selectedSampleID = sceneReq["sample_id"]
+                  db_lib.deleteRequest(sceneReq)
                 except AttributeError:
                   pass
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
@@ -1978,7 +1985,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addSampleRequestCB(self):
-      selectedSampleID = self.selectedSampleRequest["sample_id"]
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #      centeringOption = str(self.centeringComboBox.currentText())
 #      if (centeringOption == "Interactive"):
       if (len(self.centeringMarksList) != 0): 
@@ -1986,7 +1993,7 @@ class controlMain(QtGui.QMainWindow):
         for i in range (0,len(self.centeringMarksList)):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
-             colRequest = db_lib.createDefaultRequest(selectedSampleID)
+             colRequest = db_lib.createDefaultRequest(self.selectedSampleID)
              colRequest["sweep_start"] = float(self.osc_start_ledit.text())
              colRequest["sweep_end"] = float(self.osc_end_ledit.text())
              colRequest["img_width"] = float(self.osc_range_ledit.text())
@@ -2005,7 +2012,7 @@ class controlMain(QtGui.QMainWindow):
              colRequest["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
              colRequest["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
              colRequest["pos_z"] = float(self.centeringMarksList[i]["sampCoords"]["z"])
-             newSampleRequest = db_lib.addRequesttoSample(selectedSampleID,colRequest)
+             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -2030,7 +2037,7 @@ class controlMain(QtGui.QMainWindow):
         colRequest["wavelength"] = wave
         colRequest["protocol"] = str(self.protoComboBox.currentText())
 #        print colRequest
-        newSampleRequest = db_lib.addRequesttoSample(selectedSampleID,colRequest)
+        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
 #        db_lib.updateRequest(colRequest)
 #      self.eraseCB()
       self.treeChanged_pv.put(1)
@@ -2104,8 +2111,8 @@ class controlMain(QtGui.QMainWindow):
 
     def mountSampleCB(self):
       print "mount selected sample"
-      selectedSampleID = self.selectedSampleRequest["sample_id"]
-      dewarPos = db_lib.getAbsoluteDewarPosfromSampleID(selectedSampleID)
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+      dewarPos = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
       self.send_to_server("mountSample("+str(dewarPos)+")")
 
     def unmountSampleCB(self):
@@ -2177,6 +2184,7 @@ class controlMain(QtGui.QMainWindow):
       elif (itemData< -100):
         print "sample in pos " + str(itemData) 
         self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
+        self.selectedSampleID = self.selectedSampleRequest["sample_id"]        
         self.refreshCollectionParams(self.selectedSampleRequest)
         if (self.vidActionRasterDefRadio.isChecked()):
 #          self.selectedSampleRequest["protocol"] = "raster"
@@ -2186,6 +2194,7 @@ class controlMain(QtGui.QMainWindow):
     
       else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
+        self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #        if (self.selectedSampleRequest["protocol"] == "raster"): #might want this, problem is that it requires "rasterSelect", and maybe we don't want that.
 #          for i in range (0,len(self.rasterList)):
 #            if (self.rasterList[i] != None):
