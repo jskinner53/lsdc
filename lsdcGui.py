@@ -1,5 +1,4 @@
 #!/usr/bin/python
-#foo
 import sys
 import os
 import string
