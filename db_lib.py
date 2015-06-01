@@ -25,12 +25,12 @@ db_name = 'tmp_mongo_junk_from_db_lib'
 host = socket.gethostname()
 client = os.getenv('SSH_CLIENT')
 
-if host == 'fluke.nsls2.bnl.gov':
+if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
     db_host = 'lsbr-dev'
     #if not client:
     db_name = 'john_mongo'
 
-elif host == 'gisele':
+elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
 
