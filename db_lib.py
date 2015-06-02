@@ -242,12 +242,12 @@ def _ret_list(objects, as_mongo_obj=False):
 
 def getContainers(as_mongo_obj=False): 
     c = Container.objects()
-    _ret_list(c, as_mongo_obj=as_mongo_obj)
+    return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
     c = Container.objects(type_name=type_name)
-    _ret_list(c, as_mongo_obj=as_mongo_obj)
+    return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getAllPucks(as_mongo_obj=False):
