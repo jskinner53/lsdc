@@ -308,19 +308,48 @@ def getQueue():
     # try to only retrieve what we need...
     # Use .first() instead of [0] here because when the query returns nothing,
     # .first() returns None while [0] generates an IndexError
-    items = Container.objects(containerName='primaryDewar2').only('item_list').get()
+    # Nah... [0] is faster and catch Exception...
+    try:
+        items = Container.objects(containerName='primaryDewar2').only('item_list')[0]
+    except IndexError:
+        raise ValueError('could not find container: "{0}"!'.format('primaryDewar2'))
+
     for item_id in items.item_list:
         if item_id is not None:
-            puck = Container.objects(container_id=item_id).only('item_list').get()
+            try:
+                puck = Container.objects(container_id=item_id).only('item_list')[0]
+            except IndexError:
+                raise ValueError('could not find container id: "{0}"!'.format(item_id))
+
             for sample_id in puck.item_list:
                 if sample_id is not None:
                     #print "sample ID = " + str(sample_id)
                     # If we don't request sample_id it gets set to the next id in the sequence!?
                     # maybe that doesn't matter if we don't use or return it?
-                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').get()
-                    for request in sampleObj.requestList:
-                        if request is not None:
-                            ret_list.append(request.to_mongo())
+                    try:
+                        sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id')[0]
+                    except IndexError:
+                        raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
+
+#                    # stick this in try/except too....
+#                    if sampleObj.requestList is None:
+#                        print sampleObj.to_mongo()
+#                    else:
+#                        for request in sampleObj.requestList:
+#                            if request is not None:
+#                                #yield request.to_mongo()
+#                                ret_list.append(request.to_mongo())
+
+                    try:
+                        for request in sampleObj.requestList:
+                            try:
+                                #yield request.to_mongo()
+                                ret_list.append(request.to_mongo())
+                            except AttributeError:
+                                pass
+                    except TypeError:
+                        print sampleObj.to_mongo()
+
     return ret_list
 
 
