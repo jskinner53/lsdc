@@ -348,6 +348,7 @@ def getQueue():
                     try:
                         for request in sampleObj.requestList:
                             try:
+                                # testing shows generator version is the same speed?
                                 #yield request.to_mongo()
                                 ret_list.append(request.to_mongo())
                             except AttributeError:
@@ -439,7 +440,7 @@ def updateRequest(reqObj):
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
 
     for req in sample.requestList:
-        if req is not None:
+        if req is not None:  # when would it ever be None?
             try:
                 if reqObj["request_id"] == req.request_id:
                     updated_req = Request(**reqObj)
