@@ -131,7 +131,21 @@ def createSample(sampleName):
     return s.sample_id
 
 
-def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
+def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, dict_key):
+    try:
+        return query_set.only(dict_key)[0].to_mongo()[dict_key]
+
+    except IndexError:
+        raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
+                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+
+    except KeyError:
+        raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
+                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+
+
+def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, as_mongo_obj=False, dict_key=None):
     # this name isn't right anymore... 
 
@@ -143,15 +157,9 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
             raise ValueError('failed to find {obj} with {attr}={val}'.format(
                     obj=obj_type_str, attr=search_key_str, val=search_key_val))
 
-    if dict_key is None:
-        try:
-            return query_set[0].to_mongo()
-        except IndexError:
-            raise ValueError('failed to find {obj} with {attr}={val}'.format(
-                    obj=obj_type_str, attr=search_key_str, val=search_key_val))
-
     try:
-        return query_set.only(dict_key)[0].to_mongo()[dict_key]
+        return query_set.only(dict_key)[0].to_mongo()
+
     except IndexError:
         raise ValueError('failed to find {obj} with {attr}={val}'.format(
                 obj=obj_type_str, attr=search_key_str, val=search_key_val))
@@ -163,7 +171,7 @@ def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
 
 def getSampleByID(sample_id, as_mongo_obj=False):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, None,
+    return _try0_maybe_mongo(s, 'sample', 'sample_id', sample_id, None,
                            as_mongo_obj=as_mongo_obj)
 
 
@@ -171,25 +179,25 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 
 def getSampleIDbyName(sample_name):
     s = Sample.objects(sampleName=sample_name)
-    return _check_only_one(s, 'sample', 'sampleName', sample_name, -99, 
+    return _try0_dict_key(s, 'sample', 'sampleName', sample_name, -99, 
                            dict_key='sample_id')
 
 
 def getSampleNamebyID(sample_id):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, -99,
+    return _try0_dict_key(s, 'sample', 'sample_id', sample_id, -99,
                            dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
     c = Container.objects(containerName=container_name)
-    return _check_only_one(c, 'container', 'containerName', container_name,
+    return _try0_dict_key(c, 'container', 'containerName', container_name,
                            -99, dict_key='container_id')
 
 
 def getContainerNameByID(container_id):
     c = Container.objects(container_id=container_id)
-    return _check_only_one(c, 'container', 'container_id', container_id, '',
+    return _try0_dict_key(c, 'container', 'container_id', container_id, '',
                            dict_key='containerName')
 
 
@@ -260,13 +268,13 @@ def getPrimaryDewar(as_mongo_obj=False):
 
 def getContainerByName(container_name, as_mongo_obj=False): 
     c = Container.objects(containerName=container_name)
-    return _check_only_one(c, 'container', 'containerName', container_name,
+    return _try0_maybe_mongo(c, 'container', 'containerName', container_name,
                            None, as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByID(container_id, as_mongo_obj=False): 
     c = Container.objects(container_id=container_id)
-    return _check_only_one(c, 'container', 'container_id', container_id,
+    return _try0_maybe_mongo(c, 'container', 'container_id', container_id,
                            None, as_mongo_obj=as_mongo_obj)
 
 
@@ -390,9 +398,12 @@ def popNextRequest():
 def getRequest(reqID):  # need to get this from searching the dewar I guess
     r_id = int(reqID)
 
+    # It's faster to get the mongo obj and only .to_mongo() convert the 
+    # desired request then the opposite.
+    # Maybe with mongov9 a query can return only a specific list entry?
     sample = Sample.objects(requestList__request_id=reqID).only('requestList')
-    req_list = _check_only_one(sample, 'request', 'request_id', reqID, None,
-                               as_mongo_obj=True, dict_key='requestList').requestList
+    req_list = _try0_maybe_mongo(sample, 'request', 'request_id', reqID, None,
+                               as_mongo_obj=True).requestList
     
     for req in req_list:
         if req.request_id == r_id:
