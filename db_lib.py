@@ -80,9 +80,6 @@ def clearRasters():
 
 
 def getNextRunRaster(updateFlag=1):
-    retRaster = None
-
-    # would it be better to skip the loop entirely by using .first(), and check for None?
     try:
         rast = Raster.objects(status=0)[0]
     except IndexError:
