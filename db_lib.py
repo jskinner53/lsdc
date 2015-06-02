@@ -411,12 +411,12 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
     return None
 
 
-def getAllSamples():
-    return [s.to_mongo() for s in Sample.objects()]
-
-
-# update{Sample,Container} aren't needed at the moment...    
+# getAllSamples and update{Sample,Container} aren't used at the moment...
     
+#def getAllSamples():
+#    return [s.to_mongo() for s in Sample.objects()]
+
+
 #def updateSample(sampleObj):
 #    samp_id = sampleObj['sample_id']
 #
