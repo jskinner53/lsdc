@@ -255,6 +255,19 @@ def runChooch():
 # need to be able to pause/abort this at any time
 
 
+def mountSample(pos):
+  currentMountedSamplePos = get_field("mounted_pin")
+  if (pos!=currentMountedSamplePos):
+    robot_lib.unmountRobotSample(currentMountedSamplePos)
+    robot_lib.mountRobotSample(pos)
+    set_field("mounted_pin",pos)
+
+def unmountSample():
+  currentMountedSamplePos = get_field("mounted_pin")
+  robot_lib.unmountRobotSample(currentMountedSamplePos)
+  set_field("mounted_pin",-99)
+
+
 def runDCQueue(): #maybe don't run rasters from here???
   global abort_flag
 
@@ -267,12 +280,12 @@ def runDCQueue(): #maybe don't run rasters from here???
     if (currentRequest == {}):
       break
     sampleID = currentRequest["sample_id"]
-    samplePos = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
+    (samplePos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
     print str(sampleID) + " in " + str(samplePos)
     if (get_field("mounted_pin") != samplePos):
-      robot_lib.unmountSample()
-      robot_lib.mountSample(samplePos)
-      set_field("mounted_pin",samplePos)
+#      robot_lib.unmountSample()
+      mountSample(samplePos)
+#      set_field("mounted_pin",samplePos)
     currentRequest["priority"] = -999
     db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
@@ -418,7 +431,8 @@ def take_crystal_picture(filename,czoom=0):
   zoom = int(czoom)
   if not (daq_utils.has_xtalview):
     return
-  if (daq_utils.xtalview_user == "None"):
+#  if (daq_utils.xtalview_user == "None"):
+  if (1):
 #    comm_s = "lynx -source %s > %s.jpg" % (xtal_url,filename)
     if (zoom==0):
       comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url)

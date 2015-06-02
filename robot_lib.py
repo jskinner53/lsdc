@@ -1,13 +1,14 @@
 #this will evolve for the staubli. Will need to know currently mounted sample. Will need to store this in the db.
 import staubliEpicsLib
 
+
 global method_pv,var_pv
 
-def mountSample(pos):
+def mountRobotSample(pos):
   print "mounting " + str(pos)
 
-def unmountSample(): #will somehow know where it came from
-  print "unmount to "
+def unmountRobotSample(pos): #will somehow know where it came from
+  print "unmount to " + str(pos)
 
 def initStaubliControl():
   global method_pv,var_pv

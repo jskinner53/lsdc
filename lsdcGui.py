@@ -314,22 +314,29 @@ class DewarTree(QtGui.QTreeView):
 
     def refreshTreeDewarView(self):
         selectedIndex = None
+        mountedIndex = None
         selectedSampleIndex = None
+        puck = None
         collectionRunning = False
         self.model.clear()
         dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
         self.sampleRequests = db_lib.getQueue()
-        for i in range (0,len(dewarContents)): #dewar contents is the list of pucks
+        for i in range (0,len(dewarContents)): #dewar contents is the list of puck IDs
           parentItem = self.model.invisibleRootItem()
           if (dewarContents[i]==None):
+            puck = None
             puckName = ""
           else:
-            puckName = db_lib.getContainerNameByID(dewarContents[i])
+            puck = db_lib.getContainerByID(dewarContents[i])
+            puckName = puck["containerName"]
+#            puckName = db_lib.getContainerNameByID(dewarContents[i])
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(str(i+1) + " " + puckName))
           parentItem.appendRow(item)
           parentItem = item
-          if (puckName != ""):
-            puckContents = db_lib.getContainerByID(dewarContents[i])["item_list"]
+          if (puck != None):
+            puckContents = puck["item_list"]
+#            puckContents = db_lib.getContainerByID(dewarContents[i])["item_list"]
+            puckSize = len(puckContents)
             for j in range (0,len(puckContents)):#should be the list of samples
               if (puckContents[j] != None):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
@@ -337,9 +344,28 @@ class DewarTree(QtGui.QTreeView):
                 item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
 #                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
 #                item.setCheckState(Qt.Unchecked)
+
+
+#this block of code was an attempt to color the currently mounted sample. It's too slow b/c of the db line
+#                samplePos = db_lib.getAbsoluteDewarPosfromSampleID(puckContents[j])  #thinking about comparing this to mountedPin, but maybe want this in the DB instead, not in comm_ioc. (SLOW!)
+#                if (samplePos == self.parent.mountedPin_pv.get()): #might slow stuff down? - NO, it is plenty fast
+#                  item.setBackground(QtGui.QColor('yellow'))       #WTF - why does it then call queueSelected???? - it's caused by setting color before it's added to the parent, somehow it triggered "itemChanged"
+#                else:
+#                  item.setBackground(QtGui.QColor('white'))                       
+#works as below, just calculate the dewarPos
+
+                samplePos = int((i*puckSize)+j)
+                if (samplePos == self.parent.mountedPin_pv.get()):
+                  item.setBackground(QtGui.QColor('yellow'))       
+                else:
+                  item.setBackground(QtGui.QColor('white'))                       
+
+
                 parentItem.appendRow(item)
-#                samplePos = db_lib.getAbsoluteDewarPosfromSampleID(puckContents[j])  #thinking about comparing this to mountedPin, but maybe want this in the DB instead, not in comm_ioc.
-     
+                if (samplePos == self.parent.mountedPin_pv.get()):
+                  mountedIndex = self.model.indexFromItem(item)
+
+
                 if (puckContents[j] == self.parent.selectedSampleID): #looking for the selected item
 #                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
@@ -380,6 +406,11 @@ class DewarTree(QtGui.QTreeView):
           print "selectedSampleIndex = " + str(selectedSampleIndex)
           self.setCurrentIndex(selectedSampleIndex)
           self.parent.row_clicked(selectedSampleIndex)
+        elif (selectedSampleIndex == None and collectionRunning == False):
+          if (mountedIndex != None):
+            self.setCurrentIndex(mountedIndex)
+        else:
+          pass
         if (selectedIndex != None and collectionRunning == False):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
@@ -390,6 +421,7 @@ class DewarTree(QtGui.QTreeView):
     def refreshTreePriorityView(self): #"item" is a sample, "col_items" are requests which are children of samples.
         collectionRunning = False
         selectedIndex = None
+        mountedIndex = None
         selectedSampleIndex = None
         self.model.clear()
         self.orderedRequests = db_lib.getOrderedRequestList()
@@ -401,12 +433,20 @@ class DewarTree(QtGui.QTreeView):
             requestedSampleList.append(self.orderedRequests[i]["sample_id"])
         for i in range (0,len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
-          (containerID,samplePositionInContainer) = db_lib.getDewarPosfromSampleID(requestedSampleList[i])
+          (absDewarPos,containerID,samplePositionInContainer) = db_lib.getAbsoluteDewarPosfromSampleID(requestedSampleList[i])
+       
           containerName = db_lib.getContainerNameByID(containerID)
           nodeString = QtCore.QString(str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
           item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
+          if (absDewarPos == self.parent.mountedPin_pv.get()):
+            item.setBackground(QtGui.QColor('yellow'))       
+          else:
+            item.setBackground(QtGui.QColor('white'))                       
+
           parentItem.appendRow(item)
+          if (absDewarPos == self.parent.mountedPin_pv.get()):
+            mountedIndex = self.model.indexFromItem(item)
           if (requestedSampleList[i] == self.parent.selectedSampleID): #looking for the selected item
 #          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
@@ -438,6 +478,12 @@ class DewarTree(QtGui.QTreeView):
         if (selectedSampleIndex != None and collectionRunning == False):
           self.setCurrentIndex(selectedSampleIndex)
           self.parent.row_clicked(selectedSampleIndex)
+        elif (selectedSampleIndex == None and collectionRunning == False):
+          if (mountedIndex != None):
+            self.setCurrentIndex(mountedIndex)
+        else:
+          pass
+
         if (selectedIndex != None and collectionRunning == False):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
@@ -808,14 +854,32 @@ class controlMain(QtGui.QMainWindow):
         self.rasterParamsFrame = QFrame()
         self.hBoxRasterLayout1= QtGui.QHBoxLayout()        
         self.hBoxRasterLayout1.setAlignment(QtCore.Qt.AlignLeft) 
-        rasterStepLabel = QtGui.QLabel('Raster Step (microns)')
-        rasterStepLabel.setFixedWidth(120)
+        rasterStepLabel = QtGui.QLabel('Raster Step')
+        rasterStepLabel.setFixedWidth(100)
         self.rasterStepEdit = QtGui.QLineEdit("30")
         self.rasterStepEdit.setFixedWidth(60)
+
+        self.rasterGrainRadioGroup=QtGui.QButtonGroup()
+        self.rasterGrainCoarseRadio = QtGui.QRadioButton("Coarse")
+        self.rasterGrainCoarseRadio.setChecked(False)
+        self.rasterGrainCoarseRadio.toggled.connect(functools.partial(self.rasterGrainToggledCB,"Coarse"))
+        self.rasterGrainRadioGroup.addButton(self.rasterGrainCoarseRadio)
+        self.rasterGrainFineRadio = QtGui.QRadioButton("Fine")
+        self.rasterGrainFineRadio.setChecked(False)
+        self.rasterGrainFineRadio.toggled.connect(functools.partial(self.rasterGrainToggledCB,"Fine"))
+        self.rasterGrainRadioGroup.addButton(self.rasterGrainFineRadio)
+        self.rasterGrainCustomRadio = QtGui.QRadioButton("Custom")
+        self.rasterGrainCustomRadio.setChecked(True)
+        self.rasterGrainCustomRadio.toggled.connect(functools.partial(self.rasterGrainToggledCB,"Custom"))
+        self.rasterGrainRadioGroup.addButton(self.rasterGrainCustomRadio)
+
 #        self.rasterStepEdit.setAlignment(QtCore.Qt.AlignLeft) 
         self.hBoxRasterLayout1.addWidget(rasterStepLabel)
 #        self.hBoxRasterLayout1.addWidget(self.rasterStepEdit.getEntry())
         self.hBoxRasterLayout1.addWidget(self.rasterStepEdit)
+        self.hBoxRasterLayout1.addWidget(self.rasterGrainCoarseRadio)
+        self.hBoxRasterLayout1.addWidget(self.rasterGrainFineRadio)
+        self.hBoxRasterLayout1.addWidget(self.rasterGrainCustomRadio)
         self.rasterParamsFrame.setLayout(self.hBoxRasterLayout1)
         self.characterizeParamsFrame = QFrame()
         vBoxCharacterizeParams1 = QtGui.QVBoxLayout()
@@ -1132,6 +1196,22 @@ class controlMain(QtGui.QMainWindow):
         self.tabs.addTab(self.XRFTab,"XRF Spectrum")
 
 
+    def rasterGrainToggledCB(self,identifier):
+      if (identifier == "Coarse"):
+        if (self.rasterGrainCoarseRadio.isChecked()):
+          cellSize = 30
+          self.rasterStepEdit.setText(str(cellSize))
+          self.beamWidth_ledit.setText(str(cellSize))
+      elif (identifier == "Fine"):
+        if (self.rasterGrainFineRadio.isChecked()):
+          cellSize = 10
+          self.rasterStepEdit.setText(str(cellSize))
+          self.beamWidth_ledit.setText(str(cellSize))
+      else:
+        pass
+
+
+
     def vidActionToggledCB(self):
       if (len(self.rasterList) > 0):
    
@@ -1366,6 +1446,10 @@ class controlMain(QtGui.QMainWindow):
         else:
           pass
 
+
+    def processMountedPin(self,mountedPinPos):
+      print "in callback mounted pin = " + str(mountedPinPos)
+      self.treeChanged_pv.put(1)
 
 
     def processChoochResult(self,choochResultFlag):
@@ -1767,12 +1851,17 @@ class controlMain(QtGui.QMainWindow):
         if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
           newRowDef = {"start":{"x": self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}
           rasterDef["rowDefs"].append(newRowDef)
+      self.addSampleRequestCB(rasterDef)
+      return #short circuit
       self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-      tempnewRasterRequest = db_lib.createDefaultRequest(self.selectedSampleID)
-      tempnewRasterRequest["protocol"] = "raster"
-      tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+###      tempnewRasterRequest = db_lib.createDefaultRequest(self.selectedSampleID)
+###      tempnewRasterRequest["protocol"] = "raster"
+###      tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+      self.selectedSampleRequest["protocol"] = "raster"
+      self.selectedSampleRequest["rasterDef"] = rasterDef
 #      db_lib.updateRequest(newRasterRequest)
-      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,tempnewRasterRequest)
+      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,self.selectedSampleRequest)
+###      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,tempnewRasterRequest)
       self.treeChanged_pv.put(1)      
 #      db_lib.addRaster(rasterDef)
       self.rasterDefList.append(newRasterRequest)
@@ -1984,7 +2073,7 @@ class controlMain(QtGui.QMainWindow):
 #      self.dewarTree.refreshTree()
 
 
-    def addSampleRequestCB(self):
+    def addSampleRequestCB(self,rasterDef=None):
       self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #      centeringOption = str(self.centeringComboBox.currentText())
 #      if (centeringOption == "Interactive"):
@@ -2037,7 +2126,13 @@ class controlMain(QtGui.QMainWindow):
         colRequest["wavelength"] = wave
         colRequest["protocol"] = str(self.protoComboBox.currentText())
 #        print colRequest
+        if (rasterDef != None):
+          colRequest["rasterDef"] = rasterDef
+          colRequest["gridStep"] = float(self.rasterStepEdit.text())
         newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
+        if (rasterDef != None):
+          self.rasterDefList.append(newSampleRequest)
+          self.drawPolyRaster(newSampleRequest)
 #        db_lib.updateRequest(colRequest)
 #      self.eraseCB()
       self.treeChanged_pv.put(1)
@@ -2112,11 +2207,12 @@ class controlMain(QtGui.QMainWindow):
     def mountSampleCB(self):
       print "mount selected sample"
       self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-      dewarPos = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
+      (dewarPos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
       self.send_to_server("mountSample("+str(dewarPos)+")")
 
     def unmountSampleCB(self):
       print "unmount sample"
+      self.send_to_server("unmountSample()")
 
 #not used yet
     def tree_changed(self, topLeft, bottomRight):
@@ -2223,6 +2319,10 @@ class controlMain(QtGui.QMainWindow):
       if (choochFlag > 0):
         self.emit(QtCore.SIGNAL("choochResultSignal"),choochFlag)
 
+    def mountedPinChangedCB(self,value=None, char_value=None, **kw):
+      mountedPinPos = value
+      self.emit(QtCore.SIGNAL("mountedPinSignal"),mountedPinPos)
+
     def processSampMoveCB(self,value=None, char_value=None, **kw):
       posRBV = value
       motID = kw["motID"]
@@ -2276,9 +2376,9 @@ class controlMain(QtGui.QMainWindow):
       self.treeChanged_pv = PV(daq_utils.beamline + "_comm:live_q_change_flag")
       self.connect(self, QtCore.SIGNAL("refreshTreeSignal"),self.dewarTree.refreshTree)
       self.treeChanged_pv.add_callback(self.treeChangedCB)  
-#      self.mountedPin_pv = PV(daq_utils.beamline + "_comm:mounted_pin")
-#      self.connect(self, QtCore.SIGNAL("mountedPinSignal"),self.processMountedPin)
-#      self.mountedPin_pv.add_callback(self.mountedPinChangedCB)  
+      self.mountedPin_pv = PV(daq_utils.beamline + "_comm:mounted_pin")
+      self.connect(self, QtCore.SIGNAL("mountedPinSignal"),self.processMountedPin)
+      self.mountedPin_pv.add_callback(self.mountedPinChangedCB)  
       self.choochResultFlag_pv = PV(daq_utils.beamline + "_comm:choochResultFlag")
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
       self.choochResultFlag_pv.add_callback(self.processChoochResultsCB)  

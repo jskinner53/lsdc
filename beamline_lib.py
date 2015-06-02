@@ -9,7 +9,7 @@ from CaChannel import *
 import daq_utils
 import daq_lib
 import daq_macros
-import plot_lib2
+#import plot_lib2
 import math
 from element_info import *
 import beamline_support
