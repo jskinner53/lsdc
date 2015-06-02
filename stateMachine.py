@@ -31,7 +31,7 @@ is_first = 1
 def getCurrentState():
   global beamlineStateChannel
 
-  for i in range (1,len(stateDefinitions)): #skipping maintenance for now
+  for i in xrange(1,len(stateDefinitions)): #skipping maintenance for now
     stateTest = 1
     for key in stateDefinitions[i]["stateDef"].keys():
       high = stateDefinitions[i]["stateDef"][key]["low"]
@@ -51,7 +51,7 @@ def getCurrentState():
 def gotoState(stateName):
   print "trying to go to " + stateName
   machineState = getCurrentState()
-  for i in range (0,len(machineState["safeTransitions"])):
+  for i in xrange(len(machineState["safeTransitions"])):
     if (machineState["safeTransitions"][i]["stateName"] == stateName):
       print "OK to transition"
       print machineState["safeTransitions"][i]['transitionProc']
@@ -121,7 +121,7 @@ def  process_input(s):
     else:
       if (len(input_tokens)>0):
         command_string = "%s(" % input_tokens[0]
-        for i in range(1,len(input_tokens)):
+        for i in xrange(1,len(input_tokens)):
           command_string = command_string + "\"" + input_tokens[i] + "\""
           if (i != (len(input_tokens)-1)):
             command_string = command_string + ","

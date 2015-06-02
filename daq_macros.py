@@ -26,7 +26,7 @@ def flipLoopShapeCoords(filename): # not used
   tokens = string.split(resultLine)
   numpoints = int(tokens[0])
   points = []
-  for i in range (1,len(tokens)-1,2):
+  for i in xrange(1,len(tokens)-1,2):
     point = [tokens[i],tokens[i+1]]
     correctedPoint = [daq_utils.screenPixX-int(tokens[i]),daq_utils.screenPixY-int(tokens[i+1])]
   xrec_out_file.close() 
@@ -47,7 +47,7 @@ def loop_center_xrec():
   global face_on
 
   daq_lib.abort_flag = 0    
-  for i in range(0,360,40):
+  for i in xrange(360,40):
     if (daq_lib.abort_flag == 1):
       return 0
     mva("Omega",i)
@@ -116,7 +116,7 @@ def generateGridMap(rasterDef):
   grid_map_file = open("raster_map.txt","w+")
   grid_spots_file = open("raster_spots.txt","w+")
   filePrefix = "raster" #for now
-  for i in range (0,len(rasterDef["rowDefs"])):
+  for i in xrange(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
       startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
@@ -130,7 +130,7 @@ def generateGridMap(rasterDef):
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     xMotAbsoluteMove = yxRelativeMove+rasterStartX
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    for j in range (0,numsteps):
+    for j in xrange(numsteps):
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
         zMotCellAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
       else:
@@ -155,7 +155,7 @@ def generateSingleColumnGridMap(rasterDef):
   grid_map_file = open("raster_map.txt","w+")
   grid_spots_file = open("raster_spots.txt","w+")
   filePrefix = "columnRaster" #for now
-  for i in range (0,len(rasterDef["rowDefs"])):
+  for i in xrange(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
     startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
@@ -166,7 +166,7 @@ def generateSingleColumnGridMap(rasterDef):
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     xMotAbsoluteMove = yxRelativeMove+rasterStartX
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    for j in range (0,numsteps):
+    for j in xrange(numsteps):
       yxRelativeMove = stepsize*sin(omegaRad)
       yyRelativeMove = -stepsize*cos(omegaRad)
       xMotCellAbsoluteMove = xMotAbsoluteMove+(j*yxRelativeMove)
@@ -189,7 +189,7 @@ def columnRasterNOTUSED(): #3/10/15 - not used yet, raster would need to be defi
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-  for i in range (0,len(rasterDef["rowDefs"])):
+  for i in xrange(len(rasterDef["rowDefs"])):
     rowCellCount = 0
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
@@ -272,7 +272,7 @@ def snakeRaster(rasterReqID,grain=""):
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-  for i in range (0,len(rasterDef["rowDefs"])):
+  for i in xrange(len(rasterDef["rowDefs"])):
     rowCellCount = 0
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
@@ -426,7 +426,7 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
   numsteps_v = int(raster_h/stepsize) #the numsteps is decided in code, so is already odd
   point_offset_x = -(numsteps_h*stepsize)/2.0
   point_offset_y = -(numsteps_v*stepsize)/2.0
-  for i in range (0,numsteps_v):
+  for i in xrange(numsteps_v):
     newRowDef = {"start":{"x": point_offset_x,"y":point_offset_y+(i*stepsize)},"numsteps":numsteps_h}
     rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
@@ -459,9 +459,9 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
     numsteps_v = numsteps_v + 1
   point_offset_x = -(numsteps_h*stepsize)/2
   point_offset_y = -(numsteps_v*stepsize)/2
-  for i in range (0,numsteps_v):
+  for i in xrange(numsteps_v):
     rowCellCount = 0
-    for j in range (0,numsteps_h):
+    for j in xrange(numsteps_h):
       newCellX = point_x+(j*stepsize)+point_offset_x
       newCellY = point_y+(i*stepsize)+point_offset_y
       if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsize/2.0),newCellY+(stepsize/2.0)))):
@@ -490,7 +490,7 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
 
 def getXrecLoopShape(sampleID):
   beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
-  for i in range(0,4):
+  for i in xrange(4):
     if (daq_lib.abort_flag == 1):
       return 0
     mvr("Omega",i*30)
@@ -511,7 +511,7 @@ def getXrecLoopShape(sampleID):
   xrec_out_file.close() 
   tokens = string.split(resultLine)
   numpoints = int(tokens[0])
-  for i in range (1,len(tokens)-1,2):
+  for i in xrange(1,len(tokens)-1,2):
     point = [tokens[i],tokens[i+1]]
     correctedPoint = [daq_utils.screenPixX-int(tokens[i]),daq_utils.screenPixY-int(tokens[i+1])] 
     polyPoint = QtCore.QPointF(float(correctedPoint[0]),float(correctedPoint[1]))
@@ -529,7 +529,7 @@ def getXrecLoopShape(sampleID):
 
 def vectorScan(numPoints_s): #bogus for now until we figure out what we want
   numPoints = int(numPoints_s)
-  for i in range (0,numPoints+1):
+  for i in xrange(numPoints+1):
     vector_move(float(i)*(100.0/float(numPoints))/100.0)
 #    time.sleep(.1)
 
