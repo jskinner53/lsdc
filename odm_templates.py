@@ -2,10 +2,10 @@ from mongoengine import (DynamicDocument, DynamicEmbeddedDocument)
 from mongoengine import (SequenceField, ListField, EmbeddedDocumentField) 
 import mongoengine
 
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 args_dict = {}
-if StrictVersion(mongoengine.__version__) > StrictVersion('0.7.0'):
+if LooseVersion(mongoengine.__version__) >= LooseVersion('0.7.0'):
     args_dict['sequence_name'] = 'None'
 
 

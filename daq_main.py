@@ -79,7 +79,7 @@ def process_command_file(command_file_name):
       input_tokens = string.split(command)
       if (len(input_tokens)>0):
         command_string = "%s(" % input_tokens[0]
-        for i in range(1,len(input_tokens)):
+        for i in xrange(1,len(input_tokens)):
           command_string = command_string + "\"" + input_tokens[i] + "\""
           if (i != (len(input_tokens)-1)):
             command_string = command_string + ","

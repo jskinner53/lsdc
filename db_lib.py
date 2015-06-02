@@ -25,12 +25,12 @@ db_name = 'tmp_mongo_junk_from_db_lib'
 host = socket.gethostname()
 client = os.getenv('SSH_CLIENT')
 
-if host == 'fluke.nsls2.bnl.gov':
+if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
     db_host = 'lsbr-dev'
     #if not client:
     db_name = 'john_mongo'
 
-elif host == 'gisele':
+elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
 
@@ -48,6 +48,8 @@ if client:
 print "---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host)
 mongo_conn = mongo.connect(db_name, host=db_host)
 
+
+primaryDewarName = 'primaryDewar2'
 
 
 def createContainer(container_name, type_name, capacity):
@@ -245,7 +247,7 @@ def getAllPucks(as_mongo_obj=False):
 
 
 def getPrimaryDewar(as_mongo_obj=False):
-    return getContainerByName("primaryDewar2", as_mongo_obj=as_mongo_obj)
+    return getContainerByName(primaryDewarName, as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByName(container_name, as_mongo_obj=False): 
@@ -295,27 +297,24 @@ def getQueue():
     # try to only retrieve what we need...
     # Use .first() instead of [0] here because when the query returns nothing,
     # .first() returns None while [0] generates an IndexError
-    items = Container.objects(containerName='primaryDewar2').only('item_list').first()
-    if items is not None:
-        for item_id in items.item_list:
-            if item_id is not None:
-                puck = Container.objects(container_id=item_id).only('item_list').first()
-                if puck is not None:
-                    for sample_id in puck.item_list:
-                        if sample_id is not None:
-        #                    print "sample ID = " + str(sample_id)
-                            sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').first()
-                            if sampleObj is None:  #not sure how it gets here, I think it's a server update
-                                print "sample ID = " + str(sample_id)
-                            else:
-                                for request in sampleObj.requestList:
-                                    if request is not None:
-                                        ret_list.append(request.to_mongo())
+    items = Container.objects(containerName=primaryDewarName).only('item_list').get()
+    for item_id in items.item_list:
+        if item_id is not None:
+            puck = Container.objects(container_id=item_id).only('item_list').get()
+            for sample_id in puck.item_list:
+                if sample_id is not None:
+                    #print "sample ID = " + str(sample_id)
+                    # If we don't request sample_id it gets set to the next id in the sequence!?
+                    # maybe that doesn't matter if we don't use or return it?
+                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').get()
+                    for request in sampleObj.requestList:
+                        if request is not None:
+                            ret_list.append(request.to_mongo())
     return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName='primaryDewar2').only('item_list').first()
+    cont = Container.objects(containerName=primaryDewarName).only('item_list').first()
     if cont is not None:
         for puck_id in cont.item_list:
             if puck_id is not None:
@@ -329,7 +328,7 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName="primaryDewar2").only('item_list').first()
+    cont = Container.objects(containerName=primaryDewarName).only('item_list').first()
     if cont is not None:
         for i,puck_id in enumerate(cont.item_list):
             if puck_id is not None:
@@ -338,9 +337,49 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
                 puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
     
                 for j,samp_id in enumerate(sampleList):
-                    if samp_id is not None and samp_id == sample_id:
+                    if samp_id == sample_id and samp_id is not None:
+                        # hrrmmmm... wanted to change this to something with += j
+                        # to handle different capacity pucks, but absoluteposition
+                        # doesn't work with variable capacity pucks *and* possibility
+                        # of empty puck positions within dewar :(
                         absPosition = (i*puckCapacity) + j
                         return (absPosition,puck_id,j)
+
+
+def getSampleIDfromAbsoluteDewarPos(abs_pos):
+    # try/except is faster than checking for an empty list before 
+    # indexing into it!
+    try:
+        pd = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        raise IndexError('Failed to find container named: "{0}"'.format(primaryDewarName))
+
+    # get puck capacity from the 1st puck we find
+    # This is wonky, need to totally rethink the idea of absolute position.
+    for i,puck_id in enumerate(pd.item_list):
+        if puck_id is not None:
+            #puck = getContainerByID(puck_id)
+            try:
+                puck = Container.objects(container_id=puck_id).only('item_list')[0]
+            except IndexError:
+                raise IndexError('Failed to find container_id: "{0}"'.format(puck_id))
+
+            puck_capacity = len(puck.item_list)
+            break
+
+    # get puck# and position from absolute position
+    (puck_num, position) = divmod(abs_pos, puck_capacity)
+
+    # use puck# and position to get the sample_id
+    puck_id = pd.item_list[puck_num]
+    try:
+        puck = Container.objects(container_id=puck_id).only('item_list')[0]
+    except IndexError:
+        if puck_id is None:
+            raise ValueError('no puck in position {0} in primary dewar!'.format(puck_num))
+        raise IndexError('Failed to get puck id {0}.'.format(puck_id))
+
+    return puck.item_list[position]
 
 
 def popNextRequest():
