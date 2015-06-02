@@ -340,7 +340,7 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
                 for j,samp_id in enumerate(sampleList):
                     if samp_id is not None and samp_id == sample_id:
                         absPosition = (i*puckCapacity) + j
-                        return absPosition
+                        return (absPosition,puck_id,j)
 
 
 def popNextRequest():
