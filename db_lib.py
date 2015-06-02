@@ -133,41 +133,32 @@ def createSample(sampleName):
 
 def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, as_mongo_obj=False, dict_key=None):
+    # this name isn't right anymore... 
 
     # dict_keys are ignored if as_mongo_obj==True, otherwise we'd have to eval
     if as_mongo_obj:
-        return query_set.get()
+        try:
+            return query_set[0]
+        except IndexError:
+            raise ValueError('failed to find {obj} with {attr}={val}'.format(
+                    obj=obj_type_str, attr=search_key_str, val=search_key_val))
 
-    elif dict_key is None:
-        return query_set.get().to_mongo()
+    if dict_key is None:
+        try:
+            return query_set[0].to_mongo()
+        except IndexError:
+            raise ValueError('failed to find {obj} with {attr}={val}'.format(
+                    obj=obj_type_str, attr=search_key_str, val=search_key_val))
 
-    elif dict_key is not None:
-        return query_set.only(dict_key).get().to_mongo()[dict_key]
+    try:
+        return query_set.only(dict_key)[0].to_mongo()[dict_key]
+    except IndexError:
+        raise ValueError('failed to find {obj} with {attr}={val}'.format(
+                obj=obj_type_str, attr=search_key_str, val=search_key_val))
 
-    # hrm... .first returns the first or None
-    # [0] returns the first or raises IndexError
-    # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned
-
-
-#    num_results = len(query_set)
-#
-#    if num_results == 1:
-#        if as_mongo_obj:
-#            return query_set[0]  # seems like this could be faster?
-#        else:
-#            if dict_key is not None:
-#                # could eliminate this 'to_mongo' conversion if move
-#                # this out to calling func which can access mongo_obj.dict_key?
-#                # or even better fetch only the needed fields in the query
-#                return query_set[0].to_mongo()[dict_key]
-#            return query_set[0].to_mongo()
-#
-#    elif num_results > 1:
-#        raise ValueError('got more than one {2} when searching'
-#                         ' for {1} ({0})!?'.format(search_key_val, search_key_str,
-#                                                   obj_type_str))
-#
-#    return def_retval
+    # hrm... .first returns the first or None, slower
+    # [0] returns the first or raises IndexError, fastest
+    # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
     
 
 def getSampleByID(sample_id, as_mongo_obj=False):
