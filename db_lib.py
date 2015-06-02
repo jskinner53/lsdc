@@ -103,12 +103,23 @@ def getNextDisplayRaster():
     # Would it be better to skip the loop entirely by using .first(), and check for None?
     # What is 'i' doing?  if we were 'break'ing, we should only ever have one
     # iteration and i would *always* be 0?
-    for i,rast in enumerate(Raster.objects(status=1)):
-        retRaster = (i, rast.to_mongo())
-        rast.status = 2
-        rast.save()
-        #break  # shouldn't need this anymore?
+#    for i,rast in enumerate(Raster.objects(status=1)):
+#        retRaster = (i, rast.to_mongo())
+#        rast.status = 2
+#        rast.save()
+#        #break  # shouldn't need this anymore?
+#    return retRaster
+    try:
+        rast = Raster.objects(status=1)[0]
+    except IndexError:
+        return None
+
+    retRaster = (0, rast.to_mongo())
+    rast.status = 2
+    rast.save()
     return retRaster
+    
+
 
 
 def createSample(sampleName):
