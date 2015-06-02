@@ -53,13 +53,7 @@ mongo_conn = mongo.connect(db_name, host=db_host)
 def createContainer(container_name, type_name, capacity):
     containerObj = {"containerName": container_name,
                     "type_name": type_name,
-                    "item_list": []}
-
-    # the item list is a list of id's, whether they be other
-    # containers or samples. This is because samples and pucks can move.
-    #for i in xrange(capacity):
-    for _ in itertools.repeat(None, capacity):  # fastest idiom
-        containerObj["item_list"].append(None)
+                    "item_list": [None] * capacity}
 
     c = Container(**containerObj)
     c.save()
