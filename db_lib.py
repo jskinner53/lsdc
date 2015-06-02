@@ -83,15 +83,19 @@ def getNextRunRaster(updateFlag=1):
     retRaster = None
 
     # would it be better to skip the loop entirely by using .first(), and check for None?
-    for rast in Raster.objects(status=0):
-        retRaster = rast.to_mongo()
-        if updateFlag == 1:
-            rast.status = 1
-            rast.save()
-#        else:
-##            print "drawing " 
-##            print retRaster
-        #break  # shouldn't need this anymore?
+    try:
+        rast = Raster.objects(status=0)[0]
+    except IndexError:
+        return None
+
+    retRaster = rast.to_mongo()
+    if updateFlag == 1:
+        rast.status = 1
+        rast.save()
+#    else:
+#        print "drawing " 
+#        print retRaster
+
     return retRaster
 
 
