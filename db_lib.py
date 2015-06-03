@@ -500,17 +500,22 @@ def updateRequest(reqObj):
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
 
     for req in sample.requestList:
-        if req is not None:  # when would it ever be None?
-            try:
-                if reqObj["request_id"] == req.request_id:
-                    updated_req = Request(**reqObj)
-                    updated_req.request_id = req.request_id
+        #if req is not None:  # when would it ever be None?
+        try:
+            req_id = req.request_id
+        except AttributeError:
+            continue
+
+        try:
+            if reqObj["request_id"] == req.request_id:
+                updated_req = Request(**reqObj)
+                updated_req.request_id = req.request_id
     
-                    Sample.objects(requestList__request_id=req.request_id
-                                   ).update(set__requestList__S=updated_req)
-                    return
-            except KeyError:
-                pass
+                Sample.objects(requestList__request_id=req.request_id
+                               ).update(set__requestList__S=updated_req)
+                return
+        except KeyError:
+            pass
 
     addRequesttoSample(reqObj["sample_id"], reqObj)
 
