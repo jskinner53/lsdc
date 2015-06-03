@@ -146,10 +146,7 @@ def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
 
 
 def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
-                   def_retval, as_mongo_obj=False, dict_key=None):
-    # this name isn't right anymore... 
-
-    # dict_keys are ignored if as_mongo_obj==True, otherwise we'd have to eval
+                   def_retval, as_mongo_obj=False):
     if as_mongo_obj:
         try:
             return query_set[0]
@@ -158,7 +155,7 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
                     obj=obj_type_str, attr=search_key_str, val=search_key_val))
 
     try:
-        return query_set.only(dict_key)[0].to_mongo()
+        return query_set[0].to_mongo()
 
     except IndexError:
         raise ValueError('failed to find {obj} with {attr}={val}'.format(
