@@ -360,32 +360,41 @@ def getQueue():
 
 
 def getDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName='primaryDewar2').only('item_list').first()
-    if cont is not None:
-        for puck_id in cont.item_list:
-            if puck_id is not None:
-                puck = Container.objects(container_id=puck_id).only('item_list').first()
-                if puck is not None:
-                    for j,samp_id in enumerate(puck.item_list):
-                        if samp_id is not None and samp_id == sample_id:
-                            containerID = puck_id
-                            position = j
-                            return (containerID, position)    
+    try:
+        cont = Container.objects(containerName='primaryDewar2').only('item_list')[0]
+    except IndexError:
+        return None
+
+    for puck_id in cont.item_list:
+        if puck_id is not None:
+            try:
+                puck = Container.objects(container_id=puck_id).only('item_list')[0]
+            except IndexError:
+                continue
+
+            for j,samp_id in enumerate(puck.item_list):
+                if samp_id == sample_id and samp_id is not None:
+                    containerID = puck_id
+                    position = j
+                    return (containerID, position)    
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName="primaryDewar2").only('item_list').first()
-    if cont is not None:
-        for i,puck_id in enumerate(cont.item_list):
-            if puck_id is not None:
-                puck = getContainerByID(puck_id)
-                sampleList = puck["item_list"]
-                puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
-    
-                for j,samp_id in enumerate(sampleList):
-                    if samp_id is not None and samp_id == sample_id:
-                        absPosition = (i*puckCapacity) + j
-                        return absPosition
+    try:
+        cont = Container.objects(containerName="primaryDewar2").only('item_list')[0]
+    except IndexError:
+        return None
+
+    for i,puck_id in enumerate(cont.item_list):
+        if puck_id is not None:
+            puck = getContainerByID(puck_id)
+            sampleList = puck["item_list"]
+            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
+
+            for j,samp_id in enumerate(sampleList):
+                if samp_id == sample_id and samp_id is not None:
+                    absPosition = (i*puckCapacity) + j
+                    return absPosition
 
 
 def popNextRequest():
