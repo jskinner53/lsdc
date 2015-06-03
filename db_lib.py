@@ -314,9 +314,9 @@ def getQueue():
     # .first() returns None while [0] generates an IndexError
     # Nah... [0] is faster and catch Exception...
     try:
-        items = Container.objects(containerName=primaryDewar).only('item_list')[0]
+        items = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
-        raise ValueError('could not find container: "{0}"!'.format(primaryDewar))
+        raise ValueError('could not find container: "{0}"!'.format(primaryDewarName))
 
     for item_id in items.item_list:
         if item_id is not None:
@@ -360,7 +360,7 @@ def getQueue():
 
 def getDewarPosfromSampleID(sample_id):
     try:
-        cont = Container.objects(containerName=primaryDewar).only('item_list')[0]
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
         return None
 
@@ -380,7 +380,7 @@ def getDewarPosfromSampleID(sample_id):
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
     try:
-        cont = Container.objects(containerName="primaryDewar2").only('item_list')[0]
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
         return None
 
@@ -398,7 +398,7 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
 
 def getCoordsfromSampleID(sample_id):
     try:
-        cont = Container.objects(containerName="primaryDewar2").only('item_list')[0]
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
         return None
 
