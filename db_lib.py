@@ -397,6 +397,22 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
                     return absPosition
 
 
+def getCoordsfromSampleID(sample_id):
+    try:
+        cont = Container.objects(containerName="primaryDewar2").only('item_list')[0]
+    except IndexError:
+        return None
+
+    for i,puck_id in enumerate(cont.item_list):
+        if puck_id is not None:
+            puck = getContainerByID(puck_id)
+            sampleList = puck["item_list"]
+
+            for j,samp_id in enumerate(sampleList):
+                if samp_id == sample_id and samp_id is not None:
+                    return (i, j)
+
+
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
     if orderedRequests != [] and orderedRequests[0]["priority"] > 0:
