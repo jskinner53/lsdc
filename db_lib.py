@@ -8,6 +8,7 @@ import socket
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster, Request)
+from odm_templates import (BeamlineInfo, UserSettings, Types)   # for bl info, user settings, and types
 
 
 
@@ -135,12 +136,18 @@ def createSample(sampleName):
 
 def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, dict_key):
+    """
+    Try to get the specified key from the first ([0]th) item from a QuerySet.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
     try:
         return query_set.only(dict_key)[0].to_mongo()[dict_key]
 
     except IndexError:
-        raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
-                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        #raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        return def_retval
 
     except KeyError:
         raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
@@ -149,19 +156,27 @@ def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
 
 def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, as_mongo_obj=False):
+    """
+    Try to get the the first ([0]th) item from a QuerySet,
+    converted to a dictionary by default, as the raw mongo object if specified.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
     if as_mongo_obj:
         try:
             return query_set[0]
         except IndexError:
-            raise ValueError('failed to find {obj} with {attr}={val}'.format(
-                    obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+            #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            return def_retval
 
     try:
         return query_set[0].to_mongo()
 
     except IndexError:
-        raise ValueError('failed to find {obj} with {attr}={val}'.format(
-                obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        return def_retval
 
     # hrm... .first returns the first or None, slower
     # [0] returns the first or raises IndexError, fastest
@@ -211,6 +226,10 @@ def addRequesttoSample(sample_id, request):
 
 
 def createDefaultRequest(sample_id):
+    """
+    Doesn't really create a request, just returns a dictionary
+    with the default parameters that can be passed to addRequesttoSample().
+    """
     request = {
                "sample_id": sample_id,
                "sweep_start": 0.0,  "sweep_end": 0.1,
@@ -241,6 +260,8 @@ def insertIntoContainer(container_name, position, itemID):
 
 
 def _ret_list(objects, as_mongo_obj=False):
+    """helper function to get a list of objects as either dicts or mongo objects"""
+
     if as_mongo_obj:
         return list(objects)
     else:
@@ -248,6 +269,8 @@ def _ret_list(objects, as_mongo_obj=False):
 
 
 def getContainers(as_mongo_obj=False): 
+    """get *all* containers""" 
+
     c = Container.objects()
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
@@ -262,6 +285,11 @@ def getAllPucks(as_mongo_obj=False):
 
 
 def getPrimaryDewar(as_mongo_obj=False):
+    """
+    returns the mongo object for a container with a name matching
+    the global variable 'primaryDewarName'
+    """
+
     return getContainerByName(primaryDewarName, as_mongo_obj=as_mongo_obj)
 
 
@@ -284,6 +312,7 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
                             priority, protocol, directory, file_prefix, file_number_start,
                             wavelength, resolution, slit_height, slit_width, attenuation,
                             pos_x, pos_y, pos_z, pos_type, gridW, gridH, gridStep):
+    """adds a request to a sample"""
 
     colobj = {"request_id": int(time.time()), "sample_id": sample_id,
               "sweep_start": sweep_start, "sweep_end": sweep_end, "img_width": img_width,
@@ -305,6 +334,11 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
 
 
 def getQueue():
+    """
+    returns a list of request dicts for all the samples in the container
+    named by the global variable 'primaryDewarName'
+    """
+    
     # seems like this would be alot simpler if it weren't for the Nones?
 
     ret_list = []
@@ -359,6 +393,11 @@ def getQueue():
 
 
 def getDewarPosfromSampleID(sample_id):
+
+    """
+    returns the container_id and position in that container for a sample with the given id
+    in one of the containers in the container named by the global variable 'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -379,6 +418,12 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
+
+    """
+    returns the "absolute position" (only made sense with fixed size containers),
+    container_id, and position in that container for a sample with the given id
+    in one of the containers in the container named by the global variable 'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -393,10 +438,16 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
             for j,samp_id in enumerate(sampleList):
                 if samp_id == sample_id and samp_id is not None:
                     absPosition = (i*puckCapacity) + j
-                    return absPosition
+                    return (absPosition, puck_id, j)
 
 
 def getCoordsfromSampleID(sample_id):
+    """
+    returns the container position within the dewar and position in
+    that container for a sample with the given id in one of the
+    containers in the container named by the global variable
+    'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -412,7 +463,31 @@ def getCoordsfromSampleID(sample_id):
                     return (i, j,puck_id)
 
 
+def getSampleIDfromCoords(puck_num, position):
+    """
+    given a container position within the dewar and position in
+    that container, returns the id for a sample in one of the
+    containers in the container named by the global variable
+    'primaryDewarName'
+    """
+    try:
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        return None
+
+    puck_id = cont.item_list[puck_num]
+    puck = getContainerByID(puck_id)
+            
+    sample_id = puck["item_list"][position]
+    return sample_id
+
+
 def getSampleIDfromAbsoluteDewarPos(abs_pos):
+    """
+    given an "absolute position" (only made sense with fixed size
+    containers), returns the sample_id for the sample in that location
+    in the container named by the global variable 'primaryDewarName'
+    """
     # try/except is faster than checking for an empty list before 
     # indexing into it!
     try:
@@ -551,6 +626,10 @@ def emptyLiveQueue(): #a convenience to say nothing is ready to be run
 
 
 def getSortedPriorityList(with_requests=False): # mayb an intermediate to return a list of all priorities.
+    """
+    returns a sorted list of the priority levels found on requests in the database.
+    optionally also returns the list of requests, since it had to get them.
+    """
     pList = []
     requests = getQueue()
 
@@ -564,6 +643,9 @@ def getSortedPriorityList(with_requests=False): # mayb an intermediate to return
 
 
 def getOrderedRequestList():
+    """
+    returns the request list sorted by priority
+    """
     orderedRequestsList = []
 
     (priorities, requests) = getSortedPriorityList(with_requests=True)
@@ -574,3 +656,67 @@ def getOrderedRequestList():
                 orderedRequestsList.append(request)
 
     return orderedRequestsList
+
+
+def saveType(type_name, type_keys):
+    """
+    saveType('mounted_sample', ['puck_pos','sample_pos','sample_id'])
+    saveType('params', ['exp','osc','dist'])
+    """
+    thistype = Types(type_name=type_name, type_keys=type_keys)
+    thistype.save()
+
+def getTypeKeys(type_name):
+    """
+    returns the list of keys for the given type
+    """
+    try:
+        return Types.objects(type_name=type_name).only('type_keys')[0].to_mongo()['type_keys']
+    except IndexError:
+        return None
+
+
+def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
+    """
+    saveBeamlineInfo('17id1','mounted_sample', 'mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
+    """
+    info_dict['beamline_id'] = beamline_id
+    info_dict['info_name'] = info_name
+    info_dict['info_type'] = info_type
+
+    info = BeamlineInfo(**info_dict)
+    info.save()
+
+def getBeamlineInfo(beamline_id, info_name):
+    """
+    bli = getBeamlineInfo('17id1', 'mounted_sample')
+    for key in getTypeKeys('mounted_sample'):
+        print bli[key]
+    """
+    try:
+        return BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0].to_mongo()
+    except IndexError:
+        return None
+
+
+def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
+    """
+    saveUserSettings('matt','params', 'params', {'exp': 1, 'osc': 3, 'dist': 387})
+    """
+    settings_dict['user_id'] = user_id
+    settings_dict['settings_name'] = settings_name
+    settings_dict['settings_type'] = settings_type
+
+    settings = UserSettings(**settings_dict)
+    settings.save()
+
+def getUserSettings(user_id, settings_name):
+    """
+    us = getUserSettings('matt','params')
+    for key in getTypeKeys('params'):
+        print us[key]
+    """
+    try:
+        return UserSettings.objects(user_id=user_id, settings_name=settings_name)[0].to_mongo()
+    except IndexError:
+        return None
