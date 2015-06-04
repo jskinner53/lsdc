@@ -2451,4 +2451,34 @@ def main():
 
 
 if __name__ == '__main__':
-    main()    
+    if '-pc' in sys.argv or '-p' in sys.argv:
+        print 'cProfile not working yet :('
+        #print 'starting cProfile profiler...'
+        #import cProfile, pstats, io
+        #pr = cProfile.Profile()
+        #pr.enable()
+
+    elif '-py' in sys.argv:
+        print 'starting yappi profiler...'
+        import yappi
+        yappi.start(True)
+
+    try:
+        main()    
+
+    finally:
+        if '-pc' in sys.argv or '-p' in sys.argv:
+            pass
+            #pr.disable()
+            #s = io.StringIO()
+            #sortby = 'cumulative'
+            #ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            #ps.print_stats()  # dies here, expected unicode, got string, need unicode io stream?
+            #print(s.getvalue())
+
+        elif '-py' in sys.argv:
+            # stop profiler and print results
+            yappi.stop()
+            yappi.get_func_stats().print_all()
+            yappi.get_thread_stats().print_all()
+            print 'memory usage: {0}'.format(yappi.get_mem_usage())

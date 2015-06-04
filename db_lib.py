@@ -55,13 +55,7 @@ primaryDewarName = 'primaryDewar2'
 def createContainer(container_name, type_name, capacity):
     containerObj = {"containerName": container_name,
                     "type_name": type_name,
-                    "item_list": []}
-
-    # the item list is a list of id's, whether they be other
-    # containers or samples. This is because samples and pucks can move.
-    #for i in xrange(capacity):
-    for _ in itertools.repeat(None, capacity):  # fastest idiom
-        containerObj["item_list"].append(None)
+                    "item_list": [None] * capacity}
 
     c = Container(**containerObj)
     c.save()
@@ -88,18 +82,19 @@ def clearRasters():
 
 
 def getNextRunRaster(updateFlag=1):
-    retRaster = None
+    try:
+        rast = Raster.objects(status=0)[0]
+    except IndexError:
+        return None
 
-    # would it be better to skip the loop entirely by using .first(), and check for None?
-    for rast in Raster.objects(status=0):
-        retRaster = rast.to_mongo()
-        if updateFlag == 1:
-            rast.status = 1
-            rast.save()
-#        else:
-##            print "drawing " 
-##            print retRaster
-        #break  # shouldn't need this anymore?
+    retRaster = rast.to_mongo()
+    if updateFlag == 1:
+        rast.status = 1
+        rast.save()
+#    else:
+#        print "drawing " 
+#        print retRaster
+
     return retRaster
 
 
@@ -110,12 +105,23 @@ def getNextDisplayRaster():
     # Would it be better to skip the loop entirely by using .first(), and check for None?
     # What is 'i' doing?  if we were 'break'ing, we should only ever have one
     # iteration and i would *always* be 0?
-    for i,rast in enumerate(Raster.objects(status=1)):
-        retRaster = (i, rast.to_mongo())
-        rast.status = 2
-        rast.save()
-        #break  # shouldn't need this anymore?
+#    for i,rast in enumerate(Raster.objects(status=1)):
+#        retRaster = (i, rast.to_mongo())
+#        rast.status = 2
+#        rast.save()
+#        #break  # shouldn't need this anymore?
+#    return retRaster
+    try:
+        rast = Raster.objects(status=1)[0]
+    except IndexError:
+        return None
+
+    retRaster = (0, rast.to_mongo())
+    rast.status = 2
+    rast.save()
     return retRaster
+    
+
 
 
 def createSample(sampleName):
@@ -127,35 +133,47 @@ def createSample(sampleName):
     return s.sample_id
 
 
-def _check_only_one(query_set, obj_type_str, search_key_str, search_key_val,
-                   def_retval, as_mongo_obj=False, dict_key=None):
+def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, dict_key):
+    try:
+        return query_set.only(dict_key)[0].to_mongo()[dict_key]
 
-    # dict_keys are ignored if as_mongo_obj==True, otherwise we'd have to eval
+    except IndexError:
+        #raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        return def_retval
 
-    num_results = len(query_set)
+    except KeyError:
+        raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
+                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
 
-    if num_results == 1:
-        if as_mongo_obj:
-            return query_set[0]  # seems like this could be faster?
-        else:
-            if dict_key is not None:
-                # could eliminate this 'to_mongo' conversion if move
-                # this out to calling func which can access mongo_obj.dict_key?
-                # or even better fetch only the needed fields in the query
-                return query_set[0].to_mongo()[dict_key]
-            return query_set[0].to_mongo()
 
-    elif num_results > 1:
-        raise ValueError('got more than one {2} when searching'
-                         ' for {1} ({0})!?'.format(search_key_val, search_key_str,
-                                                   obj_type_str))
+def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, as_mongo_obj=False):
+    if as_mongo_obj:
+        try:
+            return query_set[0]
+        except IndexError:
+            #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+            #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            return def_retval
 
-    return def_retval
+    try:
+        return query_set[0].to_mongo()
+
+    except IndexError:
+        #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        return def_retval
+
+    # hrm... .first returns the first or None, slower
+    # [0] returns the first or raises IndexError, fastest
+    # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
     
 
 def getSampleByID(sample_id, as_mongo_obj=False):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, None,
+    return _try0_maybe_mongo(s, 'sample', 'sample_id', sample_id, None,
                            as_mongo_obj=as_mongo_obj)
 
 
@@ -163,25 +181,25 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 
 def getSampleIDbyName(sample_name):
     s = Sample.objects(sampleName=sample_name)
-    return _check_only_one(s, 'sample', 'sampleName', sample_name, -99, 
+    return _try0_dict_key(s, 'sample', 'sampleName', sample_name, -99, 
                            dict_key='sample_id')
 
 
 def getSampleNamebyID(sample_id):
     s = Sample.objects(sample_id=sample_id)
-    return _check_only_one(s, 'sample', 'sample_id', sample_id, -99,
+    return _try0_dict_key(s, 'sample', 'sample_id', sample_id, -99,
                            dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
     c = Container.objects(containerName=container_name)
-    return _check_only_one(c, 'container', 'containerName', container_name,
+    return _try0_dict_key(c, 'container', 'containerName', container_name,
                            -99, dict_key='container_id')
 
 
 def getContainerNameByID(container_id):
     c = Container.objects(container_id=container_id)
-    return _check_only_one(c, 'container', 'container_id', container_id, '',
+    return _try0_dict_key(c, 'container', 'container_id', container_id, '',
                            dict_key='containerName')
 
 
@@ -234,12 +252,12 @@ def _ret_list(objects, as_mongo_obj=False):
 
 def getContainers(as_mongo_obj=False): 
     c = Container.objects()
-    _ret_list(c, as_mongo_obj=as_mongo_obj)
+    return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
     c = Container.objects(type_name=type_name)
-    _ret_list(c, as_mongo_obj=as_mongo_obj)
+    return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getAllPucks(as_mongo_obj=False):
@@ -252,13 +270,13 @@ def getPrimaryDewar(as_mongo_obj=False):
 
 def getContainerByName(container_name, as_mongo_obj=False): 
     c = Container.objects(containerName=container_name)
-    return _check_only_one(c, 'container', 'containerName', container_name,
+    return _try0_maybe_mongo(c, 'container', 'containerName', container_name,
                            None, as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByID(container_id, as_mongo_obj=False): 
     c = Container.objects(container_id=container_id)
-    return _check_only_one(c, 'container', 'container_id', container_id,
+    return _try0_maybe_mongo(c, 'container', 'container_id', container_id,
                            None, as_mongo_obj=as_mongo_obj)
 
 
@@ -297,53 +315,104 @@ def getQueue():
     # try to only retrieve what we need...
     # Use .first() instead of [0] here because when the query returns nothing,
     # .first() returns None while [0] generates an IndexError
-    items = Container.objects(containerName=primaryDewarName).only('item_list').get()
+    # Nah... [0] is faster and catch Exception...
+    try:
+        items = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        raise ValueError('could not find container: "{0}"!'.format(primaryDewarName))
+
     for item_id in items.item_list:
         if item_id is not None:
-            puck = Container.objects(container_id=item_id).only('item_list').get()
+            try:
+                puck = Container.objects(container_id=item_id).only('item_list')[0]
+            except IndexError:
+                raise ValueError('could not find container id: "{0}"!'.format(item_id))
+
             for sample_id in puck.item_list:
                 if sample_id is not None:
                     #print "sample ID = " + str(sample_id)
                     # If we don't request sample_id it gets set to the next id in the sequence!?
                     # maybe that doesn't matter if we don't use or return it?
-                    sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id').get()
-                    for request in sampleObj.requestList:
-                        if request is not None:
-                            ret_list.append(request.to_mongo())
+                    try:
+                        sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id')[0]
+                    except IndexError:
+                        raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
+
+#                    # stick this in try/except too....
+#                    if sampleObj.requestList is None:
+#                        print sampleObj.to_mongo()
+#                    else:
+#                        for request in sampleObj.requestList:
+#                            if request is not None:
+#                                #yield request.to_mongo()
+#                                ret_list.append(request.to_mongo())
+
+                    try:
+                        for request in sampleObj.requestList:
+                            try:
+                                # testing shows generator version is the same speed?
+                                #yield request.to_mongo()
+                                ret_list.append(request.to_mongo())
+                            except AttributeError:
+                                pass
+                    except TypeError:
+                        print sampleObj.to_mongo()
+
     return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName=primaryDewarName).only('item_list').first()
-    if cont is not None:
-        for puck_id in cont.item_list:
-            if puck_id is not None:
-                puck = Container.objects(container_id=puck_id).only('item_list').first()
-                if puck is not None:
-                    for j,samp_id in enumerate(puck.item_list):
-                        if samp_id is not None and samp_id == sample_id:
-                            containerID = puck_id
-                            position = j
-                            return (containerID, position)    
+    try:
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        return None
+
+    for puck_id in cont.item_list:
+        if puck_id is not None:
+            try:
+                puck = Container.objects(container_id=puck_id).only('item_list')[0]
+            except IndexError:
+                continue
+
+            for j,samp_id in enumerate(puck.item_list):
+                if samp_id == sample_id and samp_id is not None:
+                    containerID = puck_id
+                    position = j
+                    return (containerID, position)    
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
-    cont = Container.objects(containerName=primaryDewarName).only('item_list').first()
-    if cont is not None:
-        for i,puck_id in enumerate(cont.item_list):
-            if puck_id is not None:
-                puck = getContainerByID(puck_id)
-                sampleList = puck["item_list"]
-                puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
-    
-                for j,samp_id in enumerate(sampleList):
-                    if samp_id == sample_id and samp_id is not None:
-                        # hrrmmmm... wanted to change this to something with += j
-                        # to handle different capacity pucks, but absoluteposition
-                        # doesn't work with variable capacity pucks *and* possibility
-                        # of empty puck positions within dewar :(
-                        absPosition = (i*puckCapacity) + j
-                        return (absPosition,puck_id,j)
+    try:
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        return None
+
+    for i,puck_id in enumerate(cont.item_list):
+        if puck_id is not None:
+            puck = getContainerByID(puck_id)
+            sampleList = puck["item_list"]
+            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
+
+            for j,samp_id in enumerate(sampleList):
+                if samp_id == sample_id and samp_id is not None:
+                    absPosition = (i*puckCapacity) + j
+                    return (absPosition, puck_id, j)
+
+
+def getCoordsfromSampleID(sample_id):
+    try:
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        return None
+
+    for i,puck_id in enumerate(cont.item_list):
+        if puck_id is not None:
+            puck = getContainerByID(puck_id)
+            sampleList = puck["item_list"]
+
+            for j,samp_id in enumerate(sampleList):
+                if samp_id == sample_id and samp_id is not None:
+                    return (i, j)
 
 
 def getSampleIDfromAbsoluteDewarPos(abs_pos):
@@ -393,9 +462,12 @@ def popNextRequest():
 def getRequest(reqID):  # need to get this from searching the dewar I guess
     r_id = int(reqID)
 
+    # It's faster to get the mongo obj and only .to_mongo() convert the 
+    # desired request then the opposite.
+    # Maybe with mongov9 a query can return only a specific list entry?
     sample = Sample.objects(requestList__request_id=reqID).only('requestList')
-    req_list = _check_only_one(sample, 'request', 'request_id', reqID, None,
-                               as_mongo_obj=True, dict_key='requestList').requestList
+    req_list = _try0_maybe_mongo(sample, 'request', 'request_id', reqID, None,
+                               as_mongo_obj=True).requestList
     
     for req in req_list:
         if req.request_id == r_id:
@@ -403,12 +475,12 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
     return None
 
 
-def getAllSamples():
-    return [s.to_mongo() for s in Sample.objects()]
-
-
-# update{Sample,Container} aren't needed at the moment...    
+# getAllSamples and update{Sample,Container} aren't used at the moment...
     
+#def getAllSamples():
+#    return [s.to_mongo() for s in Sample.objects()]
+
+
 #def updateSample(sampleObj):
 #    samp_id = sampleObj['sample_id']
 #
@@ -431,17 +503,22 @@ def updateRequest(reqObj):
     sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
 
     for req in sample.requestList:
-        if req is not None:
-            try:
-                if reqObj["request_id"] == req.request_id:
-                    updated_req = Request(**reqObj)
-                    updated_req.request_id = req.request_id
+        #if req is not None:  # when would it ever be None?
+        try:
+            req_id = req.request_id
+        except AttributeError:
+            continue
+
+        try:
+            if reqObj["request_id"] == req.request_id:
+                updated_req = Request(**reqObj)
+                updated_req.request_id = req.request_id
     
-                    Sample.objects(requestList__request_id=req.request_id
-                                   ).update(set__requestList__S=updated_req)
-                    return
-            except KeyError:
-                pass
+                Sample.objects(requestList__request_id=req.request_id
+                               ).update(set__requestList__S=updated_req)
+                return
+        except KeyError:
+            pass
 
     addRequesttoSample(reqObj["sample_id"], reqObj)
 
