@@ -120,8 +120,6 @@ def getNextDisplayRaster():
     rast.status = 2
     rast.save()
     return retRaster
-    
-
 
 
 def createSample(sampleName):
@@ -135,6 +133,11 @@ def createSample(sampleName):
 
 def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, dict_key):
+    """
+    Try to get the specified key from the first ([0]th) item from a QuerySet.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
     try:
         return query_set.only(dict_key)[0].to_mongo()[dict_key]
 
@@ -150,6 +153,12 @@ def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
 
 def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
                    def_retval, as_mongo_obj=False):
+    """
+    Try to get the the first ([0]th) item from a QuerySet,
+    converted to a dictionary by default, as the raw mongo object if specified.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
     if as_mongo_obj:
         try:
             return query_set[0]
@@ -214,6 +223,10 @@ def addRequesttoSample(sample_id, request):
 
 
 def createDefaultRequest(sample_id):
+    """
+    Doesn't really create a request, just returns a dictionary
+    with the default parameters that can be passed to addRequesttoSample().
+    """
     request = {
                "sample_id": sample_id,
                "sweep_start": 0.0,  "sweep_end": 0.1,
@@ -244,6 +257,8 @@ def insertIntoContainer(container_name, position, itemID):
 
 
 def _ret_list(objects, as_mongo_obj=False):
+    """helper function to get a list of objects as either dicts or mongo objects"""
+
     if as_mongo_obj:
         return list(objects)
     else:
@@ -251,6 +266,8 @@ def _ret_list(objects, as_mongo_obj=False):
 
 
 def getContainers(as_mongo_obj=False): 
+    """get *all* containers""" 
+
     c = Container.objects()
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
@@ -265,6 +282,11 @@ def getAllPucks(as_mongo_obj=False):
 
 
 def getPrimaryDewar(as_mongo_obj=False):
+    """
+    returns the mongo object for a container with a name matching
+    the global variable 'primaryDewarName'
+    """
+
     return getContainerByName(primaryDewarName, as_mongo_obj=as_mongo_obj)
 
 
@@ -287,6 +309,7 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
                             priority, protocol, directory, file_prefix, file_number_start,
                             wavelength, resolution, slit_height, slit_width, attenuation,
                             pos_x, pos_y, pos_z, pos_type, gridW, gridH, gridStep):
+    """adds a request to a sample"""
 
     colobj = {"request_id": int(time.time()), "sample_id": sample_id,
               "sweep_start": sweep_start, "sweep_end": sweep_end, "img_width": img_width,
@@ -308,6 +331,11 @@ def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposu
 
 
 def getQueue():
+    """
+    returns a list of request dicts for all the samples in the container
+    named by the global variable 'primaryDewarName'
+    """
+    
     # seems like this would be alot simpler if it weren't for the Nones?
 
     ret_list = []
@@ -362,6 +390,10 @@ def getQueue():
 
 
 def getDewarPosfromSampleID(sample_id):
+    """
+    returns the container_id and position in that container for a sample with the given id
+    in one of the containers in the container named by the global variable 'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -382,6 +414,11 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
+    """
+    returns the "absolute position" (only made sense with fixed size containers),
+    container_id, and position in that container for a sample with the given id
+    in one of the containers in the container named by the global variable 'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -400,6 +437,12 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
 
 
 def getCoordsfromSampleID(sample_id):
+    """
+    returns the container position within the dewar and position in
+    that container for a sample with the given id in one of the
+    containers in the container named by the global variable
+    'primaryDewarName'
+    """
     try:
         cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
     except IndexError:
@@ -415,7 +458,31 @@ def getCoordsfromSampleID(sample_id):
                     return (i, j)
 
 
+def getSampleIDfromCoords(puck_num, position):
+    """
+    given a container position within the dewar and position in
+    that container, returns the id for a sample in one of the
+    containers in the container named by the global variable
+    'primaryDewarName'
+    """
+    try:
+        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+    except IndexError:
+        return None
+
+    puck_id = cont.item_list[puck_num]
+    puck = getContainerByID(puck_id)
+            
+    sample_id = puck["item_list"][position]
+    return sample_id
+
+
 def getSampleIDfromAbsoluteDewarPos(abs_pos):
+    """
+    given an "absolute position" (only made sense with fixed size
+    containers), returns the sample_id for the sample in that location
+    in the container named by the global variable 'primaryDewarName'
+    """
     # try/except is faster than checking for an empty list before 
     # indexing into it!
     try:
@@ -554,6 +621,10 @@ def emptyLiveQueue(): #a convenience to say nothing is ready to be run
 
 
 def getSortedPriorityList(with_requests=False): # mayb an intermediate to return a list of all priorities.
+    """
+    returns a sorted list of the priority levels found on requests in the database.
+    optionally also returns the list of requests, since it had to get them.
+    """
     pList = []
     requests = getQueue()
 
@@ -567,6 +638,9 @@ def getSortedPriorityList(with_requests=False): # mayb an intermediate to return
 
 
 def getOrderedRequestList():
+    """
+    returns the request list sorted by priority
+    """
     orderedRequestsList = []
 
     (priorities, requests) = getSortedPriorityList(with_requests=True)
