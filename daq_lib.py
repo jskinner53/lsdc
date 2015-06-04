@@ -280,11 +280,13 @@ def runDCQueue(): #maybe don't run rasters from here???
     if (currentRequest == {}):
       break
     sampleID = currentRequest["sample_id"]
-    (samplePos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
-    print str(sampleID) + " in " + str(samplePos)
-    if (get_field("mounted_pin") != samplePos):
+#    (puckPosition,samplePos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
+#    (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
+#    print str(sampleID) + " in " + str(samplePos)
+    if (get_field("mounted_pin") != sampleID):
 #      robot_lib.unmountSample()
-      mountSample(samplePos)
+#      mountSample(samplePos)
+      mountSample(sampleID)
 #      set_field("mounted_pin",samplePos)
     currentRequest["priority"] = -999
     db_lib.updateRequest(currentRequest)

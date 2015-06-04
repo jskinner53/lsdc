@@ -47,7 +47,7 @@ def loop_center_xrec():
   global face_on
 
   daq_lib.abort_flag = 0    
-  for i in xrange(360,40):
+  for i in xrange(0,360,40):
     if (daq_lib.abort_flag == 1):
       return 0
     mva("Omega",i)
