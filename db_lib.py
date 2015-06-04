@@ -139,8 +139,9 @@ def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
         return query_set.only(dict_key)[0].to_mongo()[dict_key]
 
     except IndexError:
-        raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
-                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        #raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        return def_retval
 
     except KeyError:
         raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
@@ -153,15 +154,17 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
         try:
             return query_set[0]
         except IndexError:
-            raise ValueError('failed to find {obj} with {attr}={val}'.format(
-                    obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+            #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            return def_retval
 
     try:
         return query_set[0].to_mongo()
 
     except IndexError:
-        raise ValueError('failed to find {obj} with {attr}={val}'.format(
-                obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        return def_retval
 
     # hrm... .first returns the first or None, slower
     # [0] returns the first or raises IndexError, fastest
