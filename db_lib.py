@@ -8,6 +8,7 @@ import socket
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster, Request)
+from odm_templates import (BeamlineInfo, UserSettings, Types)   # for bl info, user settings, and types
 
 
 
@@ -651,3 +652,67 @@ def getOrderedRequestList():
                 orderedRequestsList.append(request)
 
     return orderedRequestsList
+
+
+def saveType(type_name, type_keys):
+    """
+    saveType('mounted_sample', ['puck_pos','sample_pos','sample_id'])
+    saveType('params', ['exp','osc','dist'])
+    """
+    thistype = Types(type_name=type_name, type_keys=type_keys)
+    thistype.save()
+
+def getTypeKeys(type_name):
+    """
+    returns the list of keys for the given type
+    """
+    try:
+        return Types.objects(type_name=type_name).only('type_keys')[0].to_mongo()['type_keys']
+    except IndexError:
+        return None
+
+
+def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
+    """
+    saveBeamlineInfo('17id1','mounted_sample', 'mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
+    """
+    info_dict['beamline_id'] = beamline_id
+    info_dict['info_name'] = info_name
+    info_dict['info_type'] = info_type
+
+    info = BeamlineInfo(**info_dict)
+    info.save()
+
+def getBeamlineInfo(beamline_id, info_name):
+    """
+    bli = getBeamlineInfo('17id1', 'mounted_sample')
+    for key in getTypeKeys('mounted_sample'):
+        print bli[key]
+    """
+    try:
+        return BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0].to_mongo()
+    except IndexError:
+        return None
+
+
+def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
+    """
+    saveUserSettings('matt','params', 'params', {'exp': 1, 'osc': 3, 'dist': 387})
+    """
+    settings_dict['user_id'] = user_id
+    settings_dict['settings_name'] = settings_name
+    settings_dict['settings_type'] = settings_type
+
+    settings = UserSettings(**settings_dict)
+    settings.save()
+
+def getUserSettings(user_id, settings_name):
+    """
+    us = getUserSettings('matt','params')
+    for key in getTypeKeys('params'):
+        print us[key]
+    """
+    try:
+        return UserSettings.objects(user_id=user_id, settings_name=settings_name)[0].to_mongo()
+    except IndexError:
+        return None
