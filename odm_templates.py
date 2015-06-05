@@ -1,6 +1,6 @@
 from mongoengine import (DynamicDocument, DynamicEmbeddedDocument)
 from mongoengine import (SequenceField, ListField, EmbeddedDocumentField) 
-from mongoengine import (StringField, ObjectIdField)   # for bl info, user settings, and types
+from mongoengine import (StringField, DictField)   # for bl info, user settings, and types
 import mongoengine
 
 from distutils.version import LooseVersion
@@ -42,8 +42,9 @@ class Raster(DynamicDocument):
 class BeamlineInfo(DynamicDocument):
     beamline_id = StringField(required=True)
     info_name = StringField(required=True, unique_with='beamline_id')
+    info = DictField(required=True)
 
 class UserSettings(DynamicDocument):
     user_id = StringField(required=True)
     settings_name = StringField(required=True, unique_with='user_id')
-
+    settings = DictField(required=True)

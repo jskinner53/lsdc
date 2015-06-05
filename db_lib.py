@@ -8,7 +8,6 @@ import socket
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster, Request)
-#from odm_templates import (BeamlineInfo, UserSettings, Types)   # for bl info, user settings, and types
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
@@ -41,7 +40,9 @@ if client:
     client = client.split()[0]
 
     if client == '130.199.219.44':
-        db_name = 'matt_tmp_mongo'
+        #db_name = 'matt_tmp_mongo'
+        db_name = 'john_mongo' # tmp
+        db_hsot = 'lsbr-dev' # tmp
 
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
@@ -663,84 +664,43 @@ def getOrderedRequestList():
     return orderedRequestsList
 
 
-#def saveType(type_name, type_keys):
-#    """
-#    saveType('mounted_sample', ['puck_pos','sample_pos','sample_id'])
-#    saveType('params', ['exp','osc','dist'])
-#    """
-#    thistype = Types(type_name=type_name, type_keys=type_keys)
-#    thistype.save()
-#
-#def getTypeKeys(type_name):
-#    """
-#    returns the list of keys for the given type
-#    """
-#    try:
-#        return Types.objects(type_name=type_name).only('type_keys')[0].to_mongo()['type_keys']
-#    except IndexError:
-#        return None
-
-
-#def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
-def newBeamlineInfo(info_dict):
+def beamlineInfo(beamline_id, info_name, info_dict=None):
     """
-    You could really just use the mongoengine BeamlineInfo class directly,
-    this is just a convenience/documentation.
-
-    info_dict must include:  beamline_id and info_name
-    info_name must be unique per beamline_id
-
-    bli = newBeamlineInfo({'beamline_id': 'x17id1', 'info_name': 'mounted_sample'
-                           'stuff': 'whatever'})
+    to write info:  beamlineInfo('x25', 'det', info_dict={'vendor':'adsc','model':'q315r'})
+    to fetch info:  info = beamlineInfo('x25', 'det')
     """
-    info = BeamlineInfo(**info_dict)
-    return info.save()
 
-def getBeamlineInfo(beamline_id, info_name):
-    """
-    You could really just use the mongoengine BeamlineInfo class directly,
-    this is just a convenience/documentation.
-
-    bli = getBeamlineInfo('17id1', 'mounted_sample')
-    bli_dict = bli.to_mongo()
-    for key in keys(bli_dict):
-        print bli_dict[key]
-        # or
-        print eval('bli.'+key)
-    """
+    # if it exists it's a query or create
     try:
-        return BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0]
+        bli = BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0]
+
+        if info_dict is None:  # this is a query
+            return bli.info
+
+        # else it's an update
+        bli.update(set__info=info_dict)
+
+    # else it's a create
     except IndexError:
-        return None
+        BeamlineInfo(beamline_id=beamline_id, info_name=info_name, info=info_dict).save()
 
 
-def newUserSettings(settings_dict):
+def userSettings(user_id, settings_name, settings_dict=None):
     """
-    You could really just use the mongoengine UserSettings class directly,
-    this is just a convenience/documentation.
-
-    settings_dict must include:  user_id and settings_name
-    settings_name must be unique per user_id
-
-    bli = newUserSettigns({'user_id': 'name|#?', 'settings_name': 'scan_params'
-                           'stuff': 'whatever'})
+    to write info:  userSettings('matt', 'numbers', info_dict={'phone':'123','fax':'456'})
+    to fetch info:  settings = userSettings('matt', 'numbers')
     """
-    settings = UserSettings(**settings_dict)
-    return settings.save()
 
-def getUserSettings(user_id, settings_name):
-    """
-    You could really just use the mongoengine UserSettings class directly,
-    this is just a convenience/documentation.
-
-    us = getUserSettings('matt','params')
-    us_dict = us.to_mongo()
-    for key in keys(us_dict):
-        print us_dict[key]
-        # or
-        print eval('us.'+key)
-    """
+    # if it exists it's a query or create
     try:
-        return UserSettings.objects(user_id=user_id, settings_name=settings_name)[0]
+        uset = UserSettings.objects(user_id=user_id, settings_name=settings_name)[0]
+
+        if settings_dict is None:  # this is a query
+            return uset.settings
+
+        # else it's an update
+        uset.update(set__settings=settings_dict)
+
+    # else it's a create
     except IndexError:
-        return None
+        UserSettings(user_id=user_id, settings_name=settings_name, settings=settings_dict).save()
