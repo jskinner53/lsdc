@@ -8,7 +8,8 @@ import socket
 import mongoengine as mongo
 
 from odm_templates import (Sample, Container, Raster, Request)
-from odm_templates import (BeamlineInfo, UserSettings, Types)   # for bl info, user settings, and types
+#from odm_templates import (BeamlineInfo, UserSettings, Types)   # for bl info, user settings, and types
+from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
 
@@ -34,6 +35,7 @@ if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
 elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
+        db_host = 'lsbr-dev'  # temporary
 
 if client:
     client = client.split()[0]
@@ -521,10 +523,13 @@ def getSampleIDfromAbsoluteDewarPos(abs_pos):
 
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
-    if orderedRequests != [] and orderedRequests[0]["priority"] > 0:
-        return orderedRequests[0]
-    else:
-        return {}
+    try:
+        if orderedRequests[0]["priority"] > 0:
+            return orderedRequests[0]
+    except IndexError:
+        pass
+
+    return {}
 
 
 def getRequest(reqID):  # need to get this from searching the dewar I guess
@@ -654,39 +659,48 @@ def getOrderedRequestList():
     return orderedRequestsList
 
 
-def saveType(type_name, type_keys):
-    """
-    saveType('mounted_sample', ['puck_pos','sample_pos','sample_id'])
-    saveType('params', ['exp','osc','dist'])
-    """
-    thistype = Types(type_name=type_name, type_keys=type_keys)
-    thistype.save()
+#def saveType(type_name, type_keys):
+#    """
+#    saveType('mounted_sample', ['puck_pos','sample_pos','sample_id'])
+#    saveType('params', ['exp','osc','dist'])
+#    """
+#    thistype = Types(type_name=type_name, type_keys=type_keys)
+#    thistype.save()
+#
+#def getTypeKeys(type_name):
+#    """
+#    returns the list of keys for the given type
+#    """
+#    try:
+#        return Types.objects(type_name=type_name).only('type_keys')[0].to_mongo()['type_keys']
+#    except IndexError:
+#        return None
 
-def getTypeKeys(type_name):
+
+#def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
+def saveBeamlineInfo(info_dict, beamline_id=None, info_name=None):
     """
-    returns the list of keys for the given type
+    #saveBeamlineInfo('17id1','mounted_sample', 'mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
+    saveBeamlineInfo('17id1','mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
     """
+
     try:
-        return Types.objects(type_name=type_name).only('type_keys')[0].to_mongo()['type_keys']
-    except IndexError:
-        return None
+        pass
+        #BeamlineInfo.objects(_id=info_dict['id']).
 
+    except KeyError:
+        info_dict['beamline_id'] = beamline_id
+        info_dict['info_name'] = info_name
+        #info_dict['info_type'] = info_type
 
-def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
-    """
-    saveBeamlineInfo('17id1','mounted_sample', 'mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
-    """
-    info_dict['beamline_id'] = beamline_id
-    info_dict['info_name'] = info_name
-    info_dict['info_type'] = info_type
-
-    info = BeamlineInfo(**info_dict)
-    info.save()
+        info = BeamlineInfo(**info_dict)
+        info.save()
 
 def getBeamlineInfo(beamline_id, info_name):
     """
     bli = getBeamlineInfo('17id1', 'mounted_sample')
-    for key in getTypeKeys('mounted_sample'):
+    #for key in getTypeKeys('mounted_sample'):
+    for key in keys(bli):
         print bli[key]
     """
     try:
@@ -695,13 +709,15 @@ def getBeamlineInfo(beamline_id, info_name):
         return None
 
 
-def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
+#def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
+def saveUserSettings(user_id, settings_name, settings_dict):
     """
-    saveUserSettings('matt','params', 'params', {'exp': 1, 'osc': 3, 'dist': 387})
+    #saveUserSettings('matt','params', 'params', {'exp': 1, 'osc': 3, 'dist': 387})
+    saveUserSettings('matt','params', {'exp': 1, 'osc': 3, 'dist': 387})
     """
     settings_dict['user_id'] = user_id
     settings_dict['settings_name'] = settings_name
-    settings_dict['settings_type'] = settings_type
+    #settings_dict['settings_type'] = settings_type
 
     settings = UserSettings(**settings_dict)
     settings.save()
@@ -709,7 +725,8 @@ def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
 def getUserSettings(user_id, settings_name):
     """
     us = getUserSettings('matt','params')
-    for key in getTypeKeys('params'):
+    #for key in getTypeKeys('params'):
+    for key in keys(us):
         print us[key]
     """
     try:
