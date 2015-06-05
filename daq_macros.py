@@ -403,7 +403,7 @@ def defineColumnRaster(sampleID,raster_w,raster_h_s,stepsizeMicrons_s): #maybe p
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
 
-  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   tempnewRasterRequest["protocol"] = "raster"
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 3 # this will tell clients that the raster should be displayed.
@@ -432,7 +432,7 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
     rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
-  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   tempnewRasterRequest["protocol"] = "raster"
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
@@ -476,7 +476,7 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
       rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
-  tempnewRasterRequest = db_lib.createDefaultRequest(sampleID)
+  tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   tempnewRasterRequest["protocol"] = "raster"
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
