@@ -5,6 +5,7 @@ import string
 import math
 from epics import PV
 import daq_utils
+#from daq_utils import *
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4.QtCore import * 
@@ -66,7 +67,7 @@ class snapCommentDialog(QDialog):
 class screenDefaultsDialog(QDialog):
     def __init__(self):
         QDialog.__init__(self)
-        self.setModal(False)
+        self.setModal(True)
         vBoxColParams1 = QtGui.QVBoxLayout()
         hBoxColParams1 = QtGui.QHBoxLayout()
         colStartLabel = QtGui.QLabel('Oscillation Start:')
@@ -74,13 +75,14 @@ class screenDefaultsDialog(QDialog):
         colStartLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_start_ledit = QtGui.QLineEdit()
         self.osc_start_ledit.setFixedWidth(60)
-        self.osc_start_ledit.setText(str(daq_utils.screenPhist))
+        self.osc_start_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phist")))
         colEndLabel = QtGui.QLabel('Oscillation End:')
         colEndLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colEndLabel.setFixedWidth(120)
         self.osc_end_ledit = QtGui.QLineEdit()
         self.osc_end_ledit.setFixedWidth(60)
-        self.osc_end_ledit.setText(str(daq_utils.screenPhiend))
+        self.osc_end_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phi_end")))
+#        self.osc_end_ledit.setText(str(daq_utils.screenPhiend))
         hBoxColParams1.addWidget(colStartLabel)
         hBoxColParams1.addWidget(self.osc_start_ledit)
         hBoxColParams1.addWidget(colEndLabel)
@@ -92,13 +94,13 @@ class screenDefaultsDialog(QDialog):
         colRangeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_range_ledit = QtGui.QLineEdit()
         self.osc_range_ledit.setFixedWidth(60)
-        self.osc_range_ledit.setText(str(daq_utils.screenWidth))
+        self.osc_range_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_width")))
         colExptimeLabel = QtGui.QLabel('ExposureTime:')
         colExptimeLabel.setFixedWidth(120)
         colExptimeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.exp_time_ledit = QtGui.QLineEdit()
         self.exp_time_ledit.setFixedWidth(60)
-        self.exp_time_ledit.setText(str(daq_utils.screenExptime))
+        self.exp_time_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_time")))
         hBoxColParams2.addWidget(colRangeLabel)
         hBoxColParams2.addWidget(self.osc_range_ledit)
         hBoxColParams2.addWidget(colExptimeLabel)
@@ -110,7 +112,7 @@ class screenDefaultsDialog(QDialog):
         colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.energy_ledit = QtGui.QLineEdit()
         self.energy_ledit.setFixedWidth(60)
-        self.energy_ledit.setText(str(daq_utils.wave2energy(daq_utils.screenWave)))
+        self.energy_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_energy")))
         colTransmissionLabel = QtGui.QLabel('Transmission (%):')
         colTransmissionLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colTransmissionLabel.setFixedWidth(120)
@@ -129,12 +131,14 @@ class screenDefaultsDialog(QDialog):
         colBeamWLabel.setAlignment(QtCore.Qt.AlignCenter) 
 
         self.beamWidth_ledit = QtGui.QLineEdit()
+        self.beamWidth_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamWidth")))
         self.beamWidth_ledit.setFixedWidth(60)
         colBeamHLabel = QtGui.QLabel('Beam Height:')
         colBeamHLabel.setFixedWidth(120)
         colBeamHLabel.setAlignment(QtCore.Qt.AlignCenter) 
 
         self.beamHeight_ledit = QtGui.QLineEdit()
+        self.beamHeight_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamHeight")))
         self.beamHeight_ledit.setFixedWidth(60)
         hBoxColParams4.addWidget(colBeamWLabel)
         hBoxColParams4.addWidget(self.beamWidth_ledit)
@@ -159,19 +163,29 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
 
 
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Apply | QDialogButtonBox.Cancel,
+            Qt.Horizontal, self)
+        self.buttons.buttons()[1].clicked.connect(self.screenDefaultsOKCB)
+        self.buttons.buttons()[0].clicked.connect(self.screenDefaultsCancelCB)
 
-        cancelButton = QtGui.QPushButton("Cancel")        
-        cancelButton.clicked.connect(self.screenDefaultsCancelCB)
+#        cancelButton = QtGui.QPushButton("Cancel")        
+#        cancelButton.clicked.connect(self.screenDefaultsCancelCB)
         vBoxColParams1.addLayout(hBoxColParams1)
         vBoxColParams1.addLayout(hBoxColParams2)
         vBoxColParams1.addLayout(hBoxColParams3)
         vBoxColParams1.addLayout(hBoxColParams4)
         vBoxColParams1.addLayout(hBoxColParams5)
-        vBoxColParams1.addWidget(cancelButton)
+        vBoxColParams1.addWidget(self.buttons)
+#        vBoxColParams1.addWidget(cancelButton)
         self.setLayout(vBoxColParams1)
 
     def screenDefaultsCancelCB(self):
-      self.hide()
+      self.done(QDialog.Rejected)
+
+    def screenDefaultsOKCB(self):
+      daq_utils.setBeamlineConfigParams({"screen_default_phist":float(self.osc_start_ledit.text()),"screen_default_phi_end":float(self.osc_end_ledit.text()),"screen_default_width":float(self.osc_range_ledit.text()),"screen_default_time":float(self.exp_time_ledit.text()),"screen_default_reso":float(self.resolution_ledit.text())})
+      self.done(QDialog.Accepted)
     
 
 
@@ -184,10 +198,14 @@ class PuckDialog(QtGui.QDialog):
 
     def initData(self):
         puckList = db_lib.getAllPucks()
+        dewarObj = db_lib.getPrimaryDewar()
+        pucksInDewar = dewarObj["item_list"]
+
         data = []
 #if you have to, you could store the puck_id in the item data
         for i in xrange(len(puckList)):
-          data.append(puckList[i]["containerName"])
+          if (puckList[i]["container_id"] not in pucksInDewar):
+            data.append(puckList[i]["containerName"])
         self.model = QtGui.QStandardItemModel()
         labels = QtCore.QStringList(("Name"))
         self.model.setHorizontalHeaderLabels(labels)
@@ -220,12 +238,18 @@ class PuckDialog(QtGui.QDialog):
       selmod = self.tv.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
-      i = 0
-      item = self.model.itemFromIndex(indexes[i])
-      text = str(item.text())
-      self.label.setText(text)      
-      self.accept()
-      self.puckName = text
+      if (indexes != []):
+        i = 0
+        item = self.model.itemFromIndex(indexes[i])
+        text = str(item.text())
+        self.label.setText(text)      
+        self.accept()
+        self.puckName = text
+      else:
+        text = ""
+        self.reject()
+        self.puckName = text
+      
 
     def containerCancelCB(self):
       text = ""
@@ -267,7 +291,6 @@ class DewarDialog(QtGui.QDialog):
             Qt.Horizontal, self)
 #        dewarMax = len(self.data)
         for i in xrange(len(self.data),0,-1):
-          print i
           self.buttons.addButton(str(self.data[i-1]),0)
           self.buttons.buttons()[len(self.data)-i].clicked.connect(functools.partial(self.on_button,str(i)))
         cancelButton = QtGui.QPushButton("Cancel")        
@@ -353,15 +376,20 @@ class DewarTree(QtGui.QTreeView):
 #                  item.setBackground(QtGui.QColor('white'))                       
 #works as below, just calculate the dewarPos
 
-                samplePos = int((i*puckSize)+j)
-                if (samplePos == self.parent.mountedPin_pv.get()):
-                  item.setBackground(QtGui.QColor('yellow'))       
-                else:
-                  item.setBackground(QtGui.QColor('white'))                       
+#                samplePos = int((i*puckSize)+j)
 
-
+#                if (samplePos == self.parent.mountedPin_pv.get()):
+                if (puckContents[j] == self.parent.mountedPin_pv.get()):
+                  item.setForeground(QtGui.QColor('red'))       
+                  font = QtGui.QFont()
+                  font.setItalic(True)
+                  font.setOverline(True)
+                  font.setUnderline(True)
+                  item.setFont(font)
+#                  item.setBackground(QtGui.QColor('yellow'))       
                 parentItem.appendRow(item)
-                if (samplePos == self.parent.mountedPin_pv.get()):
+                if (puckContents[j] == self.parent.mountedPin_pv.get()):
+#                if (samplePos == self.parent.mountedPin_pv.get()):
                   mountedIndex = self.model.indexFromItem(item)
 
 
@@ -404,10 +432,22 @@ class DewarTree(QtGui.QTreeView):
         if (selectedSampleIndex != None and collectionRunning == False):
           print "selectedSampleIndex = " + str(selectedSampleIndex)
           self.setCurrentIndex(selectedSampleIndex)
+          self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
+          font = QtGui.QFont()
+          font.setUnderline(True)
+          font.setItalic(True)
+          font.setOverline(True)
+          self.model.itemFromIndex(mountedIndex).setFont(font)
           self.parent.row_clicked(selectedSampleIndex)
         elif (selectedSampleIndex == None and collectionRunning == False):
           if (mountedIndex != None):
             self.setCurrentIndex(mountedIndex)
+            self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
+            font = QtGui.QFont()
+            font.setUnderline(True)
+            font.setItalic(True)
+            font.setOverline(True)
+            self.model.itemFromIndex(mountedIndex).setFont(font)
         else:
           pass
         if (selectedIndex != None and collectionRunning == False):
@@ -432,19 +472,25 @@ class DewarTree(QtGui.QTreeView):
             requestedSampleList.append(self.orderedRequests[i]["sample_id"])
         for i in xrange(len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
-          (absDewarPos,containerID,samplePositionInContainer) = db_lib.getAbsoluteDewarPosfromSampleID(requestedSampleList[i])
+#          (puckPosition,absDewarPos,containerID,samplePositionInContainer) = db_lib.getAbsoluteDewarPosfromSampleID(requestedSampleList[i])
+          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
        
           containerName = db_lib.getContainerNameByID(containerID)
           nodeString = QtCore.QString(str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
           item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
-          if (absDewarPos == self.parent.mountedPin_pv.get()):
-            item.setBackground(QtGui.QColor('yellow'))       
-          else:
-            item.setBackground(QtGui.QColor('white'))                       
+#          if (absDewarPos == self.parent.mountedPin_pv.get()):
+          if (requestedSampleList[i] == self.parent.mountedPin_pv.get()):
+            item.setForeground(QtGui.QColor('red'))       
+            font = QtGui.QFont()
+            font.setItalic(True)
+            font.setOverline(True)
+            font.setUnderline(True)
+            item.setFont(font)
 
           parentItem.appendRow(item)
-          if (absDewarPos == self.parent.mountedPin_pv.get()):
+#          if (absDewarPos == self.parent.mountedPin_pv.get()):
+          if (requestedSampleList[i] == self.parent.mountedPin_pv.get()):
             mountedIndex = self.model.indexFromItem(item)
           if (requestedSampleList[i] == self.parent.selectedSampleID): #looking for the selected item
 #          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
@@ -509,9 +555,10 @@ class DewarTree(QtGui.QTreeView):
       for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
-        selectedSampleRequest = db_lib.getRequest(itemData)
-        selectedSampleRequest["priority"] = 5000
-        db_lib.updateRequest(selectedSampleRequest)
+        if (itemData > 0): #then it's a request, not a sample
+          selectedSampleRequest = db_lib.getRequest(itemData)
+          selectedSampleRequest["priority"] = 5000
+          db_lib.updateRequest(selectedSampleRequest)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
 
@@ -523,9 +570,10 @@ class DewarTree(QtGui.QTreeView):
       for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
-        selectedSampleRequest = db_lib.getRequest(itemData)
-        selectedSampleRequest["priority"] = 0
-        db_lib.updateRequest(selectedSampleRequest)
+        if (itemData > 0): #then it's a request, not a sample
+          selectedSampleRequest = db_lib.getRequest(itemData)
+          selectedSampleRequest["priority"] = 0
+          db_lib.updateRequest(selectedSampleRequest)
 #        item.setCheckState(Qt.Unchecked)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
@@ -537,15 +585,16 @@ class DewarTree(QtGui.QTreeView):
       for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
-        selectedSampleRequest = db_lib.getRequest(itemData)
-        self.selectedSampleID = selectedSampleRequest["sample_id"]
-        db_lib.deleteRequest(selectedSampleRequest)
-        if (selectedSampleRequest["protocol"] == "raster"):
-          for i in xrange(len(self.parent.rasterList)):
-            if (self.parent.rasterList[i] != None):
-              if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
-                self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
-                self.parent.rasterList[i] = None
+        if (itemData > 0): #then it's a request, not a sample
+          selectedSampleRequest = db_lib.getRequest(itemData)
+          self.selectedSampleID = selectedSampleRequest["sample_id"]
+          db_lib.deleteRequest(selectedSampleRequest)
+          if (selectedSampleRequest["protocol"] == "raster"):
+            for i in xrange(len(self.parent.rasterList)):
+              if (self.parent.rasterList[i] != None):
+                if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
+                  self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
+                  self.parent.rasterList[i] = None
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
       
@@ -1540,7 +1589,7 @@ class controlMain(QtGui.QMainWindow):
           else:
             self.selectedSampleRequest["priority"] = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
-      self.parent.treeChanged_pv.put(1)
+##      self.parent.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
             
       
@@ -1554,7 +1603,7 @@ class controlMain(QtGui.QMainWindow):
             self.selectedSampleRequest["priority"] = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
 #      self.dewarTree.refreshTree()
-      self.parent.treeChanged_pv.put(1)
+##      self.parent.treeChanged_pv.put(1)
 
 
     def topPriorityCB(self):
@@ -1571,7 +1620,7 @@ class controlMain(QtGui.QMainWindow):
       priority = priority-100
       self.selectedSampleRequest["priority"] = priority
       db_lib.updateRequest(self.selectedSampleRequest)     
-      self.parent.treeChanged_pv.put(1)
+##      self.parent.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
       
 
@@ -2125,11 +2174,11 @@ class controlMain(QtGui.QMainWindow):
         colRequest["wavelength"] = wave
         colRequest["protocol"] = str(self.protoComboBox.currentText())
 #        print colRequest
-        if (rasterDef != None):
+        if (rasterDef != False):
           colRequest["rasterDef"] = rasterDef
           colRequest["gridStep"] = float(self.rasterStepEdit.text())
         newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
-        if (rasterDef != None):
+        if (rasterDef != False):
           self.rasterDefList.append(newSampleRequest)
           self.drawPolyRaster(newSampleRequest)
 #        db_lib.updateRequest(colRequest)
@@ -2147,9 +2196,8 @@ class controlMain(QtGui.QMainWindow):
       dewarPos, ok = DewarDialog.getDewarPos()
       ipos = int(dewarPos)-1
       if (ok):
-        print ipos
         db_lib.removePuckFromDewar(ipos)
-        self.parent.treeChanged_pv.put(1)
+        self.treeChanged_pv.put(1)
 #        self.dewarTree.refreshTree()
 
     def setVectorStartCB(self): #save sample x,y,z
@@ -2187,16 +2235,12 @@ class controlMain(QtGui.QMainWindow):
 
     def puckToDewarCB(self):
        puckName, ok = PuckDialog.getPuckName()
-       print puckName
-       print str(ok)
        if (ok):
          dewarPos, ok = DewarDialog.getDewarPos()
          ipos = int(dewarPos)-1
          if (ok):
-           print ipos
            db_lib.insertIntoContainer("primaryDewar2",ipos,db_lib.getContainerIDbyName(puckName))
-           self.parent.treeChanged_pv.put(1)
-#           self.dewarTree.refreshTree()
+           self.treeChanged_pv.put(1)
 
 
     def stopRunCB(self):
@@ -2206,8 +2250,10 @@ class controlMain(QtGui.QMainWindow):
     def mountSampleCB(self):
       print "mount selected sample"
       self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-      (dewarPos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
-      self.send_to_server("mountSample("+str(dewarPos)+")")
+#      (puckPosition,dewarPos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
+#      (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
+#      self.send_to_server("mountSample("+str(dewarPos)+")")
+      self.send_to_server("mountSample("+str(self.selectedSampleID)+")")
 
     def unmountSampleCB(self):
       print "unmount sample"
@@ -2269,7 +2315,7 @@ class controlMain(QtGui.QMainWindow):
 #      print itemData
       self.SelectedItemData = itemData # an attempt to know what is selected and preserve it when refreshing the tree
 #      sample_name = getSampleIdFromDewarPos(itemData)
-      sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
+
       if (itemData == -99):
         print "nothing there"
         return
@@ -2277,6 +2323,7 @@ class controlMain(QtGui.QMainWindow):
         print "I'm a puck"
         return
       elif (itemData< -100):
+        sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
         print "sample in pos " + str(itemData) 
         self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
         self.selectedSampleID = self.selectedSampleRequest["sample_id"]        

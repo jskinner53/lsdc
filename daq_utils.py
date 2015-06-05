@@ -3,121 +3,98 @@ import string
 #import beamline_support
 import os
 from math import *
-
+import metadatastore.commands as mdsc
 
 
 #global det_radius
 #det_radius = 0
-
+global beamline
+beamline = "john"
+global searchParams
+searchParams = {"config_params.beamline_id":beamline}
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,tablex_mot_code,tabley_mot_code,has_beamline,has_db,has_xtalview,xtal_url,xtal_bmp_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,epics_type,ringfile,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy
 
 #  var_list["state"] = "Idle"
-  lowMagFOVx = 1739.0
-  lowMagFOVy = 1370.0
-  highMagFOVx = 1739.0 #digizoom will be this/2
-  highMagFOVy = 1370.0
-  lowMagPixX = 1292.0 #for automated images
-  lowMagPixY = 964.0
-  highMagPixX = 1292.0 #for automated images
-  highMagPixY = 964.0
-  screenPixX = 646.0
-  screenPixY = 482.0
+
+
+  configIter= mdsc.find_beamline_configs(**searchParams)
+  beamlineConfig = configIter.next()["config_params"]
+
+  lowMagFOVx = beamlineConfig["lowMagFOVx"]
+  lowMagFOVy = beamlineConfig["lowMagFOVy"]
+  highMagFOVx = beamlineConfig["highMagFOVx"] #digizoom will be this/2
+  highMagFOVy = beamlineConfig["highMagFOVy"]
+  lowMagPixX = beamlineConfig["lowMagPixX"] #for automated images
+  lowMagPixY = beamlineConfig["lowMagPixY"]
+  highMagPixX = beamlineConfig["highMagPixX"] #for automated images
+  highMagPixY = beamlineConfig["highMagPixY"]
+  screenPixX = beamlineConfig["screenPixX"]
+  screenPixY = beamlineConfig["screenPixY"]
   screenPixCenterX = screenPixX/2.0
   screenPixCenterY = screenPixY/2.0
-  gonioPvPrefix = "XF:AMXFMX{MC-Goni}"
-  
-  try:
-    varname = "BEAMLINE_ID" 
-    beamline = os.environ[varname]
-    varname = "DETECTOR_ID" 
-    detector_id = os.environ[varname]
-    if (detector_id == "ADSC-Q315"):
-      det_radius = 157.5
-    elif (detector_id == "ADSC-Q210"):
-      det_radius = 105.0
-    elif (detector_id == "PILATUS-6"):
-      det_radius = 212.0
-    elif (detector_id == "ADSC-Q4"):
-      det_radius = 94.0
-    else: #default q4
-      det_radius = 94.0 
-    varname = "EPICS_TYPE" 
-    epics_type = os.environ[varname]
-    varname = "RINGFILE" 
-    ringfile = os.environ[varname]
-    varname = "DET_TYPE" 
-    det_type = os.environ[varname]
-    varname = "HAS_DNA"
-    has_dna = int(os.environ[varname])
-    varname = "HAS_BEAMLINE"
-    has_beamline = int(os.environ[varname])
-    varname = "HAS_XTALVIEW"
-    has_xtalview = int(os.environ[varname])
-    varname = "CAMERA_OFFSET"
-    camera_offset = float(os.environ[varname])
-    if (has_xtalview):
-      varname = "XTAL_URL_SMALL"
-      xtal_url_small = os.environ[varname]
-      varname = "XTAL_URL"
-      xtal_url = os.environ[varname]
-      varname = "XTAL_BMP_URL"
-      xtal_bmp_url = os.environ[varname]
-      varname = "XTALVIEW_HAS_PASSWORD"
-      xtalview_has_password = int(os.environ[varname])
-      if (xtalview_has_password):
-        varname = "XTALVIEW_USER"
-        xtalview_user = os.environ[varname]
-        varname = "XTALVIEW_PASS"
-        xtalview_pass = os.environ[varname]
-      else:
-        xtalview_user = 'None'
-        xtalview_pass = 'None'        
-    varname = "HAS_DB"
-    has_db = int(os.environ[varname])
-    varname = "MONO_MOTOR_CODE"
-    mono_mot_code = os.environ[varname]
-    varname = "TABLEX_MOTOR_CODE"
-    tablex_mot_code = os.environ[varname]
-    varname = "TABLEY_MOTOR_CODE"
-    tabley_mot_code = os.environ[varname]    
-    varname = "SCREEN_DEFAULT_PROTOCOL"
-    screenProtocol = os.environ[varname]    
-    varname = "SCREEN_DEFAULT_PHIST"
-    screenPhist = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_PHI_END"
-    screenPhiend = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_WIDTH"
-    screenWidth = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_DIST"
-    screenDist = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_TIME"
-    screenExptime = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_RESO"
-    screenReso = float(os.environ[varname])
-    varname = "SCREEN_DEFAULT_WAVE"
-    screenWave = float(os.environ[varname])
-  except KeyError:
-    print "No ENV VAR %s\n" % varname
-  try:        
-    varname = "BEAMSTOP_X_PVNAME"
-    beamstop_x_pvname = os.environ[varname]
-  except KeyError:
-    pass
-  try:        
-    varname = "BEAMSTOP_Y_PVNAME"
-    beamstop_y_pvname = os.environ[varname]
-  except KeyError:
-    pass
-
-
+  gonioPvPrefix = beamlineConfig["gonioPvPrefix"]
+  detector_id = beamlineConfig["detector_id"]
+  if (detector_id == "ADSC-Q315"):
+    det_radius = 157.5
+  elif (detector_id == "ADSC-Q210"):
+    det_radius = 105.0
+  elif (detector_id == "PILATUS-6"):
+    det_radius = 212.0
+  elif (detector_id == "ADSC-Q4"):
+    det_radius = 94.0
+  else: #default q4
+    det_radius = 94.0 
+  det_type = beamlineConfig["detector_type"]
+  has_dna = beamlineConfig["has_edna"]
+  has_beamline = beamlineConfig["has_beamline"]
+  has_xtalview = beamlineConfig["has_xtalview"]
+  camera_offset = beamlineConfig["camera_offset"]
+  if (has_xtalview):
+    xtal_url_small = beamlineConfig["xtal_url_small"]
+    xtal_url = beamlineConfig["xtal_url"]
+  mono_mot_code = beamlineConfig["mono_mot_code"]
+  screenProtocol = beamlineConfig["screen_default_protocol"]
+  screenPhist = beamlineConfig["screen_default_phist"]
+  screenPhiend = beamlineConfig["screen_default_phi_end"]
+  screenWidth = beamlineConfig["screen_default_width"]
+  screenDist =  beamlineConfig["screen_default_dist"]
+  screenExptime = beamlineConfig["screen_default_time"]
+  screenReso = beamlineConfig["screen_default_reso"]
+  screenWave = beamlineConfig["screen_default_wave"]
+  screenEnergy = beamlineConfig["screen_default_energy"]
+  screenbeamWidth = beamlineConfig["screen_default_beamWidth"]
+  screenbeamHeight = beamlineConfig["screen_default_beamHeight"]
+  screenTransmissionPercent = beamlineConfig["screen_transmission_percent"]
+  beamstop_x_pvname = beamlineConfig["beamstop_x_pvname"]
+  beamstop_y_pvname = beamlineConfig["beamstop_y_pvname"]
 
 #def broadcast_output(s):
 #  time.sleep(0.01)
 #  if (string.find(s,'|') == -1):
 #    print s
 #  beamline_support.pvPut(message_string_pv,s)
+
+def setBeamlineConfigParams(paramDict):
+  configIter= mdsc.find_beamline_configs(**searchParams)
+  beamlineConfig = configIter.next()["config_params"]
+  configIter= mdsc.find_beamline_configs(**searchParams)
+  beamlineConfig = configIter.next()["config_params"]
+  for paramName in paramDict.keys():
+    beamlineConfig[paramName] = paramDict[paramName]
+  mdsc.insert_beamline_config(beamlineConfig, time.time())
+
+#def setBeamlineConfigParam(paramName,val):
+#  configIter= mdsc.find_beamline_configs(**searchParams)
+#  beamlineConfig = configIter.next()["config_params"]
+#  beamlineConfig[paramName] = val
+#  mdsc.insert_beamline_config(beamlineConfig, time.time())
+
+def getBeamlineConfigParam(paramName):
+  configIter= mdsc.find_beamline_configs(**searchParams)
+  beamlineConfig = configIter.next()["config_params"]
+  return beamlineConfig[paramName] 
 
 
 def getCurrentFOVx(camera,zoom): #cam 0 = lowMag, 

@@ -123,6 +123,8 @@ def getNextDisplayRaster():
     rast.status = 2
     rast.save()
     return retRaster
+    
+
 
 
 def createSample(sampleName):
@@ -393,6 +395,7 @@ def getQueue():
 
 
 def getDewarPosfromSampleID(sample_id):
+
     """
     returns the container_id and position in that container for a sample with the given id
     in one of the containers in the container named by the global variable 'primaryDewarName'
@@ -417,6 +420,7 @@ def getDewarPosfromSampleID(sample_id):
 
 
 def getAbsoluteDewarPosfromSampleID(sample_id):
+
     """
     returns the "absolute position" (only made sense with fixed size containers),
     container_id, and position in that container for a sample with the given id
@@ -458,7 +462,7 @@ def getCoordsfromSampleID(sample_id):
 
             for j,samp_id in enumerate(sampleList):
                 if samp_id == sample_id and samp_id is not None:
-                    return (i, j)
+                    return (i, j,puck_id)
 
 
 def getSampleIDfromCoords(puck_num, position):
