@@ -118,7 +118,7 @@ class screenDefaultsDialog(QDialog):
         colTransmissionLabel.setFixedWidth(120)
         self.transmission_ledit = QtGui.QLineEdit()
         self.transmission_ledit.setFixedWidth(60)
-        self.transmission_ledit.setText("100")
+        self.transmission_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_transmission_percent")))
 
         hBoxColParams3.addWidget(colTransmissionLabel)
         hBoxColParams3.addWidget(self.transmission_ledit)
@@ -151,7 +151,7 @@ class screenDefaultsDialog(QDialog):
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
         self.resolution_ledit.setFixedWidth(60)
-        self.resolution_ledit.setText(str(daq_utils.screenReso))
+        self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
         colResoDistLabel = QtGui.QLabel('Detector Distance')
         colResoDistLabel.setFixedWidth(120)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
@@ -159,8 +159,8 @@ class screenDefaultsDialog(QDialog):
         self.colResoCalcDistance_ledit.setFixedWidth(60)
         hBoxColParams5.addWidget(colResoLabel)
         hBoxColParams5.addWidget(self.resolution_ledit)
-        hBoxColParams5.addWidget(colResoDistLabel)
-        hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
+#        hBoxColParams5.addWidget(colResoDistLabel)
+#        hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
 
 
         self.buttons = QDialogButtonBox(
@@ -184,7 +184,7 @@ class screenDefaultsDialog(QDialog):
       self.done(QDialog.Rejected)
 
     def screenDefaultsOKCB(self):
-      daq_utils.setBeamlineConfigParams({"screen_default_phist":float(self.osc_start_ledit.text()),"screen_default_phi_end":float(self.osc_end_ledit.text()),"screen_default_width":float(self.osc_range_ledit.text()),"screen_default_time":float(self.exp_time_ledit.text()),"screen_default_reso":float(self.resolution_ledit.text())})
+      daq_utils.setBeamlineConfigParams({"screen_default_phist":float(self.osc_start_ledit.text()),"screen_default_phi_end":float(self.osc_end_ledit.text()),"screen_default_width":float(self.osc_range_ledit.text()),"screen_default_time":float(self.exp_time_ledit.text()),"screen_default_reso":float(self.resolution_ledit.text()),"screen_default_energy":float(self.energy_ledit.text()),"screen_transmission_percent":float(self.transmission_ledit.text()),"screen_default_beamWidth":float(self.beamWidth_ledit.text()),"screen_default_beamHeight":float(self.beamHeight_ledit.text())})
       self.done(QDialog.Accepted)
     
 
@@ -432,12 +432,13 @@ class DewarTree(QtGui.QTreeView):
         if (selectedSampleIndex != None and collectionRunning == False):
           print "selectedSampleIndex = " + str(selectedSampleIndex)
           self.setCurrentIndex(selectedSampleIndex)
-          self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
-          font = QtGui.QFont()
-          font.setUnderline(True)
-          font.setItalic(True)
-          font.setOverline(True)
-          self.model.itemFromIndex(mountedIndex).setFont(font)
+          if (mountedIndex != None):
+            self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
+            font = QtGui.QFont()
+            font.setUnderline(True)
+            font.setItalic(True)
+            font.setOverline(True)
+            self.model.itemFromIndex(mountedIndex).setFont(font)
           self.parent.row_clicked(selectedSampleIndex)
         elif (selectedSampleIndex == None and collectionRunning == False):
           if (mountedIndex != None):
@@ -843,6 +844,7 @@ class controlMain(QtGui.QMainWindow):
         colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.energy_ledit = QtGui.QLineEdit()
         self.energy_ledit.setFixedWidth(60)
+        self.energy_ledit.textChanged[str].connect(self.energyTextChanged)
         colTransmissionLabel = QtGui.QLabel('Transmission (%):')
         colTransmissionLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colTransmissionLabel.setFixedWidth(120)
@@ -872,11 +874,14 @@ class controlMain(QtGui.QMainWindow):
         colResoLabel.setFixedWidth(120)
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
+        self.resolution_ledit.textChanged[str].connect(self.resoTextChanged)
         self.resolution_ledit.setFixedWidth(60)
         colResoDistLabel = QtGui.QLabel('Detector Distance')
         colResoDistLabel.setFixedWidth(120)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
+        self.colResoCalcDistance_ledit = QtGui.QLabel()
+#        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
+#        self.colResoCalcDistance_ledit.setReadOnly(True)
         self.colResoCalcDistance_ledit.setFixedWidth(60)
         hBoxColParams5.addWidget(colResoLabel)
         hBoxColParams5.addWidget(self.resolution_ledit)
@@ -891,7 +896,7 @@ class controlMain(QtGui.QMainWindow):
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
-        protoOptionList = ["standard","raster","vector","characterize"]
+        protoOptionList = ["standard","screen","raster","vector","characterize"]
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1553,6 +1558,16 @@ class controlMain(QtGui.QMainWindow):
         self.rasterParamsFrame.show()
         self.vectorParamsFrame.hide()
         self.characterizeParamsFrame.hide()
+      elif (protocol == "screen"):
+        self.osc_start_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phist")))
+        self.osc_end_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phi_end")))
+        self.osc_range_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_width")))
+        self.exp_time_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_time")))
+        self.energy_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_energy")))
+        self.transmission_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_transmission_percent")))
+        self.beamWidth_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamWidth")))
+        self.beamHeight_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamHeight")))
+        self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
       elif (protocol == "vector"):
         self.rasterParamsFrame.hide()
         self.vectorParamsFrame.show()
@@ -1566,6 +1581,17 @@ class controlMain(QtGui.QMainWindow):
         self.rasterParamsFrame.hide()
         self.vectorParamsFrame.hide()
 
+
+    def resoTextChanged(self,text):
+      try:
+        dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(text),daq_utils.wave2energy(float(self.energy_ledit.text())),0))
+      except ValueError:
+        dist_s = "500.0"
+      self.colResoCalcDistance_ledit.setText(dist_s)
+
+    def energyTextChanged(self,text):
+      dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(self.resolution_ledit.text()),daq_utils.wave2energy(float(text)),0))
+      self.colResoCalcDistance_ledit.setText(dist_s)
 
     def protoComboActivatedCB(self, text):
 #      print "protocol = " + str(text)
@@ -2122,7 +2148,8 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addSampleRequestCB(self,rasterDef=None):
-      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+#      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+
 #      centeringOption = str(self.centeringComboBox.currentText())
 #      if (centeringOption == "Interactive"):
       if (len(self.centeringMarksList) != 0): 
@@ -2130,7 +2157,7 @@ class controlMain(QtGui.QMainWindow):
         for i in xrange(len(self.centeringMarksList)):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
-             colRequest = db_lib.createDefaultRequest(self.selectedSampleID)
+             colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
              colRequest["sweep_start"] = float(self.osc_start_ledit.text())
              colRequest["sweep_end"] = float(self.osc_end_ledit.text())
              colRequest["img_width"] = float(self.osc_range_ledit.text())
@@ -2140,7 +2167,7 @@ class controlMain(QtGui.QMainWindow):
              colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
              colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #             colRequest["gridStep"] = self.rasterStepEdit.text()
-             colRequest["attenuation"] = int(self.transmission_ledit.text())
+             colRequest["attenuation"] = float(self.transmission_ledit.text())
              colRequest["slit_width"] = float(self.beamWidth_ledit.text())
              colRequest["slit_height"] = float(self.beamHeight_ledit.text())
              wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
@@ -2167,7 +2194,7 @@ class controlMain(QtGui.QMainWindow):
         colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #        colRequest["gridStep"] = self.rasterStepEdit.text()
-        colRequest["attenuation"] = int(self.transmission_ledit.text())
+        colRequest["attenuation"] = float(self.transmission_ledit.text())
         colRequest["slit_width"] = float(self.beamWidth_ledit.text())
         colRequest["slit_height"] = float(self.beamHeight_ledit.text())
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
@@ -2323,16 +2350,19 @@ class controlMain(QtGui.QMainWindow):
         print "I'm a puck"
         return
       elif (itemData< -100):
-        sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
+        self.selectedSampleID = (0-(itemData))-100 #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
+        sample_name = db_lib.getSampleNamebyID(self.selectedSampleID) 
         print "sample in pos " + str(itemData) 
-        self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
-        self.selectedSampleID = self.selectedSampleRequest["sample_id"]        
-        self.refreshCollectionParams(self.selectedSampleRequest)
-        if (self.vidActionRasterDefRadio.isChecked()):
+        if (self.osc_start_ledit.text() == ""):
+          self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
+          self.refreshCollectionParams(self.selectedSampleRequest)
+          if (self.vidActionRasterDefRadio.isChecked()):
 #          self.selectedSampleRequest["protocol"] = "raster"
-          self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
-          self.showProtParams()
-
+            self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
+            self.showProtParams()
+        else:
+          localRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
+          self.dataPathGB.setFilePrefix_ledit(str(localRequest["file_prefix"]))          
     
       else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)

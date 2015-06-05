@@ -4,7 +4,8 @@ import string
 import os
 from math import *
 import metadatastore.commands as mdsc
-
+import db_lib
+from db_lib import *
 
 #global det_radius
 #det_radius = 0
@@ -128,11 +129,14 @@ def calc_reso(det_radius,distance,wave,theta):
 
 def distance_from_reso(det_radius,reso,wave,theta):
 
-  dg2rd = 3.14159265 / 180.0
-  theta_radians = float(theta) * dg2rd
+  try:
+    dg2rd = 3.14159265 / 180.0
+    theta_radians = float(theta) * dg2rd
 #  det_radius = float(diameter)/2
-  dx = det_radius/(tan(2*(asin(float(wave)/(2*reso)))-theta_radians))
-  return float("%.2f" % dx)
+    dx = det_radius/(tan(2*(asin(float(wave)/(2*reso)))-theta_radians))
+    return float("%.2f" % dx)
+  except ValueError:  
+    return 500.0 #a safe value for now
 
 
 def energy2wave(e):
@@ -140,6 +144,46 @@ def energy2wave(e):
 
 def wave2energy(w):
   return float("%.2f" % (12.3985/w))
+
+def createDefaultRequest(sample_id):
+    """
+    Doesn't really create a request, just returns a dictionary
+    with the default parameters that can be passed to addRequesttoSample().
+    """
+    configIter= mdsc.find_beamline_configs(**searchParams)
+    beamlineConfig = configIter.next()["config_params"]
+    screenPhist = beamlineConfig["screen_default_phist"]
+    screenPhiend = beamlineConfig["screen_default_phi_end"]
+    screenWidth = beamlineConfig["screen_default_width"]
+    screenDist =  beamlineConfig["screen_default_dist"]
+    screenExptime = beamlineConfig["screen_default_time"]
+    screenReso = beamlineConfig["screen_default_reso"]
+    screenWave = beamlineConfig["screen_default_wave"]
+    screenEnergy = beamlineConfig["screen_default_energy"]
+    screenbeamWidth = beamlineConfig["screen_default_beamWidth"]
+    screenbeamHeight = beamlineConfig["screen_default_beamHeight"]
+    screenTransmissionPercent = beamlineConfig["screen_transmission_percent"]
+
+    request = {
+               "sample_id": sample_id,
+               "sweep_start": screenPhist,  "sweep_end": screenPhiend,
+               "img_width": screenWidth,
+               "exposure_time": screenExptime,
+               "priority": 0,
+               "protocol": "standard",
+               "directory": "/",
+               "file_prefix": str(getSampleNamebyID(sample_id)),
+               "file_number_start": 1,
+               "energy":screenEnergy,
+               "wavelength": energy2wave(screenEnergy),
+               "resolution": screenReso,
+               "slit_height": screenbeamHeight,  "slit_width": screenbeamWidth,
+               "attenuation": screenTransmissionPercent,
+               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A',
+               "gridW": 0,  "gridH": 0,  "gridStep": 30}
+
+    return request
+
 
 #def calc_reso_edge(distance,wave,theta):
 #  if (distance < 1.0):
