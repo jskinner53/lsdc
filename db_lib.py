@@ -35,7 +35,7 @@ if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
 elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
-        db_host = 'lsbr-dev'  # temporary
+        #db_host = 'lsbr-dev'  # temporary
 
 if client:
     client = client.split()[0]
@@ -678,58 +678,65 @@ def getOrderedRequestList():
 
 
 #def saveBeamlineInfo(beamline_id, info_name, info_type, info_dict):
-def saveBeamlineInfo(info_dict, beamline_id=None, info_name=None):
+def newBeamlineInfo(info_dict):
     """
-    #saveBeamlineInfo('17id1','mounted_sample', 'mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
-    saveBeamlineInfo('17id1','mounted_sample', {'puck_pos': 1, 'sample_pos': 3, 'sample_id': 387})
+    You could really just use the mongoengine BeamlineInfo class directly,
+    this is just a convenience/documentation.
+
+    info_dict must include:  beamline_id and info_name
+    info_name must be unique per beamline_id
+
+    bli = newBeamlineInfo({'beamline_id': 'x17id1', 'info_name': 'mounted_sample'
+                           'stuff': 'whatever'})
     """
-
-    try:
-        pass
-        #BeamlineInfo.objects(_id=info_dict['id']).
-
-    except KeyError:
-        info_dict['beamline_id'] = beamline_id
-        info_dict['info_name'] = info_name
-        #info_dict['info_type'] = info_type
-
-        info = BeamlineInfo(**info_dict)
-        info.save()
+    info = BeamlineInfo(**info_dict)
+    return info.save()
 
 def getBeamlineInfo(beamline_id, info_name):
     """
+    You could really just use the mongoengine BeamlineInfo class directly,
+    this is just a convenience/documentation.
+
     bli = getBeamlineInfo('17id1', 'mounted_sample')
-    #for key in getTypeKeys('mounted_sample'):
-    for key in keys(bli):
-        print bli[key]
+    bli_dict = bli.to_mongo()
+    for key in keys(bli_dict):
+        print bli_dict[key]
+        # or
+        print eval('bli.'+key)
     """
     try:
-        return BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0].to_mongo()
+        return BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0]
     except IndexError:
         return None
 
 
-#def saveUserSettings(user_id, settings_name, settings_type, settings_dict):
-def saveUserSettings(user_id, settings_name, settings_dict):
+def newUserSettings(settings_dict):
     """
-    #saveUserSettings('matt','params', 'params', {'exp': 1, 'osc': 3, 'dist': 387})
-    saveUserSettings('matt','params', {'exp': 1, 'osc': 3, 'dist': 387})
-    """
-    settings_dict['user_id'] = user_id
-    settings_dict['settings_name'] = settings_name
-    #settings_dict['settings_type'] = settings_type
+    You could really just use the mongoengine UserSettings class directly,
+    this is just a convenience/documentation.
 
+    settings_dict must include:  user_id and settings_name
+    settings_name must be unique per user_id
+
+    bli = newUserSettigns({'user_id': 'name|#?', 'settings_name': 'scan_params'
+                           'stuff': 'whatever'})
+    """
     settings = UserSettings(**settings_dict)
-    settings.save()
+    return settings.save()
 
 def getUserSettings(user_id, settings_name):
     """
+    You could really just use the mongoengine UserSettings class directly,
+    this is just a convenience/documentation.
+
     us = getUserSettings('matt','params')
-    #for key in getTypeKeys('params'):
-    for key in keys(us):
-        print us[key]
+    us_dict = us.to_mongo()
+    for key in keys(us_dict):
+        print us_dict[key]
+        # or
+        print eval('us.'+key)
     """
     try:
-        return UserSettings.objects(user_id=user_id, settings_name=settings_name)[0].to_mongo()
+        return UserSettings.objects(user_id=user_id, settings_name=settings_name)[0]
     except IndexError:
         return None
