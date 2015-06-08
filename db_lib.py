@@ -40,9 +40,9 @@ if client:
     client = client.split()[0]
 
     if client == '130.199.219.44':
-        #db_name = 'matt_tmp_mongo'
-        db_name = 'john_mongo' # tmp
-        db_hsot = 'lsbr-dev' # tmp
+        db_name = 'matt_tmp_mongo'
+        #db_name = 'john_mongo' # temporary
+        #db_hsot = 'lsbr-dev' # temporary
 
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
@@ -687,8 +687,8 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
 
 def userSettings(user_id, settings_name, settings_dict=None):
     """
-    to write info:  userSettings('matt', 'numbers', info_dict={'phone':'123','fax':'456'})
-    to fetch info:  settings = userSettings('matt', 'numbers')
+    to write settings:  userSettings('matt', 'numbers', info_dict={'phone':'123','fax':'456'})
+    to fetch settings:  settings = userSettings('matt', 'numbers')
     """
 
     # if it exists it's a query or create
