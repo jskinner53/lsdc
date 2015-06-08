@@ -670,7 +670,7 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
     to fetch info:  info = beamlineInfo('x25', 'det')
     """
 
-    # if it exists it's a query or create
+    # if it exists it's a query or update
     try:
         bli = BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0]
 
@@ -691,7 +691,7 @@ def userSettings(user_id, settings_name, settings_dict=None):
     to fetch settings:  settings = userSettings('matt', 'numbers')
     """
 
-    # if it exists it's a query or create
+    # if it exists it's a query or update
     try:
         uset = UserSettings.objects(user_id=user_id, settings_name=settings_name)[0]
 
