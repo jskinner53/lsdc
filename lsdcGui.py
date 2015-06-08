@@ -432,13 +432,12 @@ class DewarTree(QtGui.QTreeView):
         if (selectedSampleIndex != None and collectionRunning == False):
           print "selectedSampleIndex = " + str(selectedSampleIndex)
           self.setCurrentIndex(selectedSampleIndex)
-          if (mountedIndex != None):
-            self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
-            font = QtGui.QFont()
-            font.setUnderline(True)
-            font.setItalic(True)
-            font.setOverline(True)
-            self.model.itemFromIndex(mountedIndex).setFont(font)
+          self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
+          font = QtGui.QFont()
+          font.setUnderline(True)
+          font.setItalic(True)
+          font.setOverline(True)
+          self.model.itemFromIndex(mountedIndex).setFont(font)
           self.parent.row_clicked(selectedSampleIndex)
         elif (selectedSampleIndex == None and collectionRunning == False):
           if (mountedIndex != None):
@@ -2148,8 +2147,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addSampleRequestCB(self,rasterDef=None):
-#      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #      centeringOption = str(self.centeringComboBox.currentText())
 #      if (centeringOption == "Interactive"):
       if (len(self.centeringMarksList) != 0): 
@@ -2157,7 +2155,7 @@ class controlMain(QtGui.QMainWindow):
         for i in xrange(len(self.centeringMarksList)):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
-             colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
+             colRequest = db_lib.createDefaultRequest(self.selectedSampleID)
              colRequest["sweep_start"] = float(self.osc_start_ledit.text())
              colRequest["sweep_end"] = float(self.osc_end_ledit.text())
              colRequest["img_width"] = float(self.osc_range_ledit.text())
@@ -2167,7 +2165,7 @@ class controlMain(QtGui.QMainWindow):
              colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
              colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #             colRequest["gridStep"] = self.rasterStepEdit.text()
-             colRequest["attenuation"] = float(self.transmission_ledit.text())
+             colRequest["attenuation"] = int(self.transmission_ledit.text())
              colRequest["slit_width"] = float(self.beamWidth_ledit.text())
              colRequest["slit_height"] = float(self.beamHeight_ledit.text())
              wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
@@ -2194,7 +2192,7 @@ class controlMain(QtGui.QMainWindow):
         colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #        colRequest["gridStep"] = self.rasterStepEdit.text()
-        colRequest["attenuation"] = float(self.transmission_ledit.text())
+        colRequest["attenuation"] = int(self.transmission_ledit.text())
         colRequest["slit_width"] = float(self.beamWidth_ledit.text())
         colRequest["slit_height"] = float(self.beamHeight_ledit.text())
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
@@ -2350,20 +2348,15 @@ class controlMain(QtGui.QMainWindow):
         print "I'm a puck"
         return
       elif (itemData< -100):
-        self.selectedSampleID = (0-(itemData))-100 #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
-        sample_name = db_lib.getSampleNamebyID(self.selectedSampleID) 
+        sample_name = db_lib.getSampleNamebyID((0-(itemData))-100) #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
         print "sample in pos " + str(itemData) 
-        if (self.osc_start_ledit.text() == ""):
-          self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
-          self.refreshCollectionParams(self.selectedSampleRequest)
-          if (self.vidActionRasterDefRadio.isChecked()):
+        self.selectedSampleRequest = db_lib.createDefaultRequest((0-(itemData))-100)
+        self.selectedSampleID = self.selectedSampleRequest["sample_id"]        
+        self.refreshCollectionParams(self.selectedSampleRequest)
+        if (self.vidActionRasterDefRadio.isChecked()):
 #          self.selectedSampleRequest["protocol"] = "raster"
-            self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
-            self.showProtParams()
-        else:
-          localRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
-          self.dataPathGB.setFilePrefix_ledit(str(localRequest["file_prefix"]))          
-    
+          self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
+          self.showProtParams()
       else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
         self.selectedSampleID = self.selectedSampleRequest["sample_id"]
