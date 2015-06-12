@@ -56,6 +56,29 @@ mongo_conn = mongo.connect(db_name, host=db_host)
 primaryDewarName = 'primaryDewar2'
 
 
+# temp stuff for web stuff
+
+# django doesn't seem to understand generators(?), so we need to return lists here.
+def find_container():
+    return [c.to_mongo() for c in Container.objects()]
+    #for cont in Container.objects():
+    #    cont = cont.to_mongo()
+    #    cont.pop('_id')
+    #    cont.pop(
+
+def find_sample():
+    return [s.to_mongo() for s in Sample.objects()]
+
+def find_request():
+    req_list = []
+
+    for samp in Sample.objects():
+        for req in samp.requestList:
+            req_list.append(req.to_mongo())
+            
+    return req_list
+
+
 def createContainer(container_name, type_name, capacity):
     containerObj = {"containerName": container_name,
                     "type_name": type_name,
