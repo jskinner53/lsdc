@@ -34,7 +34,14 @@ if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
 elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
-        #db_host = 'lsbr-dev'  # temporary
+        #db_name = 'john_mongo' # temporary
+        
+        db_host = 'lsbr-dev'  # temporary
+
+elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
+    if not client:
+        db_name = 'matt_tmp_mongo'
+        db_host = '127.0.0.1'
 
 if client:
     client = client.split()[0]
@@ -42,7 +49,8 @@ if client:
     if client == '130.199.219.44':
         db_name = 'matt_tmp_mongo'
         #db_name = 'john_mongo' # temporary
-        #db_hsot = 'lsbr-dev' # temporary
+        
+        #db_host = 'lsbr-dev' # temporary
 
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
