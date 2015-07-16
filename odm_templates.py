@@ -17,11 +17,16 @@ class Request(DynamicEmbeddedDocument):
     # doh!  mongo doesn't currently enforce uniqueness
     # of embedded doc fields in a list field :(
     request_id = SequenceField(required=True, unique=True, **args_dict)
+class Result(DynamicEmbeddedDocument):
+    # doh!  mongo doesn't currently enforce uniqueness
+    # of embedded doc fields in a list field :(
+    result_id = SequenceField(required=True, unique=True, **args_dict)
         
 
 class Sample(DynamicDocument):
     sample_id = SequenceField(required=True, unique=True, **args_dict)
     requestList = ListField(EmbeddedDocumentField(Request))
+    resultList = ListField(EmbeddedDocumentField(Result))
     #owner = StringField(required=True, unique_with='owner')
     #owner = StringField()
     #sampleName = StringField(required=True, unique_with='owner')
