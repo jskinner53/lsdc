@@ -24,7 +24,9 @@ db_host = '127.0.0.1'
 db_name = 'tmp_mongo_junk_from_db_lib'
 
 host = socket.gethostname()
-client = os.getenv('SSH_CLIENT')
+client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
+if not client:
+    client = os.getenv('REMOTE_ADDR')  # next check web client
 
 if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
     db_host = 'lsbr-dev'
