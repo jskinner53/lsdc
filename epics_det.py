@@ -189,6 +189,8 @@ def det_start():
       time.sleep(0.05)
   
 def det_wait():
+  if (offline):
+    return  
   if (det_type == "pixel_array"):
     time.sleep(0.5)      
     while (get_det_pv("det_state") == "Acquire"):

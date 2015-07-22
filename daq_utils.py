@@ -14,8 +14,10 @@ beamline = "john"
 global searchParams
 searchParams = {"config_params.beamline_id":beamline}
 
+
+
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline
 
 #  var_list["state"] = "Idle"
 
@@ -23,16 +25,16 @@ def init_environment():
   configIter= mdsc.find_beamline_configs(**searchParams)
   beamlineConfig = configIter.next()["config_params"]
 
-  lowMagFOVx = beamlineConfig["lowMagFOVx"]
-  lowMagFOVy = beamlineConfig["lowMagFOVy"]
-  highMagFOVx = beamlineConfig["highMagFOVx"] #digizoom will be this/2
-  highMagFOVy = beamlineConfig["highMagFOVy"]
-  lowMagPixX = beamlineConfig["lowMagPixX"] #for automated images
-  lowMagPixY = beamlineConfig["lowMagPixY"]
-  highMagPixX = beamlineConfig["highMagPixX"] #for automated images
-  highMagPixY = beamlineConfig["highMagPixY"]
-  screenPixX = beamlineConfig["screenPixX"]
-  screenPixY = beamlineConfig["screenPixY"]
+  lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
+  lowMagFOVy = float(beamlineConfig["lowMagFOVy"])
+  highMagFOVx = float(beamlineConfig["highMagFOVx"]) #digizoom will be this/2
+  highMagFOVy = float(beamlineConfig["highMagFOVy"])
+  lowMagPixX = float(beamlineConfig["lowMagPixX"]) #for automated images
+  lowMagPixY = float(beamlineConfig["lowMagPixY"])
+  highMagPixX = float(beamlineConfig["highMagPixX"]) #for automated images
+  highMagPixY = float(beamlineConfig["highMagPixY"])
+  screenPixX = float(beamlineConfig["screenPixX"])
+  screenPixY = float(beamlineConfig["screenPixY"])
   screenPixCenterX = screenPixX/2.0
   screenPixCenterY = screenPixY/2.0
   gonioPvPrefix = beamlineConfig["gonioPvPrefix"]
@@ -48,28 +50,38 @@ def init_environment():
   else: #default q4
     det_radius = 94.0 
   det_type = beamlineConfig["detector_type"]
-  has_dna = beamlineConfig["has_edna"]
-  has_beamline = beamlineConfig["has_beamline"]
-  has_xtalview = beamlineConfig["has_xtalview"]
-  camera_offset = beamlineConfig["camera_offset"]
+  has_dna = int(beamlineConfig["has_edna"])
+  has_beamline = int(beamlineConfig["has_beamline"])
+  detectorOffline = int(beamlineConfig["detector_offline"])
+  has_xtalview = int(beamlineConfig["has_xtalview"])
+  camera_offset = float(beamlineConfig["camera_offset"])
   if (has_xtalview):
     xtal_url_small = beamlineConfig["xtal_url_small"]
     xtal_url = beamlineConfig["xtal_url"]
   mono_mot_code = beamlineConfig["mono_mot_code"]
   screenProtocol = beamlineConfig["screen_default_protocol"]
-  screenPhist = beamlineConfig["screen_default_phist"]
-  screenPhiend = beamlineConfig["screen_default_phi_end"]
-  screenWidth = beamlineConfig["screen_default_width"]
-  screenDist =  beamlineConfig["screen_default_dist"]
-  screenExptime = beamlineConfig["screen_default_time"]
-  screenReso = beamlineConfig["screen_default_reso"]
-  screenWave = beamlineConfig["screen_default_wave"]
-  screenEnergy = beamlineConfig["screen_default_energy"]
-  screenbeamWidth = beamlineConfig["screen_default_beamWidth"]
-  screenbeamHeight = beamlineConfig["screen_default_beamHeight"]
-  screenTransmissionPercent = beamlineConfig["screen_transmission_percent"]
+  screenPhist = float(beamlineConfig["screen_default_phist"])
+  screenPhiend = float(beamlineConfig["screen_default_phi_end"])
+  screenWidth = float(beamlineConfig["screen_default_width"])
+  screenDist =  float(beamlineConfig["screen_default_dist"])
+  screenExptime = float(beamlineConfig["screen_default_time"])
+  screenReso = float(beamlineConfig["screen_default_reso"])
+  screenWave = float(beamlineConfig["screen_default_wave"])
+  screenEnergy = float(beamlineConfig["screen_default_energy"])
+  screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
+  screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
+  screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
   beamstop_x_pvname = beamlineConfig["beamstop_x_pvname"]
   beamstop_y_pvname = beamlineConfig["beamstop_y_pvname"]
+
+  varname = "HAS_XTALVIEW"
+  if os.environ.has_key(varname):
+    has_xtalview = int(os.environ[varname])
+  varname = "DETECTOR_OFFLINE"
+  if os.environ.has_key(varname):
+    detectorOffline = int(os.environ[varname])
+
+
 
 #def broadcast_output(s):
 #  time.sleep(0.01)
@@ -96,6 +108,13 @@ def getBeamlineConfigParam(paramName):
   configIter= mdsc.find_beamline_configs(**searchParams)
   beamlineConfig = configIter.next()["config_params"]
   return beamlineConfig[paramName] 
+
+def getAllBeamlineConfigParams():
+  configIter= mdsc.find_beamline_configs(**searchParams)
+  beamlineConfig = configIter.next()["config_params"]
+#  for key in beamlineConfig.keys():
+#     print key + " " + str(beamlineConfig[key])
+  return beamlineConfig
 
 
 def getCurrentFOVx(camera,zoom): #cam 0 = lowMag, 
@@ -152,17 +171,17 @@ def createDefaultRequest(sample_id):
     """
     configIter= mdsc.find_beamline_configs(**searchParams)
     beamlineConfig = configIter.next()["config_params"]
-    screenPhist = beamlineConfig["screen_default_phist"]
-    screenPhiend = beamlineConfig["screen_default_phi_end"]
-    screenWidth = beamlineConfig["screen_default_width"]
-    screenDist =  beamlineConfig["screen_default_dist"]
-    screenExptime = beamlineConfig["screen_default_time"]
-    screenReso = beamlineConfig["screen_default_reso"]
-    screenWave = beamlineConfig["screen_default_wave"]
-    screenEnergy = beamlineConfig["screen_default_energy"]
-    screenbeamWidth = beamlineConfig["screen_default_beamWidth"]
-    screenbeamHeight = beamlineConfig["screen_default_beamHeight"]
-    screenTransmissionPercent = beamlineConfig["screen_transmission_percent"]
+    screenPhist = float(beamlineConfig["screen_default_phist"])
+    screenPhiend = float(beamlineConfig["screen_default_phi_end"])
+    screenWidth = float(beamlineConfig["screen_default_width"])
+    screenDist =  float(beamlineConfig["screen_default_dist"])
+    screenExptime = float(beamlineConfig["screen_default_time"])
+    screenReso = float(beamlineConfig["screen_default_reso"])
+    screenWave = float(beamlineConfig["screen_default_wave"])
+    screenEnergy = float(beamlineConfig["screen_default_energy"])
+    screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
+    screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
+    screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
 
     request = {
                "sample_id": sample_id,
@@ -171,7 +190,7 @@ def createDefaultRequest(sample_id):
                "exposure_time": screenExptime,
                "priority": 0,
                "protocol": "standard",
-               "directory": "/",
+               "directory": "./",
                "file_prefix": str(getSampleNamebyID(sample_id)),
                "file_number_start": 1,
                "energy":screenEnergy,
