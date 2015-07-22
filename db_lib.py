@@ -34,7 +34,14 @@ if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
 elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
     if not client:
         db_name = 'matt_tmp_mongo'
-        #db_host = 'lsbr-dev'  # temporary
+        #db_name = 'john_mongo' # temporary
+        
+        db_host = 'lsbr-dev'  # temporary
+
+elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
+    if not client:
+        db_name = 'matt_tmp_mongo'
+        db_host = '127.0.0.1'
 
 if client:
     client = client.split()[0]
@@ -42,7 +49,8 @@ if client:
     if client == '130.199.219.44':
         db_name = 'matt_tmp_mongo'
         #db_name = 'john_mongo' # temporary
-        #db_hsot = 'lsbr-dev' # temporary
+        
+        #db_host = 'lsbr-dev' # temporary
 
     elif client == '130.199.219.42':
         db_name = 'john_mongo'
@@ -54,6 +62,29 @@ mongo_conn = mongo.connect(db_name, host=db_host)
 
 
 primaryDewarName = 'primaryDewar2'
+
+
+# temp stuff for web stuff
+
+# django doesn't seem to understand generators(?), so we need to return lists here.
+def find_container():
+    return [c.to_mongo() for c in Container.objects()]
+    #for cont in Container.objects():
+    #    cont = cont.to_mongo()
+    #    cont.pop('_id')
+    #    cont.pop(
+
+def find_sample():
+    return [s.to_mongo() for s in Sample.objects()]
+
+def find_request():
+    req_list = []
+
+    for samp in Sample.objects():
+        for req in samp.requestList:
+            req_list.append(req.to_mongo())
+            
+    return req_list
 
 
 def createContainer(container_name, type_name, capacity):
@@ -116,7 +147,7 @@ def getNextDisplayRaster():
 #        #break  # shouldn't need this anymore?
 #    return retRaster
     try:
-        rast = Raster.objects(status=1)[0]
+        rast = Raster.objects(__raw__={'status': 1})[0]
     except IndexError:
         return None
 
@@ -187,7 +218,7 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
     
 
 def getSampleByID(sample_id, as_mongo_obj=False):
-    s = Sample.objects(sample_id=sample_id)
+    s = Sample.objects(__raw__={'sample_id': sample_id})
     return _try0_maybe_mongo(s, 'sample', 'sample_id', sample_id, None,
                            as_mongo_obj=as_mongo_obj)
 
@@ -195,25 +226,25 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 # should fetch only the needed field(s)! :(
 
 def getSampleIDbyName(sample_name):
-    s = Sample.objects(sampleName=sample_name)
+    s = Sample.objects(__raw__={'sampleName': sample_name})
     return _try0_dict_key(s, 'sample', 'sampleName', sample_name, -99, 
                            dict_key='sample_id')
 
 
 def getSampleNamebyID(sample_id):
-    s = Sample.objects(sample_id=sample_id)
+    s = Sample.objects(__raw__={'sample_id': sample_id})
     return _try0_dict_key(s, 'sample', 'sample_id', sample_id, -99,
                            dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
-    c = Container.objects(containerName=container_name)
+    c = Container.objects(__raw__={'containerName': container_name})
     return _try0_dict_key(c, 'container', 'containerName', container_name,
                            -99, dict_key='container_id')
 
 
 def getContainerNameByID(container_id):
-    c = Container.objects(container_id=container_id)
+    c = Container.objects(__raw__={'container_id': container_id})
     return _try0_dict_key(c, 'container', 'container_id', container_id, '',
                            dict_key='containerName')
 
@@ -279,7 +310,7 @@ def getContainers(as_mongo_obj=False):
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
-    c = Container.objects(type_name=type_name)
+    c = Container.objects(__raw__={'type_name': type_name})
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
@@ -297,13 +328,13 @@ def getPrimaryDewar(as_mongo_obj=False):
 
 
 def getContainerByName(container_name, as_mongo_obj=False): 
-    c = Container.objects(containerName=container_name)
+    c = Container.objects(__raw__={'containerName': container_name})
     return _try0_maybe_mongo(c, 'container', 'containerName', container_name,
                            None, as_mongo_obj=as_mongo_obj)
 
 
 def getContainerByID(container_id, as_mongo_obj=False): 
-    c = Container.objects(container_id=container_id)
+    c = Container.objects(__raw__={'container_id': container_id})
     return _try0_maybe_mongo(c, 'container', 'container_id', container_id,
                            None, as_mongo_obj=as_mongo_obj)
 
@@ -351,14 +382,14 @@ def getQueue():
     # .first() returns None while [0] generates an IndexError
     # Nah... [0] is faster and catch Exception...
     try:
-        items = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        items = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         raise ValueError('could not find container: "{0}"!'.format(primaryDewarName))
 
     for item_id in items.item_list:
         if item_id is not None:
             try:
-                puck = Container.objects(container_id=item_id).only('item_list')[0]
+                puck = Container.objects(__raw__={'container_id': item_id}).only('item_list')[0]
             except IndexError:
                 raise ValueError('could not find container id: "{0}"!'.format(item_id))
 
@@ -368,7 +399,7 @@ def getQueue():
                     # If we don't request sample_id it gets set to the next id in the sequence!?
                     # maybe that doesn't matter if we don't use or return it?
                     try:
-                        sampleObj = Sample.objects(sample_id=sample_id).only('requestList','sample_id')[0]
+                        sampleObj = Sample.objects(__raw__={'sample_id': sample_id}).only('requestList','sample_id')[0]
                     except IndexError:
                         raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
 
@@ -402,14 +433,14 @@ def getDewarPosfromSampleID(sample_id):
     in one of the containers in the container named by the global variable 'primaryDewarName'
     """
     try:
-        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         return None
 
     for puck_id in cont.item_list:
         if puck_id is not None:
             try:
-                puck = Container.objects(container_id=puck_id).only('item_list')[0]
+                puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
             except IndexError:
                 continue
 
@@ -428,7 +459,7 @@ def getAbsoluteDewarPosfromSampleID(sample_id):
     in one of the containers in the container named by the global variable 'primaryDewarName'
     """
     try:
-        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         return None
 
@@ -452,7 +483,7 @@ def getCoordsfromSampleID(sample_id):
     'primaryDewarName'
     """
     try:
-        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         return None
 
@@ -474,7 +505,7 @@ def getSampleIDfromCoords(puck_num, position):
     'primaryDewarName'
     """
     try:
-        cont = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         return None
 
@@ -494,7 +525,7 @@ def getSampleIDfromAbsoluteDewarPos(abs_pos):
     # try/except is faster than checking for an empty list before 
     # indexing into it!
     try:
-        pd = Container.objects(containerName=primaryDewarName).only('item_list')[0]
+        pd = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
     except IndexError:
         raise IndexError('Failed to find container named: "{0}"'.format(primaryDewarName))
 
@@ -504,7 +535,7 @@ def getSampleIDfromAbsoluteDewarPos(abs_pos):
         if puck_id is not None:
             #puck = getContainerByID(puck_id)
             try:
-                puck = Container.objects(container_id=puck_id).only('item_list')[0]
+                puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
             except IndexError:
                 raise IndexError('Failed to find container_id: "{0}"'.format(puck_id))
 
@@ -517,7 +548,7 @@ def getSampleIDfromAbsoluteDewarPos(abs_pos):
     # use puck# and position to get the sample_id
     puck_id = pd.item_list[puck_num]
     try:
-        puck = Container.objects(container_id=puck_id).only('item_list')[0]
+        puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
     except IndexError:
         if puck_id is None:
             raise ValueError('no puck in position {0} in primary dewar!'.format(puck_num))
@@ -547,7 +578,7 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
     # It's faster to get the mongo obj and only .to_mongo() convert the 
     # desired request then the opposite.
     # Maybe with mongov9 a query can return only a specific list entry?
-    sample = Sample.objects(requestList__request_id=reqID).only('requestList')
+    sample = Sample.objects(__raw__={'requestList.request_id': reqID}).only('requestList')
     req_list = _try0_maybe_mongo(sample, 'request', 'request_id', reqID, None,
                                as_mongo_obj=True).requestList
     
@@ -568,7 +599,7 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
 #
 #    updated_samp = Sample(**sampleObj)
 #    updated_samp.sample_id = samp_id
-#    Sample.objects(sample_id=samp_id).update(updated_samp)
+#    Sample.objects(__raw__={'sample_id': samp_id}).update(updated_samp)
     
 
 #def updateContainer(containerObj):
@@ -576,7 +607,7 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
 #
 #    updated_cont = Container(**containerObj)
 #    updated_cont.container_id = cont_id
-#    Container.objects(container_id=cont_id).update(updated_cont)
+#    Container.objects(__raw__={'container_id': cont_id}).update(updated_cont)
     
 
 # this is really "update_sample" because the request is stored with the sample.
@@ -596,7 +627,7 @@ def updateRequest(reqObj):
                 updated_req = Request(**reqObj)
                 updated_req.request_id = req.request_id
     
-                Sample.objects(requestList__request_id=req.request_id
+                Sample.objects(__raw__={'requestList.request_id': req.request_id}
                                ).update(set__requestList__S=updated_req)
                 return
         except KeyError:
@@ -676,7 +707,8 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
 
     # if it exists it's a query or update
     try:
-        bli = BeamlineInfo.objects(beamline_id=beamline_id, info_name=info_name)[0]
+        bli = BeamlineInfo.objects(__raw__={'beamline_id': beamline_id,
+                                            'info_name': info_name})[0]
 
         if info_dict is None:  # this is a query
             return bli.info
@@ -697,7 +729,8 @@ def userSettings(user_id, settings_name, settings_dict=None):
 
     # if it exists it's a query or update
     try:
-        uset = UserSettings.objects(user_id=user_id, settings_name=settings_name)[0]
+        uset = UserSettings.objects(__raw__={'user_id': user_id,
+                                             'settings_name': settings_name})[0]
 
         if settings_dict is None:  # this is a query
             return uset.settings
