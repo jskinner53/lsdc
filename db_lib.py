@@ -291,8 +291,9 @@ def getResultsforSample(sample_id):
 
     sample = Sample.objects(__raw__={'sample_id': sample_id}
                             ).only('resultList')
-    return _try0_maybe_mongo(sample, 'sample', 'sample_id', sample_id, None,
-                               as_mongo_obj=True).resultList
+    return [r.to_mongo() for r in 
+            _try0_maybe_mongo(sample, 'sample', 'sample_id', sample_id, None,
+                             as_mongo_obj=True).resultList]
 
 
 def addResultforRequest(request_id, result):
