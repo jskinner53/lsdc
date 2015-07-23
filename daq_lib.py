@@ -326,7 +326,7 @@ def collectData(currentRequest):
   prot = str(currentRequest["protocol"])
   if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
-#    return
+    return
   elif (prot == "vector"):
     daq_macros.vectorScan(currentRequest)
 #    return
@@ -364,7 +364,7 @@ def collectData(currentRequest):
         imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
     elif (currentRequest["protocol"] == "characterize"):
       characterizationParams = currentRequest["characterizationParams"]
-      index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,characterizationParams)
+      index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
     else: #standard
       sweep_start = currentRequest["sweep_start"]
       sweep_end = currentRequest["sweep_end"]

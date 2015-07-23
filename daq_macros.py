@@ -608,11 +608,12 @@ def vectorScan(vecRequest): #bogus for now until we figure out what we want
 #    time.sleep(.1)
 
 
-def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,characterizationParams):
+def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,charRequest):
   global collect_and_characterize_success,dna_have_strategy_results,dna_have_index_results,picture_taken
   global dna_strategy_exptime,dna_strategy_start,dna_strategy_range,dna_strategy_end,dna_strat_dist
   global screeningoutputid
   
+  characterizationParams = charRequest["characterizationParams"]
   dna_res = float(characterizationParams["aimed_resolution"])
   print "dna_res = " + str(dna_res)
   dna_filename_list = []
@@ -839,3 +840,170 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   
   return 1
 
+
+def grid_scan_pixel_array(omega_angle,width_s,height_s,inc_s,num_images_s,imwidth_s,exptime_s): #width,height(microns),inc_s(separation between shots)
+  global abort_flag, running_autoalign
+
+  save_vert = get_epics_motor_pos("slitVum")
+  save_horz = get_epics_motor_pos("slitHum")
+  move_vertical_slit(int(inc_s)) 
+  move_horizontal_slit(int(inc_s))
+  if (width_s==inc_s):
+    file_prefix = get_data_prefix()+"_90"
+    file_prefix_minus_directory = get_data_prefix()+"_90"
+  else:
+    file_prefix = get_data_prefix()
+    file_prefix_minus_directory = get_data_prefix()
+  try:
+    file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
+  except ValueError:
+    pass
+  reference_picture_name = cbass_lib.html_data_directory_name+"/" + file_prefix_minus_directory + "_ref"
+  reference_picture_name_minus_directory = file_prefix_minus_directory + "_ref.jpg"
+  camera_offset = float(os.environ["CAMERA_OFFSET"])
+  OmegaPos_B_save = get_epics_pv("OmegaPos","B")
+  print "camera off = " + str(camera_offset)
+  print "omegapos off = " + str(OmegaPos_B_save)
+  if (running_autoalign == 1):
+    move_axis_relative("omega",0-camera_offset) #starting at face (or thin) to detector, put face to camera
+    takepic_thread(reference_picture_name)
+    move_axis_relative("omega",camera_offset) #face (or thin) back to detector
+  angle_start = float(omega_angle)
+#ERROR PRIOR TO 3/21/12  set_epics_pv("OmegaPos","B",camera_offset)
+  set_epics_pv("OmegaPos","B",camera_offset+OmegaPos_B_save) #maybe always works out to -90 or 180?
+  width = int(width_s)
+  height = int(height_s)
+  inc = int(inc_s)
+  num_images = int(num_images_s)
+  data_inc = float(imwidth_s)
+  exptime = float(exptime_s)
+  xcenter = get_epics_pv("image_X_center","VAL")
+  ycenter = get_epics_pv("image_Y_center","VAL")
+  image_x_width = get_epics_pv("image_X_scale","C")
+  image_y_width = get_epics_pv("image_Y_scale","C")
+  image_x_numpix = get_epics_pv("image_X_scale","B")
+  image_y_numpix = get_epics_pv("image_Y_scale","B")
+  pixels_per_micron_x = image_x_numpix/(image_x_width*1000.0)
+  print "pixels per micron x = " + str(pixels_per_micron_x)
+  pixels_per_micron_y = image_y_numpix/(image_y_width*1000.0)
+  print "pixels per micron y = " + str(pixels_per_micron_y)
+  width_in_pixels = int(width*pixels_per_micron_x)
+  height_in_pixels = int(height*pixels_per_micron_y)
+  print "width in pixels= " + str(width_in_pixels)
+  print "height in pixels= " + str(height_in_pixels)
+  x_step_size_in_pixels = int(inc*pixels_per_micron_x)
+  y_step_size_in_pixels = int(inc*pixels_per_micron_y)
+  print "x_step_size in pixels= " + str(x_step_size_in_pixels)
+  print "y_step_size in pixels= " + str(y_step_size_in_pixels)
+#3/12 - I think the next line makes sense for a ccd detector, but not the fly-scan pixel array
+# the issue is that the ccd image is stationary z, but pixel array is flying z, so don't start the scan
+# in the middle, but do record the middle of the cell as before
+#  xstart = int(xcenter - (width_in_pixels/2) + (x_step_size_in_pixels/2))
+  xstart = int(xcenter - (width_in_pixels/2))
+  ystart = int(ycenter - (height_in_pixels/2) + (y_step_size_in_pixels/2))
+  numsteps_h = int(width_in_pixels/x_step_size_in_pixels)
+  numsteps_v = int(height_in_pixels/y_step_size_in_pixels)
+  print "numsteps_h " + str(numsteps_h)
+  print "numsteps_v " + str(numsteps_v)
+  midpoint_h = (numsteps_h - 1) / 2
+  midpoint_v = (numsteps_v - 1) / 2
+  pic_count = 0
+###  comm_s = "center_on_click(" + str(xstart) + "," + str(ystart) + ")"
+  x_click = xstart
+  y_click = ystart
+  cbass_macros.center_on_click(x_click,y_click) #move to start of grid
+  scan_axis = "omega"
+  zing_flag = 0
+  write_flag = 1
+  grid_map_file = open("grid_map.txt","w+")
+  grid_map_file.close()
+  grid_spots_file = open("grid_spots.txt","w+")
+  grid_spots_file.close()
+  image_count = 0
+
+  urev = get_epics_pv("xtz","UREV")
+  print "urev = " + str(urev) + "\n"
+  range_mm = float(width)/1000.0
+  stepsize_mm = float(inc)/1000.0
+  npoints = int(round(range_mm/abs(stepsize_mm)))
+#### round bug!!  npoints = int(range_mm/abs(stepsize_mm))
+  print "npoints = " + str(npoints) + "\n"
+  total_count_time = npoints*exptime
+  speed = (range_mm/total_count_time)/float(urev)
+  print "speed =  " + str(speed) + "\n"
+  speed_save = get_epics_pv("xtz","S")
+  base_speed_save = get_epics_pv("xtz","SBAS")
+  z_row_start_save = get_epics_pv("xtz","RBV")
+  comm_s = "/usr/local/bin/distl_parse_seq.py " + file_prefix + " " + str(numsteps_v) + " " + str(numsteps_h) + " " + str(num_images) + "&"
+  print comm_s
+  os.system(comm_s)
+  for i in range (0,numsteps_v):
+    move_axis_absolute("omega",angle_start)        
+    if (i != 0): #new row, but not the first - just back up?
+      print "new row"
+####      cbass_macros.center_on_click(xcenter-(x_step_size_in_pixels*(numsteps_h)),ycenter) #the x-move
+      set_epics_pv("xtz","S",speed_save)
+      set_epics_pv("xtz","SBAS",base_speed_save)
+      set_epics_pv("xtz","VAL",z_row_start_save)   
+      x_click = xcenter
+      y_click = ycenter+y_step_size_in_pixels
+      cbass_macros.center_on_click(x_click,y_click)
+      z_row_start_save = get_epics_pv("xtz","RBV")   
+    if (cbass_lib.abort_flag):
+      move_horizontal_slit(save_horz)
+      move_vertical_slit(save_vert) 
+      cbass_lib.abort_flag = 0
+      set_epics_pv("OmegaPos","B",OmegaPos_B_save)
+      set_epics_pv("xtz","S",speed_save)
+      set_epics_pv("xtz","SBAS",base_speed_save)
+      return
+    new_z = z_row_start_save - float(width)/1000.0
+
+    grid_map_file = open("grid_map.txt","a")    
+    for j in range (0,numsteps_h):
+      y_click_abs = ycenter - ((midpoint_v - i) * y_step_size_in_pixels) #file stuff
+#changed 6/12      x_click_abs = (xcenter - ((midpoint_h - j)* x_step_size_in_pixels)) + (x_step_size_in_pixels/2) #file stuff
+      x_click_abs = xcenter - ((midpoint_h - j)* x_step_size_in_pixels) #file stuff
+      
+      grid_map_file.write("%d %d %d %f %f %f %d %d\n" % (i,j,0,get_epics_pv("xtx","RBV"),get_epics_pv("xty","RBV"),(get_epics_pv("xtz","RBV")-(j*stepsize_mm))-(stepsize_mm/2.0),x_click_abs,y_click_abs))
+    grid_map_file.close()
+    
+    range_degrees = float(npoints)*data_inc #kludging this a bit
+#    set_epics_pv_nowait("xtz","VAL",new_z)   
+    if (base_speed_save > speed):
+      set_epics_pv("xtz","SBAS",speed)
+    set_epics_pv("xtz","S",speed)           
+
+    numimages_junk = collect_pixel_array_detector_seq_for_grid(new_z,range_degrees,data_inc,exptime,file_prefix+"_"+str(i),data_directory_name,0)
+
+####      x_click = xcenter+x_step_size_in_pixels  #these 3 are for the x move
+####      y_click = ycenter
+####      cbass_macros.center_on_click(x_click,y_click)
+####  cbass_macros.center_on_click(xstart,ystart)
+#######  cbass_macros.center_on_click(xcenter,ycenter+y_step_size_in_pixels)
+####  cbass_macros.center_on_click(xcenter-x_step_size_in_pixels,ycenter)
+  set_epics_pv("xtz","S",speed_save)
+  set_epics_pv("xtz","SBAS",base_speed_save)
+  goto_grid(midpoint_v,midpoint_h)
+  set_epics_pv("OmegaPos","B",OmegaPos_B_save)
+  grid_off()
+  if (running_autoalign == 0):
+    os.system("/usr/local/bin/button_box.py grid_spots.txt grid_map.txt&")
+  if (running_autoalign > 1):
+    os.system("/usr/local/bin/button_box_view.py grid_spots.txt grid_map.txt&")
+  move_horizontal_slit(save_horz)
+  move_vertical_slit(save_vert) 
+  comm_s = "/usr/local/bin/wait_for_grid_images.py " + file_prefix + " " + str(numsteps_v) + " " + str(numsteps_h) + " " + str(num_images)
+  os.system(comm_s)
+  if (running_autoalign == 1):
+    now = time.time()
+    grid_spots_filename = "grid_spots%d" % int(now)
+#added backgrounding this command on 2/23/12 b/c of sleep in plotter
+    comm_s = "/usr/local/bin/plot_grid.py grid_spots.txt " + cbass_lib.html_data_directory_name+"/"+grid_spots_filename +"&"
+    os.system(comm_s)
+    html_log_file = open(cbass_lib.html_log_filename,"a+")
+    command_s = "<img src=\"" + grid_spots_filename+".png\"><p><p>\n"
+    html_log_file.write(command_s)
+    command_s = "<img src=\"" + reference_picture_name_minus_directory + "\"><p><p>\n"
+    html_log_file.write(command_s)
+    html_log_file.close()
