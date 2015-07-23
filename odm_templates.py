@@ -13,15 +13,16 @@ if LooseVersion(mongoengine.__version__) >= LooseVersion('0.7.0'):
 class Container(DynamicDocument):
     container_id = SequenceField(required=True, unique=True, **args_dict)
 
+
 class Request(DynamicEmbeddedDocument):
     # doh!  mongo doesn't currently enforce uniqueness
     # of embedded doc fields in a list field :(
     request_id = SequenceField(required=True, unique=True, **args_dict)
+
 class Result(DynamicEmbeddedDocument):
     # doh!  mongo doesn't currently enforce uniqueness
     # of embedded doc fields in a list field :(
     result_id = SequenceField(required=True, unique=True, **args_dict)
-        
 
 class Sample(DynamicDocument):
     sample_id = SequenceField(required=True, unique=True, **args_dict)
@@ -31,6 +32,7 @@ class Sample(DynamicDocument):
     #owner = StringField()
     #sampleName = StringField(required=True, unique_with='owner')
     sampleName = StringField(required=True)
+
 
 class Raster(DynamicDocument):
     raster_id = SequenceField(required=True, unique=True, **args_dict)
