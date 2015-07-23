@@ -100,6 +100,7 @@ def process_command_file(command_file_name):
 
 
 def process_immediate_commands(frequency):
+#  global immediate_command_list
   while (1):
     if (len(immediate_command_list) > 0):
       process_input(immediate_command_list.pop(0))

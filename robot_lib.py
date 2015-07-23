@@ -4,11 +4,12 @@ import staubliEpicsLib
 
 global method_pv,var_pv
 
-def mountRobotSample(pos):
-  print "mounting " + str(pos)
+def mountRobotSample(puckPos,pinPos,sampID):
+  print "mounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID)
 
-def unmountRobotSample(pos): #will somehow know where it came from
-  print "unmount to " + str(pos)
+def unmountRobotSample(puckPos,pinPos,sampID): #will somehow know where it came from
+  print "unmounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID)
+
 
 def initStaubliControl():
   global method_pv,var_pv

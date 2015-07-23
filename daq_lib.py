@@ -21,6 +21,7 @@ var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.
 global x_vec_start, y_vec_start, z_vec_start, x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec
 global var_channel_list
 global message_string_pv
+global data_directory_name
 var_channel_list = {}
 
 
@@ -255,17 +256,35 @@ def runChooch():
 # need to be able to pause/abort this at any time
 
 
-def mountSample(pos):
-  currentMountedSamplePos = get_field("mounted_pin")
-  if (pos!=currentMountedSamplePos):
-    robot_lib.unmountRobotSample(currentMountedSamplePos)
-    robot_lib.mountRobotSample(pos)
-    set_field("mounted_pin",pos)
+def mountSample(sampID):
+#  currentMountedSampleID = get_field("mounted_pin")
+  mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
+  currentMountedSampleID = mountedSampleDict["sampleID"]
+  if (currentMountedSampleID != 99): #then unmount what's there
+    if (sampID!=currentMountedSampleID):
+      puckPos = mountedSampleDict["puckPos"]
+      pinPos = mountedSampleDict["pinPos"]
+      robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)
+      set_field("mounted_pin",sampID)
+      (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(sampID)
+      robot_lib.mountRobotSample(puckPos,pinPos,sampID)
+    else: #desired sample is mounted, nothing to do
+      return 1
+  else: #nothing mounted
+    (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(sampID)
+    robot_lib.mountRobotSample(puckPos,pinPos,sampID)
+  db_lib.beamlineInfo('john', 'mountedSample', info_dict={'puckPos':puckPos,'pinPos':pinPos,'sampleID':sampID})
+
+#    (puckPos,pinPos,puckID) = getCoordsfromSampleID(currentMountedSampleID)
 
 def unmountSample():
-  currentMountedSamplePos = get_field("mounted_pin")
-  robot_lib.unmountRobotSample(currentMountedSamplePos)
+  mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
+  currentMountedSampleID = mountedSampleDict["sampleID"]
+  puckPos = mountedSampleDict["puckPos"]
+  pinPos = mountedSampleDict["pinPos"]
+  robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)
   set_field("mounted_pin",-99)
+  db_lib.beamlineInfo('john', 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':-99})
 
 
 def runDCQueue(): #maybe don't run rasters from here???
@@ -288,7 +307,8 @@ def runDCQueue(): #maybe don't run rasters from here???
 #      mountSample(samplePos)
       mountSample(sampleID)
 #      set_field("mounted_pin",samplePos)
-    currentRequest["priority"] = -999
+    currentRequest["priority"] = 99999
+#    currentRequest["priority"] = -999
     db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
     colStatus = collectData(currentRequest)
@@ -300,52 +320,71 @@ def stopDCQueue():
 
 
 def collectData(currentRequest):
+  global data_directory_name
 #  sampleName = sampleNameFromID(currentRequest["sample_id"])
-  running_autoalign = 0 #nsls2 for now
-  if (currentRequest["protocol"] == "raster"):
+  print currentRequest["protocol"]
+  prot = str(currentRequest["protocol"])
+  if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
     return
-  if (currentRequest["pos_x"] != 0):
-    beamline_lib.mva("X",currentRequest["pos_x"])
-    beamline_lib.mva("Y",currentRequest["pos_y"])
-    beamline_lib.mva("Z",currentRequest["pos_z"])
-  else:
-    print "autoRaster"
-    daq_macros.autoRasterLoop(currentRequest["sample_id"])    
-  sweep_start = currentRequest["sweep_start"]
-  sweep_end = currentRequest["sweep_end"]
-  img_width = currentRequest["img_width"]
-  exposure_period = currentRequest["exposure_time"]
-  file_prefix = str(currentRequest["file_prefix"])
-  file_number_start = currentRequest["file_number_start"]
-  wavelength = currentRequest["wavelength"]
-  resolution = currentRequest["resolution"]
-  slit_height = currentRequest["slit_height"]
-  slit_width = currentRequest["slit_width"]
-  attenuation = currentRequest["attenuation"]
-  directory_root = currentRequest["directory"]
-  data_directory_name = get_data_directory_name(file_prefix) # for now
-  range_degrees = abs(sweep_end-sweep_start)
-  if (currentRequest["protocol"] == "raster"):
-    width = int(currentRequest["gridW"])
-    height = int(currentRequest["gridH"])
-    inc = int(currentRequest["gridStep"])
-    number_of_images = round(range_degrees/img_width)    
-    grid_scan_pixel_array(sweep_start,width,height,inc,number_of_images,img_width,exposure_period,file_prefix,data_directory_name,running_autoalign)
-  else:
-    beamline_lib.mva("Omega",sweep_start)
-    imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-#  time.sleep(currentRequest["exposure_time"])
+  elif (prot == "vector"):
+    daq_macros.vectorScan(currentRequest)
+#    return
+  else: #standard, screening, or edna - these may require autoalign, checking first
+    if (currentRequest["pos_x"] != 0):
+      beamline_lib.mva("X",currentRequest["pos_x"])
+      beamline_lib.mva("Y",currentRequest["pos_y"])
+      beamline_lib.mva("Z",currentRequest["pos_z"])
+    else:
+      print "autoRaster"
+      daq_macros.autoRasterLoop(currentRequest["sample_id"])    
+    exposure_period = currentRequest["exposure_time"]
+    wavelength = currentRequest["wavelength"]
+    resolution = currentRequest["resolution"]
+    slit_height = currentRequest["slit_height"]
+    slit_width = currentRequest["slit_width"]
+    attenuation = currentRequest["attenuation"]
+    img_width = currentRequest["img_width"]
+    directory_root = str(currentRequest["directory"])
+    file_prefix = str(currentRequest["file_prefix"])
+#  data_directory_name = get_data_directory_name(file_prefix) # for now
+    data_directory_name = directory_root
+    if (currentRequest["protocol"] == "screen"):
+      screenImages = 2
+      screenRange = 90
+      range_degrees = img_width
+      for i in range (0,screenImages):
+        sweep_start = currentRequest["sweep_start"]+(i*screenRange)
+        sweep_end = currentRequest["sweep_end"]+(i*screenRange)
+        file_prefix = str(currentRequest["file_prefix"]+"_"+str(i*screenRange))
+#      data_directory_name = get_data_directory_name(file_prefix) # for now
+        data_directory_name = str(currentRequest["directory"]) # for now
+        file_number_start = currentRequest["file_number_start"]
+        beamline_lib.mva("Omega",sweep_start)
+        imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
+    elif (currentRequest["protocol"] == "characterize"):
+      characterizationParams = currentRequest["characterizationParams"]
+      index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
+    else: #standard
+      sweep_start = currentRequest["sweep_start"]
+      sweep_end = currentRequest["sweep_end"]
+      file_prefix = str(currentRequest["file_prefix"])
+      file_number_start = currentRequest["file_number_start"]
+      range_degrees = abs(sweep_end-sweep_start)
+      beamline_lib.mva("Omega",sweep_start)
+      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
   currentRequest["priority"] = -1
   db_lib.updateRequest(currentRequest)
+
   refreshGuiTree()
 
     
-#removed def grid_scan_pixel_array(omega_angle,width,height,inc,num_images,imwidth,exptime,file_prefix,data_directory_name,running_autoalign): #width,height(microns),inc_s(separation between shots)
 
 def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,z_target=0): #works for pilatus
   global image_started,allow_overwrite,abort_flag
 
+
+  print "data directory = " + data_directory_name
   test_filename = "%s_%05d.cbf" % (fileprefix,int(file_number))
 #  if (os.path.exists(test_filename) and allow_overwrite == 0):
 #    gui_message("You are about to overwrite " + test_filename + " If this is OK, push Continue, else Abort.&")
@@ -467,7 +506,7 @@ def set_vector_end():
   print "translation total =  " + str(trans_total)
 
   
-def set_vector_fpp(fpp,numframes):
+def set_vector_fpp(fpp,numframes): #not used 7/22/15
   global x_vec, y_vec, z_vec
 
   set_field("vector_fpp",int(fpp))
@@ -478,17 +517,23 @@ def set_vector_fpp(fpp,numframes):
   set_field("vector_step",vec_step_microns)
 
 
-def vector_move(t_s): #I think t_s is a fraction of the total vector, so "1" would do the whole thing
+def vector_move(t_s,vecRequest): #I think t_s is a fraction of the total vector, so "1" would do the whole thing
   global x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec, x_vec_start, y_vec_start, z_vec_start
 
 #  print "vec t = " + str(t_s)
   t = float(t_s)
-  trans_total = sqrt(x_vec**2 + y_vec**2 + z_vec**2)
+  trans_total = vecRequest["vectorParams"]["trans_total"]
   trans_done = trans_total*t
   percent_done = t*100.0
   vec_s = "translation total = %f, translation done = %f, translation percent done = %f\n" % (trans_total,trans_done,percent_done)
-#  print vec_s
+  print vec_s
 #  daq_utils.broadcast_output(vec_s)
+  x_vec_start=vecRequest["vectorParams"]["vecStart"]["x"]
+  y_vec_start=vecRequest["vectorParams"]["vecStart"]["y"]
+  z_vec_start=vecRequest["vectorParams"]["vecStart"]["z"]
+  x_vec = vecRequest["vectorParams"]["x_vec"]
+  y_vec = vecRequest["vectorParams"]["y_vec"]
+  z_vec = vecRequest["vectorParams"]["z_vec"]
   new_x = x_vec_start + (x_vec*t)
   new_y = y_vec_start + (y_vec*t)
   new_z = z_vec_start + (z_vec*t)

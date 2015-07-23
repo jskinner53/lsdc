@@ -648,8 +648,12 @@ def getSampleIDfromAbsoluteDewarPos(abs_pos):
 def popNextRequest():
     orderedRequests = getOrderedRequestList()
     try:
+      if (orderedRequests[0]["priority"] != 99999):
         if orderedRequests[0]["priority"] > 0:
-            return orderedRequests[0]
+          return orderedRequests[0]
+      else: #99999 priority means it's running, try next
+        if orderedRequests[1]["priority"] > 0:
+          return orderedRequests[1]
     except IndexError:
         pass
 
