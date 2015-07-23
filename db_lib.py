@@ -7,7 +7,7 @@ import os
 import socket
 import mongoengine as mongo
 
-from odm_templates import (Sample, Container, Raster, Request)
+from odm_templates import (Sample, Container, Raster, Request, Result)
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
@@ -24,7 +24,9 @@ db_host = '127.0.0.1'
 db_name = 'tmp_mongo_junk_from_db_lib'
 
 host = socket.gethostname()
-client = os.getenv('SSH_CLIENT')
+client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
+if not client:
+    client = os.getenv('REMOTE_ADDR')  # next check web client
 
 if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
     db_host = 'lsbr-dev'
@@ -248,6 +250,74 @@ def getContainerNameByID(container_id):
     return _try0_dict_key(c, 'container', 'container_id', container_id, '',
                            dict_key='containerName')
 
+
+def getResult(result_id):
+    """
+    Takes a result_id and returns the matching result or None.
+    """
+    result_id = int(result_id)
+
+    sample = Sample.objects(__raw__={'resultList.result_id': result_id}
+                            ).only('resultList')
+    res_list = _try0_maybe_mongo(sample, 'result', 'result_id', result_id, None,
+                               as_mongo_obj=True).resultList
+
+    for res in res_list:
+        if res.result_id == result_id:
+            return res.to_mongo()
+    return None
+
+
+def getResultforRequest(request_id):
+    """
+    Takes an integer request_id and returns the matching result or None.
+    """
+
+    sample = Sample.objects(__raw__={'requestList.request_id': request_id}
+                            ).only('resultList')
+    res_list = _try0_maybe_mongo(sample, 'request', 'request_id', request_id, None,
+                               as_mongo_obj=True).resultList
+    
+    for res in res_list:
+        if res.request_id == request_id:
+            return res.to_mongo()
+    return None
+
+
+def getResultsforSample(sample_id):
+    """
+    Takes a sample_id and returns it's resultsList or [].
+    """
+
+    sample = Sample.objects(__raw__={'sample_id': sample_id}
+                            ).only('resultList')
+    return _try0_maybe_mongo(sample, 'sample', 'sample_id', sample_id, None,
+                               as_mongo_obj=True).resultList
+
+
+def addResultforRequest(request_id, result):
+    """
+    Takes a request_id and result and appends a result to the sample's resultList.
+    """
+
+    # check for mismatched preexisting request_id in result
+    try:
+        if result['request_id'] != request_id:
+            raise ValueError('request_id embedded in result ({0}) does not match request_id param ({1})!'.format(result['request_id'], request_id))
+    except KeyError:
+        result['request_id'] = request_id
+
+    r = Result(**result)
+
+
+    sample_qs = Sample.objects(__raw__={'requestList.request_id': request_id})
+    sample = _try0_maybe_mongo(sample_qs, 'request', 'request_id', request_id, None,
+                               as_mongo_obj=True)
+
+    sample.resultList.append(r)
+    sample.save()
+    return sample.to_mongo()
+    
 
 def addRequesttoSample(sample_id, request):
     r = Request(**request)
