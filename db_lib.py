@@ -274,15 +274,19 @@ def deleteResult(result_id, get_result=False):
     """
     result_id = int(result_id)
 
-    sample_qs = Sample.objects(__raw__={'resultList.result_id': result_id}
-                               ).only('resultList')
-    res_list = _try0_maybe_mongo(sample_qs, 'result', 'result_id', result_id, None,
-                                 as_mongo_obj=True).resultList
+    sample_qs = Sample.objects(__raw__={'resultList.result_id': result_id})
+    sample = _try0_maybe_mongo(sample_qs, 'result', 'result_id', result_id, None,
+                                 as_mongo_obj=True)
 
-    for res in res_list:
+    for res in sample.resultList:
         if res.result_id == result_id:
-            return res.to_mongo()
-    return None
+            tmp = res
+            sample.resultList.remove(res)
+            sample.save()
+            if get_result:
+                return tmp.to_mongo()
+            else:
+                return None
 
 
 def getResultforRequest(request_id):
