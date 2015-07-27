@@ -268,6 +268,27 @@ def getResult(result_id):
     return None
 
 
+def deleteResult(result_id, get_result=False):
+    """
+    Takes a result_id, deletes, and optionally returns the matching result or None.
+    """
+    result_id = int(result_id)
+
+    sample_qs = Sample.objects(__raw__={'resultList.result_id': result_id})
+    sample = _try0_maybe_mongo(sample_qs, 'result', 'result_id', result_id, None,
+                                 as_mongo_obj=True)
+
+    for res in sample.resultList:
+        if res.result_id == result_id:
+            tmp = res
+            sample.resultList.remove(res)
+            sample.save()
+            if get_result:
+                return tmp.to_mongo()
+            else:
+                return None
+
+
 def getResultforRequest(request_id):
     """
     Takes an integer request_id and returns the matching result or None.
@@ -291,8 +312,9 @@ def getResultsforSample(sample_id):
 
     sample = Sample.objects(__raw__={'sample_id': sample_id}
                             ).only('resultList')
-    return _try0_maybe_mongo(sample, 'sample', 'sample_id', sample_id, None,
-                               as_mongo_obj=True).resultList
+    return [r.to_mongo() for r in 
+            _try0_maybe_mongo(sample, 'sample', 'sample_id', sample_id, None,
+                             as_mongo_obj=True).resultList]
 
 
 def addResultforRequest(request_id, result):
