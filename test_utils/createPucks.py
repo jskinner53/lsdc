@@ -6,4 +6,3 @@ import time
 for i in range (1,25):
   containerName = "Puck" + str(i)
   createContainer(containerName,"puck",16)
-#  time.sleep(1)
