@@ -1,8 +1,11 @@
 #!/usr/bin/python
+from __future__ import print_function
+
 import time
 import uuid
 import functools
 import itertools
+import sys
 import os
 import socket
 import mongoengine as mongo
@@ -59,7 +62,7 @@ if client:
 
 
 #print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
-print "---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host)
+print("---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
 mongo_conn = mongo.connect(db_name, host=db_host)
 
 
@@ -129,8 +132,8 @@ def getNextRunRaster(updateFlag=1):
         rast.status = 1
         rast.save()
 #    else:
-#        print "drawing " 
-#        print retRaster
+#        print("drawing ") 
+#        print(retRaster)
 
     return retRaster
 
@@ -289,20 +292,24 @@ def deleteResult(result_id, get_result=False):
                 return None
 
 
-def getResultforRequest(request_id):
+def getResultsforRequest(request_id):
     """
-    Takes an integer request_id and returns the matching result or None.
+    Takes an integer request_id and returns a list of matching results or [].
     """
+    reslist = []
 
     sample = Sample.objects(__raw__={'requestList.request_id': request_id}
                             ).only('resultList')
-    res_list = _try0_maybe_mongo(sample, 'request', 'request_id', request_id, None,
-                               as_mongo_obj=True).resultList
+    try:
+        res_list = _try0_maybe_mongo(sample, 'request', 'request_id', request_id, None,
+                                     as_mongo_obj=True).resultList
+    except AttributeError:
+        raise ValueError('request_id {0} not found'.format(request_id))
     
     for res in res_list:
         if res.request_id == request_id:
-            return res.to_mongo()
-    return None
+            reslist.append(res.to_mongo())
+    return reslist
 
 
 def getResultsforSample(sample_id):
@@ -382,7 +389,7 @@ def insertIntoContainer(container_name, position, itemID):
         c.item_list[position] = itemID
         c.save()
     else:
-        print "bad container name"
+        print("bad container name")
 
 
 def _ret_list(objects, as_mongo_obj=False):
@@ -487,7 +494,7 @@ def getQueue():
 
             for sample_id in puck.item_list:
                 if sample_id is not None:
-                    #print "sample ID = " + str(sample_id)
+                    #print("sample ID = " + str(sample_id))
                     # If we don't request sample_id it gets set to the next id in the sequence!?
                     # maybe that doesn't matter if we don't use or return it?
                     try:
@@ -497,7 +504,7 @@ def getQueue():
 
 #                    # stick this in try/except too....
 #                    if sampleObj.requestList is None:
-#                        print sampleObj.to_mongo()
+#                        print(sampleObj.to_mongo())
 #                    else:
 #                        for request in sampleObj.requestList:
 #                            if request is not None:
@@ -513,7 +520,7 @@ def getQueue():
                             except AttributeError:
                                 pass
                     except TypeError:
-                        print sampleObj.to_mongo()
+                        print(sampleObj.to_mongo())
 
     return ret_list
 
@@ -735,7 +742,7 @@ def deleteRequest(reqObj):
     # maybe there's a slicker way to get the req with a query and remove it?
     for req in sample.requestList:
         if req.request_id == r_id:
-            print "found the request to delete"
+            print("found the request to delete")
             sample.requestList.remove(req)
             sample.save()
             break
