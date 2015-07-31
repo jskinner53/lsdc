@@ -365,6 +365,25 @@ def collectData(currentRequest):
     elif (currentRequest["protocol"] == "characterize"):
       characterizationParams = currentRequest["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
+      if (index_success):
+        results = db_lib.getResultforRequest(currentRequest["request_id"])
+        strategyResults = results["strategy"]
+        stratStart = strategyResults["start"]
+        stratEnd = strategyResults["end"]
+        stratWidth = strategyResults["width"]
+        stratExptime = strategyResults["exptime"]
+        stratDetDist = strategyResults["detDist"]
+        sampleID = currentRequest["sample_id"]
+        tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
+        tempnewStratRequest["sweep_start"] = stratStart
+        tempnewStratRequest["sweep_end"] = stratEnd
+        tempnewStratRequest["img_width"] = stratWidth
+        tempnewStratRequest["exposure_time"] = stratExptime
+        tempnewStratRequest["detDist"] = stratDetDist
+        tempnewStratRequest["directory"] = directory_root
+
+        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest)        
+
     else: #standard
       sweep_start = currentRequest["sweep_start"]
       sweep_end = currentRequest["sweep_end"]
