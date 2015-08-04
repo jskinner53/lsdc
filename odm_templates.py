@@ -1,6 +1,6 @@
 from mongoengine import (DynamicDocument, DynamicEmbeddedDocument)
 from mongoengine import (SequenceField, ListField, EmbeddedDocumentField) 
-from mongoengine import (StringField, DictField)   # for bl info, user settings, and types
+from mongoengine import (StringField, DictField, BinaryField)   # for bl info, user settings, and types
 import mongoengine
 
 from distutils.version import LooseVersion
@@ -47,3 +47,8 @@ class UserSettings(DynamicDocument):
     user_id = StringField(required=True)
     settings_name = StringField(required=True, unique_with='user_id')
     settings = DictField(required=True)
+
+
+class GenericFile(DynamicDocument):
+#    file_id = SequenceField(required=True, unique=True, **args_dict)
+    data = BinaryField(required=True)
