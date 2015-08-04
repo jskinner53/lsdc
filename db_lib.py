@@ -8,7 +8,9 @@ import itertools
 import sys
 import os
 import socket
+
 import mongoengine as mongo
+from  mongoengine import NotUniqueError
 
 from odm_templates import (Sample, Container, Raster, Request, Result)
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
