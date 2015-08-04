@@ -706,6 +706,8 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   edna_input_xml_command = "/h/data/backed-up/pxsys/skinner/edna_header_code/makeAnEDNAXML-bnl.sh 1232 %s %s none %f %f 4000 0.01 0.01 0 xh1223_2_ %f %f %f > %s" % (dna_directory,dna_prefix,3,aimed_ISig,flux,xbeam_size,ybeam_size,edna_input_filename)
 #####  edna_input_xml_command = "ssh swill \"/h/data/backed-up/pxsys/skinner/edna_header_code/makeAnEDNAXML-bnl.sh 1232 %s %s none %f %f 4000 0.01 0.01 0 xh1223_2_ %f %f %f\" > %s" % (daq_lib.data_directory_name,dna_prefix,3,aimed_ISig,flux,xbeam_size,ybeam_size,edna_input_filename)
   print edna_input_xml_command
+  comm_sss = "echo " + edna_input_xml_command + "> edna_comm.txt"
+  os.system(comm_sss)
   os.system(edna_input_xml_command)
 
   print "done generating edna input\n"
@@ -809,7 +811,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
       dna_strat_dist = xsDetector.getDistance().getValue()
       dna_strat_dist = dna_strat_dist-(dna_strat_dist%1)
       dna_strategy_exptime = xsBeam.getExposureTime().getValue()
-      dna_strategy_exptime = dna_strategy_exptime-(dna_strategy_exptime%.1)
+#wtf?      dna_strategy_exptime = dna_strategy_exptime-(dna_strategy_exptime%.2)
   program = "edna-1.0" # for now
 #####  screeningoutputid = pxdb_lib.insert_dna_index_results(daq_lib.sweep_seq_id,daq_lib.get_field("xtal_id"),program,statusDescription,rejectedReflections,resolutionObtained,spotDeviationR,spotDeviationTheta,beamShiftX,beamShiftY,numSpotsFound,numSpotsUsed,numSpotsRejected,mosaicity,diffractionRings,spacegroup_name,pointGroup,bravaisLattice,rawOrientationMatrix_a_x,rawOrientationMatrix_a_y,rawOrientationMatrix_a_z,rawOrientationMatrix_b_x,rawOrientationMatrix_b_y,rawOrientationMatrix_b_z,rawOrientationMatrix_c_x,rawOrientationMatrix_c_y,rawOrientationMatrix_c_z,unitCell_a,unitCell_b,unitCell_c,unitCell_alpha,unitCell_beta,unitCell_gamma)
   dna_comment =  "spacegroup = " + str(spacegroup_name) + " mosaicity = " + str(mosaicity) + " resolutionHigh = " + str(resolutionObtained) + " cell_a = " + str(unitCell_a) + " cell_b = " + str(unitCell_b) + " cell_c = " + str(unitCell_c) + " cell_alpha = " + str(unitCell_alpha) + " cell_beta = " + str(unitCell_beta) + " cell_gamma = " + str(unitCell_gamma) + " status = " + str(statusDescription)
@@ -820,7 +822,11 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    pxdb_lib.insert_to_screening_strategy_table(screeningoutputid,dna_strategy_start,dna_strategy_end,dna_strategy_range,dna_strategy_exptime,resolutionObtained,program)
     dna_strat_comment = "\ndna Strategy results: Start=" + str(dna_strategy_start) + " End=" + str(dna_strategy_end) + " Width=" + str(dna_strategy_range) + " Time=" + str(dna_strategy_exptime) + " Dist=" + str(dna_strat_dist)
     characterizationResult = {"type":"characterizationStrategy","strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
+    print characterizationResult
     db_lib.addResultforRequest(charRequest["request_id"], characterizationResult)
+    results = db_lib.getResultforRequest(charRequest["request_id"])    
+    print "results from retrieve check "
+    print results
 #####    pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_strat_comment)
     xsStrategyStatistics = xsCollectionPlan[0].getStatistics()
     xsStrategyResolutionBins = xsStrategyStatistics.getResolutionBin()
