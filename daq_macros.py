@@ -106,6 +106,19 @@ def loop_center_xrec():
   #now try to get the loopshape starting from here
   return 1
 
+def fakeDC(directory,filePrefix,numstart,numimages):
+  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
+  testImgFileList.sort()
+  prefix_long = directory+"/"+filePrefix
+  expectedFilenameList = []
+  for i in range (numstart,numstart+numimages):
+    filename = create_filename(prefix_long,i)
+    expectedFilenameList.append(filename)
+  for i in range (0,len(expectedFilenameList)):
+    comm_s = "ln -sf " + testImgFileList[i] + " " + expectedFilenameList[i]
+    print comm_s
+    os.system(comm_s)
+
 
 def generateGridMap(rasterRequest):
 #  rasterDef = db_lib.getRasters()[0]
@@ -822,11 +835,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    pxdb_lib.insert_to_screening_strategy_table(screeningoutputid,dna_strategy_start,dna_strategy_end,dna_strategy_range,dna_strategy_exptime,resolutionObtained,program)
     dna_strat_comment = "\ndna Strategy results: Start=" + str(dna_strategy_start) + " End=" + str(dna_strategy_end) + " Width=" + str(dna_strategy_range) + " Time=" + str(dna_strategy_exptime) + " Dist=" + str(dna_strat_dist)
     characterizationResult = {"type":"characterizationStrategy","strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
-    print characterizationResult
     db_lib.addResultforRequest(charRequest["request_id"], characterizationResult)
-    results = db_lib.getResultforRequest(charRequest["request_id"])    
-    print "results from retrieve check "
-    print results
 #####    pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_strat_comment)
     xsStrategyStatistics = xsCollectionPlan[0].getStatistics()
     xsStrategyResolutionBins = xsStrategyStatistics.getResolutionBin()
