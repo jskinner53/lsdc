@@ -8,9 +8,11 @@ import itertools
 import sys
 import os
 import socket
-import mongoengine as mongo
 
-from odm_templates import (Sample, Container, Raster, Request, Result)
+import mongoengine as mongo
+from  mongoengine import NotUniqueError
+
+from odm_templates import (Sample, Container, Raster, Request, Result, GenericFile)
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
@@ -346,7 +348,35 @@ def addResultforRequest(request_id, result):
     sample.resultList.append(r)
     sample.save()
     return sample.to_mongo()
-    
+
+
+def addFile(data):
+    """
+    Put the data into the GenericFile collection,
+    return the _id.
+
+    _id is needed if you want to use it in a mongoengine ReferenceField
+    for automatic deref'ing.
+    """
+
+    f = GenericFile(data=data)
+    f.save()
+    f.reload()  # to fetch generated id
+    return f.id
+
+def getFile(id):
+    """
+    Retrieve the data from the GenericFile collection
+    for the given _id.
+
+    But maybe this will be automatically deref'd most of the time?
+    Only if they're mongoengine ReferenceFields...
+    """
+
+    f = GenericFile.objects(__raw__={'_id': id})  # yes it's '_id' here but just 'id' below, gofigure
+    return _try0_dict_key(f, 'file', 'id', id, None,
+                           dict_key='data')
+
 
 def addRequesttoSample(sample_id, request):
     r = Request(**request)
