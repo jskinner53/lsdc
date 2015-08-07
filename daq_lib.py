@@ -366,7 +366,8 @@ def collectData(currentRequest):
       characterizationParams = currentRequest["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
       if (index_success):
-        results = db_lib.getResultforRequest(currentRequest["request_id"])
+        resultsList = db_lib.getResultsforRequest(currentRequest["request_id"]) # because for testing I keep running the same request. Probably not in usual use.
+        results = resultsList[len(resultsList)-1]
         strategyResults = results["strategy"]
         stratStart = strategyResults["start"]
         stratEnd = strategyResults["end"]
@@ -392,6 +393,10 @@ def collectData(currentRequest):
       range_degrees = abs(sweep_end-sweep_start)
       beamline_lib.mva("Omega",sweep_start)
       imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
+      if (1):
+        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
+        print comm_s
+        os.system(comm_s)
   currentRequest["priority"] = -1
   db_lib.updateRequest(currentRequest)
 
@@ -445,6 +450,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   image_started = 0        
   set_field("state","Idle")        
   detector_wait()
+  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
 def get_data_prefix():
