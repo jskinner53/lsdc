@@ -350,26 +350,41 @@ def addResultforRequest(request_id, result):
     return sample.to_mongo()
 
 
-def addFile(data):
+def addFile(data=None, filename=None):
     """
-    Put the data into the GenericFile collection,
-    return the _id.
+    Put the file data into the GenericFile collection,
+    return the _id for use as an id or ReferenceField.
 
-    _id is needed if you want to use it in a mongoengine ReferenceField
-    for automatic deref'ing.
+    If a filename kwarg is given, read data from the file.
+    If a data kwarg is given or data is the 1st arg, store the data.
+    If both or neither is given, raise an error.
     """
+
+    if filename is not None:
+        if data is not None:
+            raise ValueError('both filename and data kwargs given.  can only use one.')
+        else:
+            with open(filename, 'r') as file:  # do we need 'b' for binary?
+                data = file.read()  # is this blocking?  might not always get everything at once?!
+
+    elif data is None:
+        raise ValueError('neither filename or data kwargs given.  need one.')
 
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
     return f.id
 
+
 def getFile(id):
     """
     Retrieve the data from the GenericFile collection
     for the given _id.
 
-    But maybe this will be automatically deref'd most of the time?
+    Returns the data in Binary.  If you know it's a txt file and want a string,
+    convert with str()
+
+    Maybe this will be automatically deref'd most of the time?
     Only if they're mongoengine ReferenceFields...
     """
 
