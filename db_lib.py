@@ -1,18 +1,16 @@
 #!/usr/bin/python
 from __future__ import print_function
 
-import time
-import uuid
-import functools
-import itertools
 import sys
 import os
 import socket
 
-import mongoengine as mongo
+import mongoengine 
 from  mongoengine import NotUniqueError
 
-from odm_templates import (Sample, Container, Raster, Request, Result, GenericFile)
+
+from odm_templates import (Sample, Container, Raster, Request, Result,
+                           GenericFile, Types, Field)
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
@@ -21,51 +19,65 @@ from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user 
 ### !!!!  are only unique per group.
 
 
+def db_disconnect(collections, alias=None):
+    """stolen from metadatastore
+    """
 
-# tmp cludges instead of config :(
+    mongoengine.connection.disconnect(alias)
 
-# defaults
-db_host = '127.0.0.1'
-db_name = 'tmp_mongo_junk_from_db_lib'
+    for collection in collections:
+        collection._collection = None
 
-host = socket.gethostname()
-client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
-if not client:
-    client = os.getenv('REMOTE_ADDR')  # next check web client
 
-if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
-    db_host = 'lsbr-dev'
-    #if not client:
-    db_name = 'john_mongo'
+def db_connect():
+    """
+    """
 
-elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
+    # horrible tmp cludges instead of config :(
+    # try to guess the db to use based on hostname and stuff
+    
+    # defaults
+    db_host = '127.0.0.1'
+    db_name = 'tmp_mongo_junk_from_db_lib'
+    
+    host = socket.gethostname()
+    
+    client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
     if not client:
-        db_name = 'matt_tmp_mongo'
-        #db_name = 'john_mongo' # temporary
-        
-        db_host = 'lsbr-dev'  # temporary
-
-elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
-    if not client:
-        db_name = 'matt_tmp_mongo'
-        db_host = '127.0.0.1'
-
-if client:
-    client = client.split()[0]
-
-    if client == '130.199.219.44':
-        db_name = 'matt_tmp_mongo'
-        #db_name = 'john_mongo' # temporary
-        
-        #db_host = 'lsbr-dev' # temporary
-
-    elif client == '130.199.219.42':
-        db_name = 'john_mongo'
-
-
-#print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
-print("---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
-mongo_conn = mongo.connect(db_name, host=db_host)
+        client = os.getenv('REMOTE_ADDR')  # next check web client
+    else:
+        client = client.split()[0]
+    
+    # set in test routines for disposable fixture dbs
+    db_env_suffix = os.getenv('DB_LIB_SUFFIX')
+    if db_env_suffix:
+        db_suffix = db_env_suffix
+    else:
+        db_suffix = "_mongo"
+    
+    if host == 'fluke.nsls2.bnl.gov' or host == 'fluke' or client == '130.199.219.42':
+        db_host = 'lsbr-dev'
+        db_name = 'john{0}'.format(db_suffix)
+    
+    elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
+        if not client:  # django site
+            db_name = 'matt_tmp{0}'.format(db_suffix)
+            db_host = '127.0.0.1'
+    
+        elif client == '130.199.219.44':
+            db_name = 'matt_tmp{0}'.format(db_suffix)
+    
+    # env vars override guesses
+    db_env_name = os.getenv('DB_LIB_NAME')
+    if db_env_name:
+        db_name = db_env_name
+    db_env_host = os.getenv('DB_LIB_HOST')
+    if db_env_host:
+        db_host = db_env_host
+    
+    
+    print("---- connecting with:  mongoengine.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
+    return (mongoengine.connect(db_name, host=db_host), db_name, db_host)
 
 
 primaryDewarName = 'primaryDewar2'
@@ -85,6 +97,12 @@ def find_sample():
     return [s.to_mongo() for s in Sample.objects()]
 
 def find_request():
+    return [r.to_mongo() for r in Request.objects()]
+
+def find_result():
+    return [r.to_mongo() for r in Result.objects()]
+
+def find_sample_request():
     req_list = []
 
     for samp in Sample.objects():
@@ -256,6 +274,21 @@ def getContainerNameByID(container_id):
                            dict_key='containerName')
 
 
+def createResult(result, as_mongo_obj=False):
+    if isinstance(result['result_type'], str):
+        result['result_type'] = type_from_name(result['result_type'], as_mongo_obj=True)
+
+    if not isinstance(result['request_id'], Result):
+        result['request_id'] = getRequest(result['request_id'], as_mongo_obj=True)
+
+    r = Result(**result)
+    r.save()
+
+    if as_mongo_obj:
+        return r
+    return r.to_mongo()
+
+
 def getResult(result_id):
     """
     Takes a result_id and returns the matching result or None.
@@ -326,28 +359,36 @@ def getResultsforSample(sample_id):
                              as_mongo_obj=True).resultList]
 
 
-def addResultforRequest(request_id, result):
-    """
-    Takes a request_id and result and appends a result to the sample's resultList.
-    """
-
-    # check for mismatched preexisting request_id in result
-    try:
-        if result['request_id'] != request_id:
-            raise ValueError('request_id embedded in result ({0}) does not match request_id param ({1})!'.format(result['request_id'], request_id))
-    except KeyError:
-        result['request_id'] = request_id
-
+def createResult(result, as_mongo_obj=False):
     r = Result(**result)
+    r.save()
+
+    if as_mongo_obj:
+        return r
+    return r.to_mongo()
 
 
-    sample_qs = Sample.objects(__raw__={'requestList.request_id': request_id})
-    sample = _try0_maybe_mongo(sample_qs, 'request', 'request_id', request_id, None,
-                               as_mongo_obj=True)
+def addResultforRequest(result):
+    """
+    like createResult, but also adds it to the resultList of result['sample_id']
+    """
+    r = createResult(result, as_mongo_obj=True)
 
+    request = r.request_id
+
+    #sample_qs = Sample.objects(__raw__={'requestList.request_id': request_id})
+    #sample = _try0_maybe_mongo(sample_qs, 'request', 'request_id', request_id, None,
+    #                           as_mongo_obj=True)
+
+    try:
+        sample = Sample.objects(requestList__in=[request])[0]
+    except IndexError:
+        return None
+    
     sample.resultList.append(r)
     sample.save()
-    return sample.to_mongo()
+
+    return r.to_mongo()
 
 
 def addFile(data=None, filename=None):
@@ -392,14 +433,26 @@ def getFile(id):
     return _try0_dict_key(f, 'file', 'id', id, None,
                            dict_key='data')
 
+def createRequest(request, as_mongo_obj=False):
+    if isinstance(request['request_type'], str):
+        request['request_type'] = type_from_name(request['request_type'], as_mongo_obj=True)
 
-def addRequesttoSample(sample_id, request):
     r = Request(**request)
+    r.save()
+
+    if as_mongo_obj:
+        return r
+    return r.to_mongo()
+
+def addRequesttoSample(sample_id, request, as_mongo_obj=False):
+    r = createRequest(request, as_mongo_obj=True)
 
     s = getSampleByID(sample_id, as_mongo_obj=True)
     #s.save(push__requestList=r)
     s.requestList.append(r)
     s.save()
+    if as_mongo_obj:
+            return r
     return r.to_mongo()
 
 
@@ -433,8 +486,10 @@ def insertIntoContainer(container_name, position, itemID):
     if c is not None:
         c.item_list[position] = itemID
         c.save()
+        return True
     else:
         print("bad container name")
+        return False
 
 
 def _ret_list(objects, as_mongo_obj=False):
@@ -716,7 +771,7 @@ def popNextRequest():
     return {}
 
 
-def getRequest(reqID):  # need to get this from searching the dewar I guess
+def getRequest(reqID, as_mongo_obj=False):  # need to get this from searching the dewar I guess
     r_id = int(reqID)
 
     # It's faster to get the mongo obj and only .to_mongo() convert the 
@@ -728,6 +783,8 @@ def getRequest(reqID):  # need to get this from searching the dewar I guess
     
     for req in req_list:
         if req.request_id == r_id:
+            if as_mongo_obj:
+                return req
             return req.to_mongo()
     return None
 
@@ -885,3 +942,37 @@ def userSettings(user_id, settings_name, settings_dict=None):
     # else it's a create
     except IndexError:
         UserSettings(user_id=user_id, settings_name=settings_name, settings=settings_dict).save()
+
+
+def createField(name, description, ctype, default_value=None, validation_routine_name=None, **kwargs):
+    """
+    all params are strings except default_value, which might or might not be a string
+    depending on the type
+    """
+
+    t = Types(name=name, base_type=base_type, **kwargs)
+    t.save()
+
+def createType(name, desc, base_type, field_list=None, **kwargs):
+    """
+    name must be a unique string
+    base_type must be either, 'base', or an existing type_name
+    field_list is a list of Field objects.
+    """
+
+    t = Types(name=name, description=desc, base_type=base_type, **kwargs)
+    t.save()
+
+def type_from_name(name, as_mongo_obj=False):
+    """
+    Given a type name ('standard_pin', 'shipping_dewar'), return the
+    name of it's base type ('sample', 'container').
+    """
+    try:
+        if as_mongo_obj:
+            return Types.objects(__raw__={'name': name})[0]
+        return Types.objects(__raw__={'name': name})[0].base_type
+    except IndexError:
+        return None
+
+
