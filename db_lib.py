@@ -359,15 +359,6 @@ def getResultsforSample(sample_id):
                              as_mongo_obj=True).resultList]
 
 
-def createResult(result, as_mongo_obj=False):
-    r = Result(**result)
-    r.save()
-
-    if as_mongo_obj:
-        return r
-    return r.to_mongo()
-
-
 def addResultforRequest(result):
     """
     like createResult, but also adds it to the resultList of result['sample_id']
@@ -443,6 +434,7 @@ def createRequest(request, as_mongo_obj=False):
     if as_mongo_obj:
         return r
     return r.to_mongo()
+
 
 def addRequesttoSample(sample_id, request, as_mongo_obj=False):
     r = createRequest(request, as_mongo_obj=True)
