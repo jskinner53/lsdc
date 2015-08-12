@@ -650,30 +650,6 @@ def getDewarPosfromSampleID(sample_id):
                     return (containerID, position)    
 
 
-def getAbsoluteDewarPosfromSampleID(sample_id):
-
-    """
-    returns the "absolute position" (only made sense with fixed size containers),
-    container_id, and position in that container for a sample with the given id
-    in one of the containers in the container named by the global variable 'primaryDewarName'
-    """
-    try:
-        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
-        return None
-
-    for i,puck_id in enumerate(cont.item_list):
-        if puck_id is not None:
-            puck = getContainerByID(puck_id)
-            sampleList = puck["item_list"]
-            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
-
-            for j,samp_id in enumerate(sampleList):
-                if samp_id == sample_id and samp_id is not None:
-                    absPosition = (i*puckCapacity) + j
-                    return (absPosition, puck_id, j)
-
-
 def getCoordsfromSampleID(sample_id):
     """
     returns the container position within the dewar and position in
@@ -713,47 +689,6 @@ def getSampleIDfromCoords(puck_num, position):
             
     sample_id = puck["item_list"][position]
     return sample_id
-
-
-def getSampleIDfromAbsoluteDewarPos(abs_pos):
-    """
-    given an "absolute position" (only made sense with fixed size
-    containers), returns the sample_id for the sample in that location
-    in the container named by the global variable 'primaryDewarName'
-    """
-    # try/except is faster than checking for an empty list before 
-    # indexing into it!
-    try:
-        pd = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
-        raise IndexError('Failed to find container named: "{0}"'.format(primaryDewarName))
-
-    # get puck capacity from the 1st puck we find
-    # This is wonky, need to totally rethink the idea of absolute position.
-    for i,puck_id in enumerate(pd.item_list):
-        if puck_id is not None:
-            #puck = getContainerByID(puck_id)
-            try:
-                puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
-            except IndexError:
-                raise IndexError('Failed to find container_id: "{0}"'.format(puck_id))
-
-            puck_capacity = len(puck.item_list)
-            break
-
-    # get puck# and position from absolute position
-    (puck_num, position) = divmod(abs_pos, puck_capacity)
-
-    # use puck# and position to get the sample_id
-    puck_id = pd.item_list[puck_num]
-    try:
-        puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
-    except IndexError:
-        if puck_id is None:
-            raise ValueError('no puck in position {0} in primary dewar!'.format(puck_num))
-        raise IndexError('Failed to get puck id {0}.'.format(puck_id))
-
-    return puck.item_list[position]
 
 
 def popNextRequest():

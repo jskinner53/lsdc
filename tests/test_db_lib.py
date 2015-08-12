@@ -45,8 +45,6 @@ def setup():
 #     createDefaultRequest, _ret_list, getContainers, getContainersByType, getAllPucks
 #     getPrimaryDewar, getContainerByName, getContainerByID
 #     insertCollectionRequest, getQueue, getDewarPosfromSampleID
-#     getAbsoluteDewarPosfromSampleID                     # doesn't make sense with mixed puck types
-#     getSampleIDfromAbsoluteDewarPos                     # doesn't make sense with mixed puck types
 #     getCoordsfromSampleID, getSampleIDfromCoords
 #     popNextRequest, getRequest, updateRequest, deleteRequest
 #     deleteSample, removePuckFromDewar, emptyLiveQueue
