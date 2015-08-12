@@ -1,9 +1,13 @@
 #!/usr/bin/env python
-# This file is closely based on tests.py from matplotlib
-#
-# This allows running the matplotlib tests from the command line: e.g.
+
+# This file is closely based on run_tests.py from metadatastore which
+# was closely based on tests.py from matplotlib
+# 
+# This allows running tests from the command line: e.g.
 #
 #   $ python tests.py -v -d
+#
+#   or just  ./run-tests.py
 #
 # The arguments are identical to the arguments accepted by nosetests.
 #

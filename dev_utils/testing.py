@@ -5,11 +5,13 @@ import sys
 import mongoengine.connection
 
 from ..db_lib import (db_connect, db_disconnect)
-
+from .createTestDB import createTestDB
 
 mongo_conn = None
 db_name = None
 db_host = None
+
+# routines for database fixtures for testing
 
 def dbtest_setup(collections):
     """
@@ -19,6 +21,8 @@ def dbtest_setup(collections):
     db_disconnect(collections)
     print('connecting', file=sys.stderr)
     (mongo_conn, db_name, db_host) = db_connect()
+
+    createTestDB()
         
 
 def dbtest_teardown(collections, drop_db=True):
