@@ -5,21 +5,26 @@ import time as ttime
 
 from nose.tools import assert_equal, assert_raises, raises
 
+import bson
 
 from lsdc.dev_utils.testing import (dbtest_setup, dbtest_teardown)
-
+from lsdc.db_lib import *
 from lsdc.odm_templates import *
 
 
 # setup db fixtures
 
-def teardown():
+def teardown_module():
     print('in teardown', file=sys.stderr)
     dbtest_teardown(collections)  # can pass drop_db=False to keep db for debugging
 
-def setup():
+def setup_module():
     print('in setup', file=sys.stderr)
+
+    # this runs createTestDB()!
+    # All the test below assume a fresh test db from createTestDB()
     dbtest_setup(collections)
+
     print('test_db_lib: setup done, sleeping briefly...', file=sys.stderr)
     #ttime.sleep(20)
 
@@ -58,6 +63,28 @@ def test_setup():
     t.save()
 
     assert_equal(1, 1)
+
+def test_find_container():
+
+    expected_types = {'containerName': unicode,
+                     '_id': bson.ObjectId,
+                     'item_list': list,
+                     'container_id': int,
+                     'type_name': unicode}
+
+    expected_set = set(expected_types.keys())
+
+    for cont in find_container():
+        try:
+            assert(set(cont.keys()) == expected_set)
+        except AssertionError:
+            raise AssertionError('unexpected container field: {0}'.format(cont.keys()))
+
+        for key in expected_types:
+            try:
+                assert(isinstance(cont[key], expected_types[key]))
+            except AssertionError:
+                raise AssertionError('expected container[{0}] as {1}, not {2}'.format(key, expected_types[key], cont[key].__class__))
 
 
 if __name__ == "__main__":

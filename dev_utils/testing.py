@@ -46,12 +46,15 @@ def drop_all_tmp_dbs(mongo_conn, suffixroot=None):
     """
     Get all db's matching tmp suffix and drop them.
     """
+
     if suffixroot is None:
         suffixroot = os.getenv('DB_LIB_SUFFIXROOT')
 
     if suffixroot:
         re_obj = re.compile('^.*{0}[0-9a-f-]*$'.format(suffixroot))
-        map(mongo_conn.drop_database, filter(re_obj.match, mongo_conn.database_names()))
+        dbs_2drop = filter(re_obj.match, mongo_conn.database_names())
+        map(print, dbs_2drop)
+        map(mongo_conn.drop_database, dbs_2drop)
 
     else:
         print('no suffixroot arg passed and no DB_LIB_SUFFIX env var set', file=sys.stderr)

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from __future__ import print_function
+from __future__ import (absolute_import, print_function)
 
 import sys
 import os
@@ -9,9 +9,9 @@ import mongoengine
 from  mongoengine import NotUniqueError
 
 
-from odm_templates import (Sample, Container, Raster, Request, Result,
+from .odm_templates import (Sample, Container, Raster, Request, Result,
                            GenericFile, Types, Field)
-from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
+from .odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
 
@@ -79,6 +79,9 @@ def db_connect():
     print("---- connecting with:  mongoengine.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
     return (mongoengine.connect(db_name, host=db_host), db_name, db_host)
 
+
+# connect on import for now... :(
+db_connect()
 
 primaryDewarName = 'primaryDewar2'
 
