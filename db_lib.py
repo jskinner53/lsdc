@@ -278,7 +278,7 @@ def createResult(result, as_mongo_obj=False):
     if isinstance(result['result_type'], str):
         result['result_type'] = type_from_name(result['result_type'], as_mongo_obj=True)
 
-    if not isinstance(result['request_id'], Result):
+    if not isinstance(result['request_id'], Request):
         result['request_id'] = getRequest(result['request_id'], as_mongo_obj=True)
 
     r = Result(**result)
@@ -437,6 +437,9 @@ def createRequest(request, as_mongo_obj=False):
 
 
 def addRequesttoSample(sample_id, request, as_mongo_obj=False):
+    if isinstance(request['request_type'], str):
+        request['request_type'] = type_from_name(request['request_type'], as_mongo_obj=True)
+
     r = createRequest(request, as_mongo_obj=True)
 
     s = getSampleByID(sample_id, as_mongo_obj=True)
