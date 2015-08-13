@@ -36,10 +36,13 @@ multiprocess._instantiate_plugins = plugins
 
 # Use an obvious name for test fixture db's so it's clear where they
 # came from and that they're junk, if they get left around due to a bug.
-suffix = '_db_lib__test_tmp_{0}'.format(str(uuid.uuid4()))
-#suffix = '_{0}'.format(str(uuid.uuid4()))
+suffixroot = '_db_lib__test_tmp_'
+suffix = '{0}{1}'.format(suffixroot, str(uuid.uuid4()))
+os.environ['DB_LIB_SUFFIXROOT'] = suffixroot
 os.environ['DB_LIB_SUFFIX'] = suffix
 
+# enable this to not drop test databases after testing
+#os.environ['DB_LIB_KEEP_TEST_DB'] = '1'
 
 def run():
     nose.main(addplugins=[x() for x in plugins], env=env)

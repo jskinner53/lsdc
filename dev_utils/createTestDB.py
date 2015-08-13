@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 import time
+import os
 
 import sys
 sys.path.append('/h/cowan/projects')  # until we get this packaged+installed
+
 import lsdc.db_lib  # makes db connection
 from lsdc.db_lib import *
 
@@ -68,23 +70,25 @@ def createTestDB():
     
     
     # bare requests
-    reqt_obj = type_from_name('test_request', as_mongo_obj=True)
-    req_id = createRequest({'request_type': reqt_obj, 'test_request_param': 'bare request 1'},
+    request_type = 'test_request'
+    request_id = createRequest({'request_type': request_type, 'test_request_param': 'bare request 1'},
                            as_mongo_obj=True)
     
     # bare results
-    rest_obj = type_from_name('test_result', as_mongo_obj=True)
-    createResult({'result_type': rest_obj, 'request_id': req_id, 'test_result_value': 'bare result 1'})
+    result_type = 'test_result'
+    createResult({'result_type': result_type,
+                  'request_id': request_id,
+                  'test_result_value': 'bare result 1'})
     
     # in requestList on sample
-    req = addRequesttoSample(sampID,
-                             {'request_type': reqt_obj,
+    request_id = addRequesttoSample(sampID,
+                             {'request_type': request_type,
                               'test_request_param': 'test param 1'},
                              as_mongo_obj=True)
     
     # in resultsList on sample
-    addResultforRequest({'request_id': req,
-                         'result_type': rest_obj,
+    addResultforRequest({'request_id': request_id,
+                         'result_type': result_type,
                          'test_result_val': 'test val 1'})
 
 

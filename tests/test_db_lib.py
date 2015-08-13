@@ -15,7 +15,7 @@ from lsdc.odm_templates import *
 
 def teardown():
     print('in teardown', file=sys.stderr)
-    dbtest_teardown(collections, drop_db=False)  # can pass drop_db=False to keep db for debugging
+    dbtest_teardown(collections)  # can pass drop_db=False to keep db for debugging
 
 def setup():
     print('in setup', file=sys.stderr)
