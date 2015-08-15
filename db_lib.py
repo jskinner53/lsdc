@@ -581,31 +581,6 @@ def getContainerByID(container_id, as_mongo_obj=False):
 #stuff I forgot - alignment type?, what about some sort of s.sample lock?,
 
 
-def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposure_time,
-                            priority, protocol, directory, file_prefix, file_number_start,
-                            wavelength, resolution, slit_height, slit_width, attenuation,
-                            pos_x, pos_y, pos_z, pos_type, gridW, gridH, gridStep):
-    """adds a request to a sample"""
-
-    colobj = {"request_id": int(time.time()), "sample_id": sample_id,
-              "sweep_start": sweep_start, "sweep_end": sweep_end, "img_width": img_width,
-              "exposure_time": exposure_time, "priority": priority, "protocol": protocol,
-              "directory": directory, "file_prefix": file_prefix,
-              "file_number_start": file_number_start, "wavelength": wavelength,
-              "resolution": resolution, "slit_height": slit_height, "slit_width": slit_width,
-              "attenuation": attenuation, "pos_x": pos_x, "pos_y": pos_y, "pos_z": pos_z,
-              "pos_type": pos_type, "gridW": gridW, "gridH": gridH, "gridStep": gridStep}
-
-    ######### need to insert this into the request List for the sample
-    s = getSampleByID(sample_id, as_mongo_obj=True)
-    s.modify(push__requestList=colobj)
-
-#,vec_x_start,vec_y_start,vec_z_start,vec_x_end,vec_y_end,vec_z_end,vec_numframes,vec_fpp
-#vec_fpp means frames per point, vec_numframes is the total. Not sure if this is the best way.
-
-#pinpos, sweep_start, numimages, sweep_inc, exposure_time, protocol, file_prefix, file_number_start, wavelength, resolution, xtal_id,    slit_height, slit_width, attenuation,priority
-
-
 def getQueue():
     """
     returns a list of request dicts for all the samples in the container
