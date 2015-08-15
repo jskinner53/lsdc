@@ -745,7 +745,7 @@ def getRequest(reqID, as_mongo_obj=False):  # need to get this from searching th
 
 # this is really "update_sample" because the request is stored with the sample.
 
-def _updateRequest(reqObj):
+def _updateRequest(request_dict):
     """
     This is not recommended once results are recorded for a request!
     Using a new request instead would keep the apparent history
@@ -766,10 +766,11 @@ def _updateRequest(reqObj):
 
     solution?  cop out and embed the dict we need to update in a single field
     """
-    
-    
 
-    addRequesttoSample(reqObj["sample_id"], reqObj)
+    if not Request.objects(__raw__={'request_id': request_dict['request_id']}).update(
+        set__request_obj=request_dict['request_obj']):
+        
+        addRequesttoSample(**request_dict)
 
 
 def deleteRequest(reqObj):
