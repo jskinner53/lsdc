@@ -59,7 +59,7 @@ def setup_module():
 
 def test_setup():
     # just do anything to make it actually create a db
-    t=Types(name='nombre', description='desc', base_type='test')
+    t=Types(name='nombre', description='desc', parent_type='test')
     t.save()
 
     assert_equal(1, 1)
@@ -70,19 +70,22 @@ def test_find_container():
                      '_id': bson.ObjectId,
                      'item_list': list,
                      'container_id': int,
-                     'type_name': unicode}
+                     'container_type': bson.dbref.DBRef}
 
     expected_set = set(expected_types.keys())
 
     for cont in find_container():
         try:
-            assert(set(cont.keys()) == expected_set)
+            assert(set(cont.keys()).union(set(['item_list'])) == expected_set)
         except AssertionError:
-            raise AssertionError('unexpected container field: {0}'.format(cont.keys()))
+            raise AssertionError('unexpected container field: {0}\n{1}'.format(cont.keys(), expected_set))
 
         for key in expected_types:
             try:
                 assert(isinstance(cont[key], expected_types[key]))
+            except KeyError:
+                if key != 'item_list':  # some containers don't have a fixed size item list
+                    raise KeyError('key error on field: {0}'.format(key))
             except AssertionError:
                 raise AssertionError('expected container[{0}] as {1}, not {2}'.format(key, expected_types[key], cont[key].__class__))
 
