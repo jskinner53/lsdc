@@ -1,53 +1,96 @@
 #!/usr/bin/python
 
+from __future__ import (absolute_import, print_function)
+
 import time
 import os
 
 import sys
 sys.path.append('/h/cowan/projects')  # until we get this packaged+installed
 
-import lsdc.db_lib  # makes db connection
-from lsdc.db_lib import *
+import warnings
+import traceback
+
+from lsdc.dev_utils.testing import *
+from lsdc.odm_templates import collections
+
+#import lsdc.db_lib  # makes db connection
+from lsdc.db_lib import *  # makes db connection
+
 
 def createTestDB():
     # fields
+    base_fields = [{'name': 'name', 'description': 'a short, human readable name',
+                    'bson_type': 'String'},
+                  {'name': 'description', 'description': 'a shortish explanatory text',
+                    'bson_type': 'String'},
+                  {'name': 'priority',
+                   'description': 'positive integer, higher number=higher priority',
+                   'bson_type': '64-bit integer?'},
+                  {'name': 'capacity',
+                   'description': 'postitive integer, number of sample positions within the container',
+                   'bson_type': '64-bit integer?'}]
     
-    # types
-    base_types = [{'name': 'sample', 'description': '', 'base_type': 'base'},
-                  {'name': 'container', 'description': '', 'base_type': 'base'},
-                  {'name': 'request', 'description': '', 'base_type': 'base'},
-                  {'name': 'result', 'description': '', 'base_type': 'base'}]  # 'location'?
+    for f in  base_fields:
+        print('name: {0}'.format(f['name']))
+        createField(f['name'], f['description'], f['bson_type'])
     
-    for t in  base_types:
-        print 'name: {0}'.format(t['name'])
-        createType(t['name'], t['description'], t['base_type'])
+
+    # base types
+    parent_types = [{'name': 'sample', 'description': '', 'parent_type': 'base'},
+                  {'name': 'container', 'description': '', 'parent_type': 'base'},
+                  {'name': 'request', 'description': '', 'parent_type': 'base'},
+                  {'name': 'result', 'description': '', 'parent_type': 'base'}]  # 'location'?
     
+    for t in  parent_types:
+        print('name: {0}'.format(t['name']))
+        createType(t['name'], t['description'], t['parent_type'])
     
-    types = [{'name': 'puck', 'description': '', 'base_type': 'container'},
-             {'name': 'pin', 'description': '', 'base_type': 'sample'},
-             {'name': 'dewar', 'description': '', 'base_type': 'container'},
-             {'name': 'test_request', 'description': '', 'base_type': 'request'},
-             {'name': 'test_result', 'description': '', 'base_type': 'result'}]
+
+    types = [{'name': 'puck',
+              'description': 'generic hockey puck style subcontainer for shipping dewars',
+              'parent_type': 'container'},
+             {'name': 'pin', 'description': '', 'parent_type': 'sample'},
+             {'name': 'dewar', 'description': '', 'parent_type': 'container'},
+             {'name': 'shipping_dewar', 'description': '', 'parent_type': 'dewar'},
+             {'name': 'test_request', 'description': '', 'parent_type': 'request'},
+             {'name': 'test_result', 'description': '', 'parent_type': 'result'}]
     
     for t in types:
-        print 'name: {0}, base_type {1}'.format(t['name'], t['base_type'])
-        createType(t['name'], t['description'], t['base_type'])
+        print('name: {0}, parent_type {1}'.format(t['name'], t['parent_type']))
+        createType(t['name'], t['description'], t['parent_type'])
+
+
+    # containers with a fixed number of sample or subcontainer locations
+    types = [{'name': '16_pin_puck',
+              'description': 'original 16 pin puck',
+              'parent_type': 'puck', 'capacity': 16},
+             {'name': '24_puck_robot_dewar',
+              'description': '24 puck dewar',
+              'parent_type': 'dewar', 'capacity': 24},
+             {'name': '5_slot_cane',
+              'description': 'traditional, 5 position cane for pins in vials',
+              'parent_type': 'container', 'capacity': 5}]
+    
+    for t in types:
+        print('name: {0}, parent_type {1}'.format(t['name'], t['parent_type']))
+        createType(t['name'], t['description'], t['parent_type'], t['capacity'])
     
     
     # containers
     for i in range(3)+[6]:  # discontinuity for testing
         containerName = 'Puck_{0}'.format(i)
-        createContainer(containerName, 'puck', 16)
+        createContainer(containerName, '16_pin_puck')
     
     for i in range(4):  # discontinuity for testing
         containerName = 'dewar_{0}'.format(i)
-        createContainer(containerName, 'std_shipping_dewar', 5)
+        createContainer(containerName, 'shipping_dewar')
     
     
     # named containers
     primary_dewar_name = 'primaryDewar'
     
-    createContainer(primary_dewar_name, 'dewar', 24) 
+    createContainer(primary_dewar_name, '24_puck_robot_dewar') 
     
     for i in range(4)+[6]:  # discontinuity for testing
         containerName = 'Puck_'.format(i)
@@ -66,7 +109,7 @@ def createTestDB():
                 raise NotUniqueError('{0}'.format(sampleName))
     
             if not insertIntoContainer(containerName, j, sampID):
-                print 'name {0}, pos {1}, sampid {2}'.format(containerName, j, sampID)
+                print('name {0}, pos {1}, sampid {2}'.format(containerName, j, sampID))
     
     
     # bare requests
@@ -92,5 +135,17 @@ def createTestDB():
                          'test_result_val': 'test val 1'})
 
 
+# this got pretty hoked out :(
+def _createTestDB():
+    try:
+        dbtest_setup(collections)  # doh! abusing this totally loses us error location info :(
+
+    except Exception as e:
+        print('Warning! caught exception, dropping incomplete db!\n\n{0}, {1}\n'.format(e))
+
+        # drop incomplete database
+        dbtest_teardown(collections)
+
+
 if __name__ == '__main__':
-    createTestDB()
+    _createTestDB()
