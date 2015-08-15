@@ -354,7 +354,7 @@ def getResultsforRequest(request_id):
     """
     Takes an integer request_id or request obj and returns a list of matching results or [].
 
-    This is not a completely intuitive relationship
+    This is not a completely intuitive relationship if request is modified after results
     """
     reslist = []
 
@@ -477,6 +477,7 @@ def createRequest(request_type, request_obj=None, timestamp=None, as_mongo_obj=F
 
 def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None,
                        as_mongo_obj=False, **kwargs):
+
     r = createRequest(request_type, request_obj=request_obj, timestamp=timestamp,
                       as_mongo_obj=True, **kwargs)
 
@@ -542,11 +543,17 @@ def getContainers(as_mongo_obj=False):
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
-    c = Container.objects(__raw__={'type_name': type_name})
+
+    if isinstance(type_name, str):
+        type_obj = type_from_name(type_name, as_mongo_obj=True)
+
+    c = Container.objects(container_type=type_obj)
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getAllPucks(as_mongo_obj=False):
+    # find all the types desended from 'puck'?
+    # and then we could do this?
     return getContainersByType("puck", "", as_mongo_obj=as_mongo_obj)
 
 
