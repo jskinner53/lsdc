@@ -86,4 +86,4 @@ class GenericFile(DynamicDocument):
     data = BinaryField(required=True)
 
 
-collections = [Field, Types, Container, Request, Result, Sample, Raster, BeamlineInfo, UserSettings, GenericFile]
+collections = [Field, Types, Container, Request, Result, Sample, BeamlineInfo, UserSettings, GenericFile]

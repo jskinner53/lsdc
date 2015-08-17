@@ -40,7 +40,6 @@ def setup_module():
 
 # untested routines:
 #     find_{container, sample, request, result, sample_request}
-#     getRasters, addRaster, clearRasters, getNextRunRaster, getNextDisplayRaster
 #     _try0_dict_key, _try0_maybe_mongo
 #     getSampleByID, getSampleIDbyName, getSampleNamebyID
 #     getContainerIDbyName, getContainerNameByID           # inconsistent 'By' capitalization :(
