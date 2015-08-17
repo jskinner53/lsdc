@@ -12,7 +12,7 @@ import mongoengine
 from  mongoengine import NotUniqueError
 
 
-from .odm_templates import (Sample, Container, Raster, Request, Result,
+from .odm_templates import (Sample, Container, Request, Result,
                            GenericFile, Types, Field)
 from .odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
@@ -152,67 +152,6 @@ def createContainer(container_name, container_type, **kwargs):
     c.save()
 
     return c.container_id
-
-
-def getRasters(as_mongo_obj=False):
-    if as_mongo_obj:
-        return Raster.objects()
-
-    return [r.to_mongo() for r in Raster.objects()]
-
-
-def addRaster(rasterDefObj):
-    r = Raster(**rasterDefObj)
-    r.save()
-
-    return r.raster_id
-
-
-def clearRasters():
-    Raster.drop_collection()
-
-
-def getNextRunRaster(updateFlag=1):
-    try:
-        rast = Raster.objects(status=0)[0]
-    except IndexError:
-        return None
-
-    retRaster = rast.to_mongo()
-    if updateFlag == 1:
-        rast.status = 1
-        rast.save()
-#    else:
-#        print("drawing ") 
-#        print(retRaster)
-
-    return retRaster
-
-
-def getNextDisplayRaster():
-    # if getRasters() returns [] retRaster=? !
-    # should it be initialized to None as in previous func?
-
-    # Would it be better to skip the loop entirely by using .first(), and check for None?
-    # What is 'i' doing?  if we were 'break'ing, we should only ever have one
-    # iteration and i would *always* be 0?
-#    for i,rast in enumerate(Raster.objects(status=1)):
-#        retRaster = (i, rast.to_mongo())
-#        rast.status = 2
-#        rast.save()
-#        #break  # shouldn't need this anymore?
-#    return retRaster
-    try:
-        rast = Raster.objects(__raw__={'status': 1})[0]
-    except IndexError:
-        return None
-
-    retRaster = (0, rast.to_mongo())
-    rast.status = 2
-    rast.save()
-    return retRaster
-    
-
 
 
 def createSample(sample_name, sample_type, **kwargs):

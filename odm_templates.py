@@ -65,11 +65,6 @@ class Sample(DynamicDocument):
                                  reverse_delete_rule=mongoengine.DENY)
 
 
-# these should be merged in with requests
-class Raster(DynamicDocument):
-    raster_id = SequenceField(required=True, unique=True, **args_dict)
-
-
 class BeamlineInfo(DynamicDocument):
     """generic store for arbitrary beamline info/settings
     """
