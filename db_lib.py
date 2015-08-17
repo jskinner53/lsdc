@@ -300,14 +300,14 @@ def getSampleByID(sample_id, as_mongo_obj=False):
                              as_mongo_obj=as_mongo_obj)
 
 
-def getSampleByRef(sample_ref, as_mongo_obj=False):
-    """
-    sample_ref:  required, DBRef
-    """
-
-    s = Sample.objects(__raw__={'_id': sample_ref.id})
-    return _try0_maybe_mongo(s, 'sample', 'sample _id', sample_ref.id, None,
-                             as_mongo_obj=as_mongo_obj)
+#def getSampleByRef(sample_ref, as_mongo_obj=False):
+#    """
+#    sample_ref:  required, DBRef
+#    """
+#
+#    s = Sample.objects(__raw__={'_id': sample_ref.id})
+#    return _try0_maybe_mongo(s, 'sample', 'sample _id', sample_ref.id, None,
+#                             as_mongo_obj=as_mongo_obj)
 
 
 # should fetch only the needed field(s)! :(
@@ -327,13 +327,13 @@ def getSampleNamebyID(sample_id):
                           dict_key='sampleName')
 
 
-def getSampleNamebyRef(sample_ref):
-    """
-    sample_ref:  required, DBRef
-    """
-    s = Sample.objects(__raw__={'_id': sample_ref.id})
-    return _try0_dict_key(s, 'sample', 'sample _id', sample_ref, -99,
-                          dict_key='sampleName')
+#def getSampleNamebyRef(sample_ref):
+#    """
+#    sample_ref:  required, DBRef
+#    """
+#    s = Sample.objects(__raw__={'_id': sample_ref.id})
+#    return _try0_dict_key(s, 'sample', 'sample _id', sample_ref, -99,
+#                          dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
@@ -809,7 +809,7 @@ def getRequest(reqID, as_mongo_obj=False):  # need to get this from searching th
 
 # this is really "update_sample" because the request is stored with the sample.
 
-def _updateRequest(request_dict):
+def updateRequest(request_dict):
     """
     This is not recommended once results are recorded for a request!
     Using a new request instead would keep the apparent history
