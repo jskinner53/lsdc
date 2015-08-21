@@ -123,6 +123,44 @@ def find_sample_request():
     return req_list
 
 
+def type_from_name(name, as_mongo_obj=False):
+    """
+    Given a type name ('standard_pin', 'shipping_dewar'), return the
+    name of it's base type ('sample', 'container').
+    """
+    try:
+        if as_mongo_obj:
+            return Types.objects(__raw__={'name': name})[0]
+        return Types.objects(__raw__={'name': name})[0].parent_type
+    except IndexError:
+        return None
+
+
+def find_base_type(obj_type):
+    """
+    recurse throught the type heirarchy to find the base type
+    """
+
+#    print('{0}'.format(obj_type, file=sys.stderr))
+
+    parent = type_from_name(obj_type)
+    if not parent:
+              return None
+    if parent == 'base':
+            return obj_type
+
+    else:
+        return find_base_type(parent)
+
+
+def constructor_from_name(name):
+    """
+    create a constructor for the right type of object using find_base_type
+    so we can save items from a spreadsheet by figuring out what they are
+    """
+
+
+
 def createContainer(container_name, container_type, **kwargs):
     """
     container_name:  string, name for the new container, required
@@ -134,8 +172,12 @@ def createContainer(container_name, container_type, **kwargs):
 
     kwargs['containerName'] = container_name
 
-    if isinstance(container_type, str):
+    if isinstance(container_type, unicode):
         kwargs['container_type'] = type_from_name(container_type, as_mongo_obj=True)
+    else:
+        kwargs['container_type'] = container_type  # this seems weird?
+
+    print('container_type t({0}) v({1}'.format(type(container_type), container_type), file=sys.stderr)
 
     #try:
     #    kwargs['container_type'] = Types.objects(__raw__={'name': type_name})[0]
@@ -147,6 +189,7 @@ def createContainer(container_name, container_type, **kwargs):
     except AttributeError:
         pass  # not all containers have a fixed capacity, eg. shipping dewar.
               # depends on what subcontainers are used...
+    kwargs['item_list'] = []
 
     c = Container(**kwargs)
     c.save()
@@ -904,14 +947,3 @@ def createType(name, desc, parent_type, field_list=None, **kwargs):
     t.save()
 
 
-def type_from_name(name, as_mongo_obj=False):
-    """
-    Given a type name ('standard_pin', 'shipping_dewar'), return the
-    name of it's base type ('sample', 'container').
-    """
-    try:
-        if as_mongo_obj:
-            return Types.objects(__raw__={'name': name})[0]
-        return Types.objects(__raw__={'name': name})[0].parent_type
-    except IndexError:
-        return None
