@@ -14,6 +14,7 @@ import time
 from random import randint
 import glob
 import xml.etree.ElementTree as ET
+import xmltodict
 from XSDataMXv1 import XSDataResultCharacterisation
 
 def hi_macro():
@@ -38,10 +39,13 @@ def autoRasterLoop(sampleID):
   print "auto raster " + str(sampleID)
   loop_center_xrec()
 #  getXrecLoopShape(sampleID)
-  time.sleep(1) #looks like I really need this sleep
+  time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
   runRasterScan(sampleID,"LoopShape")
+  time.sleep(1.5) 
   runRasterScan(sampleID,"Fine")
+  time.sleep(1) 
   runRasterScan(sampleID,"Line")  
+  time.sleep(1) 
 
 
 
@@ -56,7 +60,7 @@ def loop_center_xrec():
     mva("Omega",i)
     pic_prefix = "findloop_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(pic_prefix)
+    take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
   print comm_s
   os.system(comm_s)
@@ -130,11 +134,11 @@ def generateGridMap(rasterRequest):
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-  grid_map_file = open("raster_map.txt","w+")
 #  filePrefix = "raster" #for now
   filePrefix = rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]
   testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
   testImgCount = 0
+  rasterCellMap = {}
   for i in xrange(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
@@ -163,226 +167,71 @@ def generateGridMap(rasterRequest):
       else:
         zMotCellAbsoluteMove = zMotAbsoluteMove+(j*stepsize)
 #      zMotAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
-      dataFileName = create_filename(filePrefix+"_"+str(i),j)
+      dataFileName = create_filename(filePrefix+"_"+str(i),j+1)
       os.system("mkdir -p " + rasterRequest["directory"])
       comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
       os.system(comm_s)
       testImgCount+=1
-      grid_map_file.write("%f %f %f %s\n" % (xMotAbsoluteMove,yMotAbsoluteMove,zMotCellAbsoluteMove,dataFileName))
-#      grid_spots_file.write("%d %s\n" % (randint(0,900),dataFileName))
-  grid_map_file.close()  
-#dials.find_spots_client /h/pxuser/skinner/proto_data/dataLinks/*.cbf
-  dialsXmlFilename = rasterRequest["directory"]+"/raster_spots.xml"
-#  comm_s = "dials.find_spots_client " + rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]+"*.cbf>"+dialsXmlFilename
-#  comm_s = "dials.find_spots_client " + rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]+"*.cbf"
+      rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotCellAbsoluteMove}
+      rasterCellMap[dataFileName] = rasterCellCoords
   comm_s = "ls -rt " + rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]+"*.cbf|dials.find_spots_client"
   print comm_s
-  dialsXMLFile = open(dialsXmlFilename,"w+")
-  dialsXMLFile.write("<data>\n")
-  for outputline in os.popen(comm_s).readlines():
-    dialsXMLFile.write(outputline)
-  dialsXMLFile.write("</data>\n")
-  dialsXMLFile.close()
-#  os.system(comm_s)
-  generateSpotsFileFromXML(dialsXmlFilename)
-  
-
-
-def generateSpotsFileFromXML(dialsXmlFilename):
-  grid_spots_file = open("raster_spots.txt","w+")
-  tree = ET.parse(dialsXmlFilename)
-  root = tree.getroot()
-  for i in range (0,len(root)):
-    dataFileName = root[i].find("image").text
-    spots = int(root[i].find("spot_count").text)
-    grid_spots_file.write("%d %s\n" % (spots,dataFileName))
-  grid_spots_file.close()  
-
-
-def generateSingleColumnGridMap(rasterDef):
-#  rasterDef = db_lib.getRasters()[0]
-#  print rasterDef
-  stepsize = float(rasterDef["stepsize"])
-  omega = float(rasterDef["omega"])
-  rasterStartX = float(rasterDef["x"])
-  rasterStartY = float(rasterDef["y"])
-  rasterStartZ = float(rasterDef["z"])
-  omegaRad = math.radians(omega)
-  grid_map_file = open("raster_map.txt","w+")
-  grid_spots_file = open("raster_spots.txt","w+")
-  filePrefix = "columnRaster" #for now
-  for i in xrange(len(rasterDef["rowDefs"])):
-    numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
-    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
-    startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-    xRelativeMove = startX
-    yyRelativeMove = startY*sin(omegaRad)
-    yxRelativeMove = startY*cos(omegaRad)
-
-#old    yxRelativeMove = startY*sin(omegaRad)
-#    yyRelativeMove = startY*cos(omegaRad)
-
-    zMotAbsoluteMove = rasterStartZ-xRelativeMove
-
-    yMotAbsoluteMove = rasterStartY+yyRelativeMove
-    xMotAbsoluteMove = rasterStartX-yxRelativeMove
-
-#old    yMotAbsoluteMove = rasterStartY-yyRelativeMove
-#    xMotAbsoluteMove = yxRelativeMove+rasterStartX
-    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    for j in xrange(numsteps):
-#old      yxRelativeMove = stepsize*sin(omegaRad)
-#      yyRelativeMove = -stepsize*cos(omegaRad)
-      yyRelativeMove = stepsize*sin(omegaRad)
-      yxRelativeMove = -stepsize*cos(omegaRad)
-      xMotCellAbsoluteMove = xMotAbsoluteMove+(j*yxRelativeMove)
-      yMotCellAbsoluteMove = yMotAbsoluteMove+(j*yyRelativeMove)
-#      zMotAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
-      dataFileName = create_filename(filePrefix+"_"+str(i),j)
-      grid_map_file.write("%f %f %f %s\n" % (xMotCellAbsoluteMove,yMotCellAbsoluteMove,zMotAbsoluteMove,dataFileName))
-      grid_spots_file.write("%d %s\n" % (randint(0,900),dataFileName))
-  grid_map_file.close()  
-  grid_spots_file.close()  
-
-
-
-def columnRasterNOTUSED(): #3/10/15 - not used yet, raster would need to be defined for column orientation. Address later if needed.
-  rasterDef = db_lib.getRasters()[0]
-#  print rasterDef
-  stepsize = float(rasterDef["stepsize"])
-  omega = float(rasterDef["omega"])
-  rasterStartX = float(rasterDef["x"])
-  rasterStartY = float(rasterDef["y"])
-  rasterStartZ = float(rasterDef["z"])
-  omegaRad = math.radians(omega)
-  for i in xrange(len(rasterDef["rowDefs"])):
-    rowCellCount = 0
-    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-      startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-    else:
-      startY = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["y"]-(stepsize/2.0)
-#    startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
-
-    xRelativeMove = startX
-    yxRelativeMove = -startY*sin(omegaRad)
-    yyRelativeMove = startY*cos(omegaRad)
-    zMotAbsoluteMove = rasterStartZ-xRelativeMove
-    yMotAbsoluteMove = rasterStartY-yyRelativeMove
-    xMotAbsoluteMove = yxRelativeMove+rasterStartX
-    mva("X",xMotAbsoluteMove,"Y",yMotAbsoluteMove,"Z",zMotAbsoluteMove)
-    if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-      yRelativeMove = -((numsteps-1)*stepsize)
-    else:
-      yRelativeMove = ((numsteps-1)*stepsize)
-    yxRelativeMove = -yRelativeMove*sin(omegaRad)
-    yyRelativeMove = yRelativeMove*cos(omegaRad)
-    print "mvr Y " + str(yyRelativeMove)
-    print "mvr X " + str(yxRelativeMove)
-    mvr("X",yxRelativeMove,"Y",yyRelativeMove)
-#    mvr("X",yxRelativeMove)
-  mva("X",rasterStartX,"Y",rasterStartY,"Z",rasterStartZ)
-  generateGridMap()
-#  gotoMaxRaster("raster_spots.txt","raster_map.txt")
-  set_field("xrecRasterFlag",2)  #routine not used? 5/14
-
-
-def singleColumnRaster(rasterReqID): #for the 90-degree step.
-  time.sleep(0.2) #maybe need this??
-#  rasterDef = db_lib.getNextRunRaster()
-  rasterRequest = db_lib.getRequest(rasterReqID)
-  rasterDef = rasterRequest["rasterDef"]
-  stepsize = float(rasterDef["stepsize"])
-  omega = float(rasterDef["omega"])
-  rasterStartX = float(rasterDef["x"])
-  rasterStartY = float(rasterDef["y"])
-  rasterStartZ = float(rasterDef["z"])
-  omegaRad = math.radians(omega)
-  numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
-  startY = rasterDef["rowDefs"][0]["start"]["y"]+(stepsize/2.0) #- these are the simple relative moves
-  startX = rasterDef["rowDefs"][0]["start"]["x"]+(stepsize/2.0)
-  xRelativeMove = startX
-#old  yxRelativeMove = startY*sin(omegaRad)
-#  yyRelativeMove = -startY*cos(omegaRad)
-  yyRelativeMove = -startY*sin(omegaRad)
-  yxRelativeMove = startY*cos(omegaRad)
-
-  mvr("X",yxRelativeMove,"Y",yyRelativeMove,"Z",xRelativeMove) #this should get to the start
-  time.sleep(1)#cosmetic
-  yRelativeMove = -((numsteps-1)*stepsize)
-  yyRelativeMove = yRelativeMove*sin(omegaRad)
-  yxRelativeMove = -yRelativeMove*cos(omegaRad)
-#old  yxRelativeMove = -yRelativeMove*sin(omegaRad)
-#  yyRelativeMove = yRelativeMove*cos(omegaRad)
-  mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
-
-#  mva("X",rasterStartX,"Y",rasterStartY,"Z",rasterStartZ)
-  generateSingleColumnGridMap(rasterDef) #this might need to be different depending on scan direction
-  gotoMaxRaster("raster_spots.txt","raster_map.txt")
-#  set_field("xrecRasterFlag",2)  
-  rasterRequest["rasterDef"]["status"] = 2
-  db_lib.updateRequest(rasterRequest)
-  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+  dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+  print "done parsing dials output"
+  rasterResultObj = {"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
+  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
+  db_lib.addResultforRequest(rasterRequest["request_id"], rasterResult)
+  return rasterResult
 
 
 def snakeRaster(rasterReqID,grain=""):
-#  rasterDef = db_lib.getNextRunRaster()
-#  rasterRequest = db_lib.popNextRequest()
   rasterRequest = db_lib.getRequest(rasterReqID)
   rasterDef = rasterRequest["rasterDef"]
-#  print rasterDef
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
   rasterStartX = float(rasterDef["x"])
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-  for i in xrange(len(rasterDef["rowDefs"])):
-    rowCellCount = 0
-    numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
-    if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-      startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
-    else:
-      startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
-    startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
+  if (rasterDef["rasterType"] == "normal"):
+    for i in xrange(len(rasterDef["rowDefs"])):
+      rowCellCount = 0
+      numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
+      if (i%2 == 0): #left to right if even, else right to left - a snake attempt
+        startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
+      else:
+        startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
+      startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
+      xRelativeMove = startX
+      yyRelativeMove = startY*sin(omegaRad)
+      yxRelativeMove = startY*cos(omegaRad)
+      zMotAbsoluteMove = rasterStartZ-xRelativeMove
+      yMotAbsoluteMove = rasterStartY+yyRelativeMove
+      xMotAbsoluteMove = rasterStartX-yxRelativeMove
+      mva("X",xMotAbsoluteMove,"Y",yMotAbsoluteMove,"Z",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
+      if (i%2 == 0): #left to right if even, else right to left - a snake attempt
+        xRelativeMove = -((numsteps-1)*stepsize)
+      else:
+        xRelativeMove = ((numsteps-1)*stepsize)
+      mvr("Z",xRelativeMove) #I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass
+  else: #column raster for 90-degree 
+    numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
+    startY = rasterDef["rowDefs"][0]["start"]["y"]+(stepsize/2.0) #- these are the simple relative moves
+    startX = rasterDef["rowDefs"][0]["start"]["x"]+(stepsize/2.0)
     xRelativeMove = startX
-    yyRelativeMove = startY*sin(omegaRad)
+    yyRelativeMove = -startY*sin(omegaRad)
     yxRelativeMove = startY*cos(omegaRad)
-#oldconv    yxRelativeMove = startY*sin(omegaRad)
-#    yyRelativeMove = startY*cos(omegaRad)
-    zMotAbsoluteMove = rasterStartZ-xRelativeMove
-
-    yMotAbsoluteMove = rasterStartY+yyRelativeMove
-    xMotAbsoluteMove = rasterStartX-yxRelativeMove
-
-#old conv   yMotAbsoluteMove = rasterStartY-yyRelativeMove
-#    xMotAbsoluteMove = yxRelativeMove+rasterStartX
-
-
-#    print str(xMotAbsoluteMove) + " " + str(yMotAbsoluteMove) + " " + str(zMotAbsoluteMove)
-    mva("X",xMotAbsoluteMove,"Y",yMotAbsoluteMove,"Z",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
-#    mva("Y",yMotAbsoluteMove)
-#    mva("Z",zMotAbsoluteMove)
-    if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-      xRelativeMove = -((numsteps-1)*stepsize)
-    else:
-      xRelativeMove = ((numsteps-1)*stepsize)
-#    print xRelativeMove
-#########    time.sleep(0.2)
-    mvr("Z",xRelativeMove) #I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass
-#    time.sleep(0.3)
-###  mva("X",rasterStartX,"Y",rasterStartY,"Z",rasterStartZ)
-#  mva("Y",rasterStartY)
-#  mva("Z",rasterStartZ)
-  generateGridMap(rasterRequest)
+    mvr("X",yxRelativeMove,"Y",yyRelativeMove,"Z",xRelativeMove) #this should get to the start
+    time.sleep(1)#cosmetic
+    yRelativeMove = -((numsteps-1)*stepsize)
+    yyRelativeMove = yRelativeMove*sin(omegaRad)
+    yxRelativeMove = -yRelativeMove*cos(omegaRad)
+    mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
+  rasterResult = generateGridMap(rasterRequest)
   rasterRequest["rasterDef"]["status"] = 2
-  gotoMaxRaster("raster_spots.txt","raster_map.txt")
+  gotoMaxRaster(rasterResult)
   db_lib.updateRequest(rasterRequest)
   set_field("xrecRasterFlag",rasterRequest["request_id"])  
-
-#  set_field("xrecRasterFlag",rasterRequest["request_id"])  
-
 
 
 def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
@@ -395,8 +244,10 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
     mvr("Omega",90)
-    rasterReqID = defineColumnRaster(sampleID,10,150,10)
-    singleColumnRaster(rasterReqID)
+#    rasterReqID = defineColumnRaster(sampleID,10,150,10)
+#    singleColumnRaster(rasterReqID)
+    rasterReqID = defineRectRaster(sampleID,10,150,10) 
+    snakeRaster(rasterReqID)
     set_field("xrecRasterFlag",100)    
   else:
     rasterReqID = getXrecLoopShape(sampleID)
@@ -406,31 +257,27 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
 #    set_field("xrecRasterFlag",100)    
 
 
-def gotoMaxRaster(spotfilename,mapfilename):
-  spotfile = open(spotfilename,"r")
+def gotoMaxRaster(rasterResult):
   ceiling = 0
   hotFile = ""
-  for spotline in spotfile.readlines():
-    (spotcount_s,filename) = spotline.split()
-    spotcount = int(spotcount_s)
+  cellResults = rasterResult["resultObj"]["rasterCellResults"]['resultObj']["data"]["response"]
+##  print cellResults
+  for i in range (0,len(cellResults)):
+    spotcount = cellResults[i]["spot_count"]
     if (spotcount > ceiling):
       ceiling = spotcount    
-      hotFile = filename
-  spotfile.close()
+      hotFile = cellResults[i]["image"]
   if (ceiling > 0):
+    print ceiling
     print hotFile
-    rasterMapfile = open(mapfilename,"r")
-    for mapline in rasterMapfile.readlines():
-      (x_s,y_s,z_s,filename) = mapline.split()
-      if (filename==hotFile):
-        x = float(x_s)
-        y = float(y_s)
-        z = float(z_s)
-        print "goto " + x_s + " " + y_s + " " + z_s
-        mva("X",x,"Y",y,"Z",z)
-#        mva("Y",y)
-#        mva("Z",z)
-    rasterMapfile.close()
+    rasterMap = rasterResult["resultObj"]["rasterCellMap"]
+##    print rasterMap
+    hotCoords = rasterMap[hotFile]
+    x = hotCoords["x"]
+    y = hotCoords["y"]
+    z = hotCoords["z"]
+    print "goto " + str(x) + " " + str(y) + " " + str(z)
+    mva("X",x,"Y",y,"Z",z)
   
     
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
@@ -461,37 +308,6 @@ def screenYPixels2microns(pixels):
 #  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
-def defineColumnRaster(sampleID,raster_w,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
-  raster_h = float(raster_h_s)
-  stepsizeMicrons = float(stepsizeMicrons_s)
-  beamWidth = stepsizeMicrons
-  beamHeight = stepsizeMicrons
-  rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":get_epics_motor_pos("X"),"y":get_epics_motor_pos("Y"),"z":get_epics_motor_pos("Z"),"omega":get_epics_motor_pos("Omega"),"stepsize":stepsizeMicrons,"rowDefs":[]} #just storing step as microns, not using here
-  stepsize = float(stepsizeMicrons)   #note conversion to pixels
-  numsteps_h = 1
-  numsteps_v = int(raster_h/stepsize) #the numsteps is decided in code, so is already odd
-  point_offset_x = -stepsize/2.0
-  point_offset_y = -(numsteps_v*stepsize)/2
-  newRowDef = {"start":{"x": point_offset_x,"y":point_offset_y},"numsteps":numsteps_v}
-  rasterDef["rowDefs"].append(newRowDef)
-##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
-#  print rasterDef
-
-  tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
-  tempnewRasterRequest["protocol"] = "raster"
-  tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_columnRaster"
-  tempnewRasterRequest["directory"] = os.getcwd()+"/rasterImages/"
-  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
-  tempnewRasterRequest["rasterDef"]["status"] = 3 # this will tell clients that the raster should be displayed.
-  tempnewRasterRequest["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest)
-  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
-  return newRasterRequest["request_id"]
-
-#  db_lib.addRaster(rasterDef) 
-#  set_field("xrecRasterFlag",3)
-
-
 def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
@@ -511,7 +327,12 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   tempnewRasterRequest["protocol"] = "raster"
   tempnewRasterRequest["directory"] = os.getcwd()+"/rasterImages/"
-  tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_rectRaster"
+  if (numsteps_h == 1): #column raster
+    tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_lineRaster"
+    rasterDef["rasterType"] = "column"
+  else:
+    tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_rectRaster"
+    rasterDef["rasterType"] = "normal"
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   tempnewRasterRequest["priority"] = 5000
@@ -528,7 +349,7 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
 #  print "draw raster " + str(raster_w) + " " + str(raster_h) + " " + str(stepsizeMicrons)
   beamWidth = stepsizeMicrons
   beamHeight = stepsizeMicrons
-  rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":get_epics_motor_pos("X"),"y":get_epics_motor_pos("Y"),"z":get_epics_motor_pos("Z"),"omega":get_epics_motor_pos("Omega"),"stepsize":stepsizeMicrons,"rowDefs":[]} #just storing step as microns, not using here
+  rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":get_epics_motor_pos("X"),"y":get_epics_motor_pos("Y"),"z":get_epics_motor_pos("Z"),"omega":get_epics_motor_pos("Omega"),"stepsize":stepsizeMicrons,"rowDefs":[]} #just storing step as microns, not using here
   stepsize = screenXmicrons2pixels(stepsizeMicrons)   #note conversion to pixels
   numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
   numsteps_v = int(raster_h/stepsize)
@@ -577,7 +398,7 @@ def getXrecLoopShape(sampleID):
     mvr("Omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(pic_prefix,1)
+    take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
 #  xrec_out_file = open("xrec30_result.txt","r")
@@ -685,8 +506,17 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     beamline_lib.mva("Omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
+    daq_lib.take_crystal_picture(reqID=charRequest["request_id"])
     imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,1) #should be a single image
     dna_filename_list.append(filename)
+    diffImgJpegData = diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
+#    diffImgJpegData["timestamp"] = time.time()
+#    imgRef = db_lib.addFile(diffImgJpegData["data"])
+#    diffImgJpegData["data"] = imgRef
+#    imgRef = db_lib.addFile(diffImgJpegData["thumbData"])
+#    diffImgJpegData["thumbData"] = imgRef
+#    print diffImgJpegData
+    
 #####    daq_lib.take_crystal_picture_with_boxes(daq_lib.html_data_directory_name + "/xtal_" + str(daq_lib.sweep_seq_id) + "_" + str(i))
     picture_taken = 1
 #                xml_from_file_list(flux,x_beamsize,y_beamsize,max_exptime_per_dc,aimed_completeness,file_list):
@@ -834,7 +664,12 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   if (dna_have_strategy_results):
 #####    pxdb_lib.insert_to_screening_strategy_table(screeningoutputid,dna_strategy_start,dna_strategy_end,dna_strategy_range,dna_strategy_exptime,resolutionObtained,program)
     dna_strat_comment = "\ndna Strategy results: Start=" + str(dna_strategy_start) + " End=" + str(dna_strategy_end) + " Width=" + str(dna_strategy_range) + " Time=" + str(dna_strategy_exptime) + " Dist=" + str(dna_strat_dist)
-    characterizationResult = {"type":"characterizationStrategy","strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
+    characterizationResult = {}
+    characterizationResultObj = {}
+    characterizationResult["type"] = "characterizationStrategy"
+    characterizationResult["timestamp"] = time.time()
+    characterizationResultObj = {"strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
+    characterizationResult["resultObj"] = characterizationResultObj
     db_lib.addResultforRequest(charRequest["request_id"], characterizationResult)
 #####    pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_strat_comment)
     xsStrategyStatistics = xsCollectionPlan[0].getStatistics()
@@ -858,3 +693,8 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   return 1
 
 
+def addFileToDB(filename):
+  fd = open(filename)
+  fID = db_lib.addFile(fd.read())
+  print "you stored fileID " + str(fID)
+  return fID

@@ -13,7 +13,7 @@ import daq_utils
 import beamline_lib
 import beamline_support
 import db_lib
-
+import requests
 
 var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'xbeam':157.00,'ybeam':157.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':0,'pause_button_state':'Pause','grid_w':210,'grid_h':150,'grid_i':10,'grid_on':0,'vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':0,'xrecRasterFlag':0}
 
@@ -322,6 +322,11 @@ def stopDCQueue():
 def collectData(currentRequest):
   global data_directory_name
 #  sampleName = sampleNameFromID(currentRequest["sample_id"])
+  data_directory_name = str(currentRequest["directory"])
+#  data_directory_name = directory_root
+  if not (os.path.isdir(data_directory_name)):
+    comm_s = "mkdir -p " + data_directory_name
+    os.system(comm_s)
   print currentRequest["protocol"]
   prot = str(currentRequest["protocol"])
   if (prot == "raster"):
@@ -345,10 +350,10 @@ def collectData(currentRequest):
     slit_width = currentRequest["slit_width"]
     attenuation = currentRequest["attenuation"]
     img_width = currentRequest["img_width"]
-    directory_root = str(currentRequest["directory"])
+
     file_prefix = str(currentRequest["file_prefix"])
 #  data_directory_name = get_data_directory_name(file_prefix) # for now
-    data_directory_name = directory_root
+
     if (currentRequest["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
@@ -368,7 +373,7 @@ def collectData(currentRequest):
       if (index_success):
         resultsList = db_lib.getResultsforRequest(currentRequest["request_id"]) # because for testing I keep running the same request. Probably not in usual use.
         results = resultsList[len(resultsList)-1]
-        strategyResults = results["strategy"]
+        strategyResults = results["resultObj"]["strategy"]
         stratStart = strategyResults["start"]
         stratEnd = strategyResults["end"]
         stratWidth = strategyResults["width"]
@@ -381,7 +386,7 @@ def collectData(currentRequest):
         tempnewStratRequest["img_width"] = stratWidth
         tempnewStratRequest["exposure_time"] = stratExptime
         tempnewStratRequest["detDist"] = stratDetDist
-        tempnewStratRequest["directory"] = directory_root
+        tempnewStratRequest["directory"] = data_directory_name
 
         newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest)        
 
@@ -393,9 +398,16 @@ def collectData(currentRequest):
       range_degrees = abs(sweep_end-sweep_start)
       beamline_lib.mva("Omega",sweep_start)
       imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-      if (1):
-        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
+      if (currentRequest["fastDP"]):
+        if (currentRequest["fastEP"]):
+          fastEPFlag = 1
+        else:
+          fastEPFlag = 0
+        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
         print comm_s
+        os.system(comm_s)
+      if (currentRequest["xia2"]):
+        comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
         os.system(comm_s)
   currentRequest["priority"] = -1
   db_lib.updateRequest(currentRequest)
@@ -493,7 +505,7 @@ def center_on_click(x,y,maglevel=0,source="screen",jog=0): #maglevel=0 means low
     beamline_lib.mvr("Omega",float(jog))
 
 
-def take_crystal_picture(filename,czoom=0):
+def take_crystal_pictureCURL(filename,czoom=0):
   zoom = int(czoom)
   if not (daq_utils.has_xtalview):
     return
@@ -510,6 +522,157 @@ def take_crystal_picture(filename,czoom=0):
 #    comm_s = "lynx -source -auth=%s:%s %s > %s.jpg" % (xtalview_user,xtalview_pass,xtal_url,filename) 
 #  daq_utils.broadcast_output(comm_s)
   os.system(comm_s)
+
+
+def take_crystal_picture(filename=None,czoom=0,reqID=None):
+  zoom = int(czoom)
+  if not (daq_utils.has_xtalview):
+    return
+  if (1):
+    if (zoom==0):
+      r=requests.get(daq_utils.xtal_url)
+    else:
+      r=requests.get(daq_utils.xtal_url_small)
+  else: #password, need to change to requests module if we need this
+    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (daq_utils.xtalview_user,daq_utils.xtalview_pass,filename,daq_utils.xtal_url)
+  data = r.content
+  if (filename != None):
+    fd = open(filename+".jpg","w+")
+    fd.write(data)
+    fd.close()
+  if (reqID != None):
+    xtalpicJpegDataResult = {}
+    imgRef = db_lib.addFile(data)
+    xtalpicJpegDataResult["data"] = imgRef
+    xtalpicJpegDataResult["timestamp"] = time.time()
+    xtalpicJpegDataResult["type"] = "xtalpicJpeg"
+    db_lib.addResultforRequest(reqID,xtalpicJpegDataResult)
+
+
+
+def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
+  imageJpegData = {}
+  imageJpegHeader = {}
+  imageJpegData["dataFilePath"]=diffimageName
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getImage\?fileName="+ diffimageName+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
+#  comm_s = "lynx -source %s >%s" % (img_url,JPEGfilename) 
+  comm_s = "lynx -source %s" % (img_url) 
+  print comm_s
+  data = os.popen(comm_s).read()
+  imageJpegData["data"] = data
+#  os.system(comm_s)
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getThumbnail\?fileName="+ diffimageName+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
+  comm_s = "lynx -source %s" % (img_url) 
+  thumbData = os.popen(comm_s).read()
+  imageJpegData["thumbData"] = thumbData
+#  comm_s = "lynx -source %s >%s" % (img_url,"thumb_"+JPEGfilename) 
+  print comm_s
+#  os.system(comm_s)
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getHeader\?fileName="+ diffimageName+"\&userName=me\&sessionId=E"
+  comm_s = "lynx -source " + img_url
+  for outputline in os.popen(comm_s).readlines():    
+    print outputline
+    tokens = string.split(outputline)      
+    if (tokens[0] == "OSC_START"):
+      print "Omega start = " + tokens[1]
+      imageJpegHeader["oscStart"] = float(tokens[1])
+    elif (tokens[0] == "OSC_RANGE"):
+      print "Omega range = " + tokens[1] 
+      imageJpegHeader["oscRange"] = float(tokens[1])
+    elif (tokens[0] == "EXPOSURE"):
+      print "Exposure Time = " + tokens[2]
+      imageJpegHeader["exptime"] = float(tokens[2])
+    elif (tokens[0] == "DISTANCE"):
+      print "Distance = " + str(float(tokens[1])/1000.0)
+      imageJpegHeader["detDist"] = float(tokens[1])
+    elif (tokens[0] == "WAVELENGTH"):
+      print "Wavelength = " + tokens[1] 
+      imageJpegHeader["wave"] = float(tokens[1])
+  if (reqID != None):
+    result = {}
+    resultObj = {}
+    result["timestamp"] = time.time()
+    result["type"] = "diffImageJpeg"
+    imgRef = db_lib.addFile(data)
+    resultObj["data"] = imgRef
+    imgRef = db_lib.addFile(thumbData)
+    resultObj["thumbData"] = imgRef
+    resultObj["dataFilePath"] = diffimageName
+    resultObj["header"] = imageJpegHeader
+    result["resultObj"] = resultObj
+    db_lib.addResultforRequest(reqID,result)
+
+  return imageJpegData
+
+def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
+  imageJpegData = {}
+  imageJpegHeader = {}
+  imageJpegData["dataFilePath"]=diffimageName
+  payload = {"fileName":diffimageName,"sizeX":500,"sizeY":500,"gray":100,"percentX":0.5,"percentY":0.5,"userName":"me","sessionId":"E","zoom":1.0}
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getImage" 
+  r = requests.get(img_url,params=payload)
+  data = r.content
+  imageJpegData["data"] = data
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getThumbnail"
+  r = requests.get(img_url,params=payload)
+  thumbData = r.content
+  imageJpegData["thumbData"] = thumbData
+  payload = {"fileName":diffimageName,"userName":"me","sessionId":"E"}
+  img_url = "http://"+daq_utils.imgsrv_host+":"+daq_utils.imgsrv_port+"/getHeader"
+  r = requests.get(img_url,params=payload)
+  imageJpegData["header"] = r
+  headerData = r.text
+  lines = headerData.split("\n")
+  for i in range (0,len(lines)):
+    line = lines[i]
+    print line
+    tokens = line.split()
+    if (len(tokens) > 1):
+      if (tokens[0] == "OSC_START"):
+        print "Omega start = " + tokens[1]
+        imageJpegHeader["oscStart"] = float(tokens[1])
+      elif (tokens[0] == "OSC_RANGE"):
+        print "Omega range = " + tokens[1] 
+        imageJpegHeader["oscRange"] = float(tokens[1])
+      elif (tokens[0] == "EXPOSURE"):
+        print "Exposure Time = " + tokens[2]
+        imageJpegHeader["exptime"] = float(tokens[2])
+      elif (tokens[0] == "DISTANCE"):
+        print "Distance = " + str(float(tokens[1])/1000.0)
+        imageJpegHeader["detDist"] = float(tokens[1])
+      elif (tokens[0] == "WAVELENGTH"):
+        print "Wavelength = " + tokens[1] 
+        imageJpegHeader["wave"] = float(tokens[1])
+  imageJpegData["header"] = imageJpegHeader
+  if (reqID != None): #this means I'll dump into mongo as a result
+    result = {}
+    resultObj = {}
+    result["timestamp"] = time.time()
+    result["type"] = "diffImageJpeg"
+    imgRef = db_lib.addFile(data)
+    resultObj["data"] = imgRef
+    imgRef = db_lib.addFile(thumbData)
+    resultObj["thumbData"] = imgRef
+    resultObj["dataFilePath"] = diffimageName
+    resultObj["header"] = imageJpegHeader
+    result["resultObj"] = resultObj
+    db_lib.addResultforRequest(reqID,result)
+
+  return imageJpegData
+
+
+##  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getThumbnail\?fileName="+ filename+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
+##  comm_s = "lynx -source %s >%s" % (img_url,output_thumb_name) 
+###    print comm_s
+##  os.system(comm_s)
+##  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getHeader\?fileName="+ filename+"\&userName=me\&sessionId=E"
+##  comm_s = "lynx -source " + img_url
+#  os.system(comm_s)
+#      comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url)
+#      comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url_small)
+#    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (daq_utils.xtalview_user,daq_utils.xtalview_pass,filename,daq_utils.xtal_url)
+
+
 
 
 def set_vector_start():
