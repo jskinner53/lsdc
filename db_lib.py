@@ -1,19 +1,20 @@
 #!/usr/bin/python
-from __future__ import print_function
+from __future__ import (absolute_import, print_function)
 
-import time
-import uuid
-import functools
-import itertools
 import sys
 import os
 import socket
 
-import mongoengine as mongo
+import bson
+from bson import DBRef
+
+import mongoengine 
 from  mongoengine import NotUniqueError
 
-from odm_templates import (Sample, Container, Raster, Request, Result, GenericFile)
-from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
+
+from .odm_templates import (Sample, Container, Request, Result,
+                           GenericFile, Types, Field)
+from .odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
 
@@ -21,51 +22,73 @@ from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user 
 ### !!!!  are only unique per group.
 
 
+def db_disconnect(collections, alias=None):
+    """
+    collections = list of document types from odm_templates
+    """
 
-# tmp cludges instead of config :(
+    mongoengine.connection.disconnect(alias)
 
-# defaults
-db_host = '127.0.0.1'
-db_name = 'tmp_mongo_junk_from_db_lib'
+    for collection in collections:
+        collection._collection = None
 
-host = socket.gethostname()
-client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
-if not client:
-    client = os.getenv('REMOTE_ADDR')  # next check web client
 
-if host == 'fluke.nsls2.bnl.gov' or host == 'fluke':
-    db_host = 'lsbr-dev'
-    #if not client:
-    db_name = 'john_mongo'
+def db_connect():
+    """
+    recommended idiom:
+    (mongo_conn, db_name, db_host) = db_connect()
+    """
 
-elif host == 'gisele.nsls2.bnl.gov' or host == 'gisele':
+    # horrible tmp cludges instead of config :(
+    # try to guess the db to use based on hostname and stuff
+    
+    # defaults
+    db_host = '127.0.0.1'
+    db_name = 'tmp_mongo_junk_from_db_lib'
+    
+    host = socket.gethostname()
+    
+    client = os.getenv('SSH_CLIENT')  # 1st check for ssh env for commandline dev work
     if not client:
-        db_name = 'matt_tmp_mongo'
-        #db_name = 'john_mongo' # temporary
-        
-        db_host = 'lsbr-dev'  # temporary
+        client = os.getenv('REMOTE_ADDR')  # next check web client
+    else:
+        client = client.split()[0]
+    
+    # set in test routines for disposable fixture dbs
+    db_env_suffix = os.getenv('DB_LIB_SUFFIX')
+    if db_env_suffix:
+        db_suffix = db_env_suffix
+    else:
+        db_suffix = "_mongo"
+    
+    if host == 'fluke.nsls2.bnl.gov' or host == 'fluke' or client == '130.199.219.42':
+        db_host = 'lsbr-dev'
+        db_name = 'john{0}'.format(db_suffix)
+    
+    elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
+        if not client:  # django site
+            db_name = 'matt_tmp{0}'.format(db_suffix)
+            db_host = '127.0.0.1'
+    
+        elif client == '130.199.219.44':
+            db_name = 'matt_tmp{0}'.format(db_suffix)
+    
+    # env vars override guesses
+    db_env_name = os.getenv('DB_LIB_NAME')
+    if db_env_name:
+        db_name = db_env_name
+    db_env_host = os.getenv('DB_LIB_HOST')
+    if db_env_host:
+        db_host = db_env_host
+    
+    
+    print("---- connecting with:  mongoengine.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
+    return (mongoengine.connect(db_name, host=db_host), db_name, db_host)
 
-elif host == 'lsbr-dev.nsls2.bnl.gov' or host == 'lsbr-dev':
-    if not client:
-        db_name = 'matt_tmp_mongo'
-        db_host = '127.0.0.1'
-
-if client:
-    client = client.split()[0]
-
-    if client == '130.199.219.44':
-        db_name = 'matt_tmp_mongo'
-        #db_name = 'john_mongo' # temporary
-        
-        #db_host = 'lsbr-dev' # temporary
-
-    elif client == '130.199.219.42':
-        db_name = 'john_mongo'
 
 
-#print "---- [{0},{1}] mongo.connect({2}, host={3}) ----".format(host, client, db_name, db_host)
-print("---- connecting with:  mongo.connect({0}, host={1}) ----".format(db_name, db_host), file=sys.stderr)
-mongo_conn = mongo.connect(db_name, host=db_host)
+# connect on import for now... :(  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+(mongo_conn, db_name, db_host) = db_connect()
 
 
 primaryDewarName = 'primaryDewar2'
@@ -85,6 +108,12 @@ def find_sample():
     return [s.to_mongo() for s in Sample.objects()]
 
 def find_request():
+    return [r.to_mongo() for r in Request.objects()]
+
+def find_result():
+    return [r.to_mongo() for r in Result.objects()]
+
+def find_sample_request():
     req_list = []
 
     for samp in Sample.objects():
@@ -94,82 +123,108 @@ def find_request():
     return req_list
 
 
-def createContainer(container_name, type_name, capacity):
-    containerObj = {"containerName": container_name,
-                    "type_name": type_name,
-                    "item_list": [None] * capacity}
+def type_from_name(name, as_mongo_obj=False):
+    """
+    Given a type name ('standard_pin', 'shipping_dewar'), return the
+    name of it's base type ('sample', 'container').
+    """
 
-    c = Container(**containerObj)
+    if isinstance(name, str):
+        name = unicode(name)
+
+    try:
+        if as_mongo_obj:
+            return Types.objects(__raw__={'name': name})[0]
+        return Types.objects(__raw__={'name': name})[0].parent_type
+    except IndexError:
+        return None
+
+
+def find_base_type(obj_type):
+    """
+    recurse throught the type heirarchy to find the base type
+    """
+
+#    print('{0}'.format(obj_type, file=sys.stderr))
+
+    parent = type_from_name(obj_type)
+    if not parent:
+              return None
+    if parent == 'base':
+            return obj_type
+
+    else:
+        return find_base_type(parent)
+
+
+def constructor_from_name(name):
+    """
+    create a constructor for the right type of object using find_base_type
+    so we can save items from a spreadsheet by figuring out what they are
+    """
+
+
+
+def createContainer(container_name, container_type, **kwargs):
+    """
+    container_name:  string, name for the new container, required
+    container_type:  required, either:
+                     - string, name for existing type in Types collection, or
+                     - mongo type object for existing type in Types collection
+    kwargs:          passed to constructor
+    """
+
+    kwargs['containerName'] = container_name
+
+    if isinstance(container_type, unicode) or isinstance(container_type, str):
+        kwargs['container_type'] = type_from_name(container_type, as_mongo_obj=True)
+    else:
+        kwargs['container_type'] = container_type  # this seems weird?
+
+    print('container_type t({0}) v({1})'.format(type(container_type), container_type), file=sys.stderr)
+
+    #try:
+    #    kwargs['container_type'] = Types.objects(__raw__={'name': type_name})[0]
+    #except IndexError:
+    #    raise ValueError('no container type found matching "{0}"'.format(type_name))
+
+    try:
+        kwargs['item_list'] = [None] * kwargs['container_type'].capacity
+        print("capacity = {0}: {1}".format(kwargs['container_type'].capacity, kwargs['item_list']))
+    except AttributeError:
+        pass  # not all containers have a fixed capacity, eg. shipping dewar.
+              # depends on what subcontainers are used...
+        print("no capacity")
+
+#    kwargs['item_list'] = []
+
+    c = Container(**kwargs)
     c.save()
 
     return c.container_id
 
 
-def getRasters(as_mongo_obj=False):
-    if as_mongo_obj:
-        return Raster.objects()
+def createSample(sample_name, sample_type, **kwargs):
+    """
+    sample_name:  string, name for the new sample, required
+    sample_type:  required, either:
+                  - string, name for existing type in Types collection, or
+                  - mongo type object for existing type in Types collection
+    kwargs:       passed to constructor
+    """
+    kwargs['sampleName'] = sample_name
+    kwargs['requestList'] = []
+    kwargs['resultList'] = []
 
-    return [r.to_mongo() for r in Raster.objects()]
+    if isinstance(sample_type, unicode) or isinstance(sample_type, str):
+        kwargs['sample_type'] = type_from_name(sample_type, as_mongo_obj=True)
 
+#    try:
+#        kwargs['sample_type'] = Types.objects(__raw__={'name': type_name})[0]
+#    except IndexError:
+#        raise ValueError('no sample type found matching "{0}"'.format(type_name))
 
-def addRaster(rasterDefObj):
-    r = Raster(**rasterDefObj)
-    r.save()
-
-    return r.raster_id
-
-
-def clearRasters():
-    Raster.drop_collection()
-
-
-def getNextRunRaster(updateFlag=1):
-    try:
-        rast = Raster.objects(status=0)[0]
-    except IndexError:
-        return None
-
-    retRaster = rast.to_mongo()
-    if updateFlag == 1:
-        rast.status = 1
-        rast.save()
-#    else:
-#        print("drawing ") 
-#        print(retRaster)
-
-    return retRaster
-
-
-def getNextDisplayRaster():
-    # if getRasters() returns [] retRaster=? !
-    # should it be initialized to None as in previous func?
-
-    # Would it be better to skip the loop entirely by using .first(), and check for None?
-    # What is 'i' doing?  if we were 'break'ing, we should only ever have one
-    # iteration and i would *always* be 0?
-#    for i,rast in enumerate(Raster.objects(status=1)):
-#        retRaster = (i, rast.to_mongo())
-#        rast.status = 2
-#        rast.save()
-#        #break  # shouldn't need this anymore?
-#    return retRaster
-    try:
-        rast = Raster.objects(__raw__={'status': 1})[0]
-    except IndexError:
-        return None
-
-    retRaster = (0, rast.to_mongo())
-    rast.status = 2
-    rast.save()
-    return retRaster
-    
-
-
-
-def createSample(sampleName):
-    sampleObj = {"sampleName": sampleName, "requestList": []}
-
-    s = Sample(**sampleObj)
+    s = Sample(**kwargs)
     s.save()
 
     return s.sample_id
@@ -225,9 +280,23 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
     
 
 def getSampleByID(sample_id, as_mongo_obj=False):
+    """
+    sample_id:  required, integer
+    """
+
     s = Sample.objects(__raw__={'sample_id': sample_id})
     return _try0_maybe_mongo(s, 'sample', 'sample_id', sample_id, None,
-                           as_mongo_obj=as_mongo_obj)
+                             as_mongo_obj=as_mongo_obj)
+
+
+#def getSampleByRef(sample_ref, as_mongo_obj=False):
+#    """
+#    sample_ref:  required, DBRef
+#    """
+#
+#    s = Sample.objects(__raw__={'_id': sample_ref.id})
+#    return _try0_maybe_mongo(s, 'sample', 'sample _id', sample_ref.id, None,
+#                             as_mongo_obj=as_mongo_obj)
 
 
 # should fetch only the needed field(s)! :(
@@ -239,9 +308,21 @@ def getSampleIDbyName(sample_name):
 
 
 def getSampleNamebyID(sample_id):
+    """
+    sample_id:  required, integer
+    """
     s = Sample.objects(__raw__={'sample_id': sample_id})
     return _try0_dict_key(s, 'sample', 'sample_id', sample_id, -99,
-                           dict_key='sampleName')
+                          dict_key='sampleName')
+
+
+#def getSampleNamebyRef(sample_ref):
+#    """
+#    sample_ref:  required, DBRef
+#    """
+#    s = Sample.objects(__raw__={'_id': sample_ref.id})
+#    return _try0_dict_key(s, 'sample', 'sample _id', sample_ref, -99,
+#                          dict_key='sampleName')
 
 
 def getContainerIDbyName(container_name):
@@ -251,34 +332,68 @@ def getContainerIDbyName(container_name):
 
 
 def getContainerNameByID(container_id):
+    """
+    container_id:  required, integer
+    """
     c = Container.objects(__raw__={'container_id': container_id})
     return _try0_dict_key(c, 'container', 'container_id', container_id, '',
                            dict_key='containerName')
 
 
-def getResult(result_id):
+def createResult(result_type, request_id, result_obj=None, timestamp=None,
+                 as_mongo_obj=False, **kwargs):
     """
-    Takes a result_id and returns the matching result or None.
+    result_type:  string, Type object, or dbref, required
+    request_id:   int, Request object, or dbref, required
     """
-    result_id = int(result_id)
 
-    sample = Sample.objects(__raw__={'resultList.result_id': result_id}
-                            ).only('resultList')
-    res_list = _try0_maybe_mongo(sample, 'result', 'result_id', result_id, None,
-                               as_mongo_obj=True).resultList
+    if not isinstance(result_type, Result) and not isinstance(result_type, DBRef):
+        result_type = type_from_name(result_type, as_mongo_obj=True)
 
-    for res in res_list:
-        if res.result_id == result_id:
-            return res.to_mongo()
-    return None
+    if not isinstance(request_id, Request) and not isinstance(request_id, DBRef):
+        request_id = getRequest(request_id, as_mongo_obj=True)
+        
+    kwargs['result_type'] = result_type
+    kwargs['request_id'] = request_id
+    kwargs['timestamp'] = timestamp
+    kwargs['result_obj'] = result_obj
+
+    r = Result(**kwargs)
+    r.save()
+
+    if as_mongo_obj:
+        return r
+    return r.to_mongo()
+
+
+def getResult(result_id, as_mongo_obj=False):
+    """
+    result_id:  required, int or DBRef
+    """
+
+    if isinstance(result_id, DBRef):
+        result = Request.objects(__raw__={'_id': result_id.id})
+        return _try0_maybe_mongo(result, 'result', 'result _id', result_id.id, None,
+                                 as_mongo_obj=as_mongo_obj)
+
+    else:
+        result_id = int(result_id)  # do we need this cast?
+        
+        r = Result.objects(__raw__={'result_id': result_id})
+        return _try0_maybe_mongo(result, 'result', 'result_id', result_id, None,
+                                 as_mongo_obj=as_mongo_obj)
 
 
 def deleteResult(result_id, get_result=False):
     """
     Takes a result_id, deletes, and optionally returns the matching result or None.
+    When should we ever be doing this?
+
+    result_id:  required, int
     """
     result_id = int(result_id)
 
+    # delete it from any samples first
     sample_qs = Sample.objects(__raw__={'resultList.result_id': result_id})
     sample = _try0_maybe_mongo(sample_qs, 'result', 'result_id', result_id, None,
                                  as_mongo_obj=True)
@@ -288,29 +403,21 @@ def deleteResult(result_id, get_result=False):
             tmp = res
             sample.resultList.remove(res)
             sample.save()
-            if get_result:
-                return tmp.to_mongo()
-            else:
-                return None
+
+    # then directly in Results
+    r = getResult(result_id, as_mongo_obj=True)
+    r.delete()
 
 
 def getResultsforRequest(request_id):
     """
-    Takes an integer request_id and returns a list of matching results or [].
+    Takes an integer request_id  and returns a list of matching results or [].
     """
     reslist = []
 
-    sample = Sample.objects(__raw__={'requestList.request_id': request_id}
-                            ).only('resultList')
-    try:
-        res_list = _try0_maybe_mongo(sample, 'request', 'request_id', request_id, None,
-                                     as_mongo_obj=True).resultList
-    except AttributeError:
-        raise ValueError('request_id {0} not found'.format(request_id))
-    
-    for res in res_list:
-        if res.request_id == request_id:
-            reslist.append(res.to_mongo())
+    for result in Results.objects(request_id=request_id):
+        reslist.append(result.to_mongo())
+
     return reslist
 
 
@@ -326,65 +433,124 @@ def getResultsforSample(sample_id):
                              as_mongo_obj=True).resultList]
 
 
-def addResultforRequest(request_id, result):
-    """
-    Takes a request_id and result and appends a result to the sample's resultList.
-    """
+def addResultforRequest(result_type, request_id, result_obj=None, timestamp=None,
+                        as_mongo_obj=False, **kwargs):
 
-    # check for mismatched preexisting request_id in result
+    """
+    like createResult, but also adds it to the resultList of result['sample_id']
+    """
+    r = createResult(result_type, request_id, result_obj=result_obj, timestamp=timestamp,
+                     as_mongo_obj=True, **kwargs)
+
+    request = r.request_id
+
+    #sample_qs = Sample.objects(__raw__={'requestList.request_id': request_id})
+    #sample = _try0_maybe_mongo(sample_qs, 'request', 'request_id', request_id, None,
+    #                           as_mongo_obj=True)
+
     try:
-        if result['request_id'] != request_id:
-            raise ValueError('request_id embedded in result ({0}) does not match request_id param ({1})!'.format(result['request_id'], request_id))
-    except KeyError:
-        result['request_id'] = request_id
-
-    r = Result(**result)
-
-
-    sample_qs = Sample.objects(__raw__={'requestList.request_id': request_id})
-    sample = _try0_maybe_mongo(sample_qs, 'request', 'request_id', request_id, None,
-                               as_mongo_obj=True)
-
+        sample = Sample.objects(requestList__in=[request])[0]
+    except IndexError:
+        return None
+    
     sample.resultList.append(r)
     sample.save()
-    return sample.to_mongo()
+
+    return r.to_mongo()
 
 
-def addFile(data):
+def addFile(data=None, filename=None):
     """
-    Put the data into the GenericFile collection,
-    return the _id.
+    Put the file data into the GenericFile collection,
+    return the _id for use as an id or ReferenceField.
 
-    _id is needed if you want to use it in a mongoengine ReferenceField
-    for automatic deref'ing.
+    If a filename kwarg is given, read data from the file.
+    If a data kwarg is given or data is the 1st arg, store the data.
+    If both or neither is given, raise an error.
     """
+
+    if filename is not None:
+        if data is not None:
+            raise ValueError('both filename and data kwargs given.  can only use one.')
+        else:
+            with open(filename, 'r') as file:  # do we need 'b' for binary?
+                data = file.read()  # is this blocking?  might not always get everything at once?!
+
+    elif data is None:
+        raise ValueError('neither filename or data kwargs given.  need one.')
 
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
-    return f.id
+    return f._id  # is this supposed to be 'id' or '_id'?
 
-def getFile(id):
+
+def getFile(_id):
     """
     Retrieve the data from the GenericFile collection
     for the given _id.
 
-    But maybe this will be automatically deref'd most of the time?
+    Returns the data in Binary.  If you know it's a txt file and want a string,
+    convert with str()
+
+    Maybe this will be automatically deref'd most of the time?
     Only if they're mongoengine ReferenceFields...
     """
 
-    f = GenericFile.objects(__raw__={'_id': id})  # yes it's '_id' here but just 'id' below, gofigure
-    return _try0_dict_key(f, 'file', 'id', id, None,
+    f = GenericFile.objects(__raw__={'_id': _id})  # yes it's '_id' here but just 'id' below, gofigure
+    return _try0_dict_key(f, 'file', 'id', _id, None,
                            dict_key='data')
 
+def createRequest(request_type, request_obj=None, timestamp=None, as_mongo_obj=False, **kwargs):
+    """
+    request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
+    request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
+    timestamp:  datetime.datetime.now() if not provided
 
-def addRequesttoSample(sample_id, request):
-    r = Request(**request)
+    anything else (priority, sample_id) can either be embedded in the
+    request_object or passed in as keyword args to get saved at the
+    top level.
+    """
+    if isinstance(request_type, unicode) or isinstance(request_type, str):
+        request_type = type_from_name(request_type, as_mongo_obj=True)
+        print('rt:[{0}]'.format(request_type))
+#    elif not isinstance(request_type, Request):
+#        raise ValueError('wrong type {0}'.format(request_type.__class__))
+
+    kwargs['request_type'] = request_type
+    kwargs['timestamp'] = timestamp
+    kwargs['request_obj'] = request_obj
+
+    r = Request(**kwargs)
+    r.save()
+
+    if as_mongo_obj:
+        return r
+    return r.to_mongo()
+
+
+def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None,
+                       as_mongo_obj=False, **kwargs):
+    """
+    sample_id:  required, integer sample id
+    request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
+    request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
+    timestamp:  datetime.datetime.now() if not provided
+
+    anything else (priority, sample_id) can either be embedded in the
+    request_object or passed in as keyword args to get saved at the
+    top level.
+    """
+
+    r = createRequest(request_type, request_obj=request_obj, timestamp=timestamp,
+                      as_mongo_obj=True, **kwargs)
 
     s = getSampleByID(sample_id, as_mongo_obj=True)
     #s.save(push__requestList=r)
     s.requestList.append(r)
     s.save()
+    if as_mongo_obj:
+            return r
     return r.to_mongo()
 
 
@@ -418,8 +584,10 @@ def insertIntoContainer(container_name, position, itemID):
     if c is not None:
         c.item_list[position] = itemID
         c.save()
+        return True
     else:
         print("bad container name")
+        return False
 
 
 def _ret_list(objects, as_mongo_obj=False):
@@ -439,11 +607,17 @@ def getContainers(as_mongo_obj=False):
 
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
-    c = Container.objects(__raw__={'type_name': type_name})
+
+    if isinstance(type_name, unicode):
+        type_obj = type_from_name(type_name, as_mongo_obj=True)
+
+    c = Container.objects(container_type=type_obj)
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
 def getAllPucks(as_mongo_obj=False):
+    # find all the types desended from 'puck'?
+    # and then we could do this?
     return getContainersByType("puck", "", as_mongo_obj=as_mongo_obj)
 
 
@@ -469,31 +643,6 @@ def getContainerByID(container_id, as_mongo_obj=False):
 
 
 #stuff I forgot - alignment type?, what about some sort of s.sample lock?,
-
-
-def insertCollectionRequest(sample_id, sweep_start, sweep_end, img_width, exposure_time,
-                            priority, protocol, directory, file_prefix, file_number_start,
-                            wavelength, resolution, slit_height, slit_width, attenuation,
-                            pos_x, pos_y, pos_z, pos_type, gridW, gridH, gridStep):
-    """adds a request to a sample"""
-
-    colobj = {"request_id": int(time.time()), "sample_id": sample_id,
-              "sweep_start": sweep_start, "sweep_end": sweep_end, "img_width": img_width,
-              "exposure_time": exposure_time, "priority": priority, "protocol": protocol,
-              "directory": directory, "file_prefix": file_prefix,
-              "file_number_start": file_number_start, "wavelength": wavelength,
-              "resolution": resolution, "slit_height": slit_height, "slit_width": slit_width,
-              "attenuation": attenuation, "pos_x": pos_x, "pos_y": pos_y, "pos_z": pos_z,
-              "pos_type": pos_type, "gridW": gridW, "gridH": gridH, "gridStep": gridStep}
-
-    ######### need to insert this into the request List for the sample
-    s = getSampleByID(sample_id, as_mongo_obj=True)
-    s.modify(push__requestList=colobj)
-
-#,vec_x_start,vec_y_start,vec_z_start,vec_x_end,vec_y_end,vec_z_end,vec_numframes,vec_fpp
-#vec_fpp means frames per point, vec_numframes is the total. Not sure if this is the best way.
-
-#pinpos, sweep_start, numimages, sweep_inc, exposure_time, protocol, file_prefix, file_number_start, wavelength, resolution, xtal_id,    slit_height, slit_width, attenuation,priority
 
 
 def getQueue():
@@ -580,30 +729,6 @@ def getDewarPosfromSampleID(sample_id):
                     return (containerID, position)    
 
 
-def getAbsoluteDewarPosfromSampleID(sample_id):
-
-    """
-    returns the "absolute position" (only made sense with fixed size containers),
-    container_id, and position in that container for a sample with the given id
-    in one of the containers in the container named by the global variable 'primaryDewarName'
-    """
-    try:
-        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
-        return None
-
-    for i,puck_id in enumerate(cont.item_list):
-        if puck_id is not None:
-            puck = getContainerByID(puck_id)
-            sampleList = puck["item_list"]
-            puckCapacity = len(sampleList)  # would be more efficient to have a capacity field
-
-            for j,samp_id in enumerate(sampleList):
-                if samp_id == sample_id and samp_id is not None:
-                    absPosition = (i*puckCapacity) + j
-                    return (absPosition, puck_id, j)
-
-
 def getCoordsfromSampleID(sample_id):
     """
     returns the container position within the dewar and position in
@@ -645,130 +770,54 @@ def getSampleIDfromCoords(puck_num, position):
     return sample_id
 
 
-def getSampleIDfromAbsoluteDewarPos(abs_pos):
-    """
-    given an "absolute position" (only made sense with fixed size
-    containers), returns the sample_id for the sample in that location
-    in the container named by the global variable 'primaryDewarName'
-    """
-    # try/except is faster than checking for an empty list before 
-    # indexing into it!
-    try:
-        pd = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
-        raise IndexError('Failed to find container named: "{0}"'.format(primaryDewarName))
-
-    # get puck capacity from the 1st puck we find
-    # This is wonky, need to totally rethink the idea of absolute position.
-    for i,puck_id in enumerate(pd.item_list):
-        if puck_id is not None:
-            #puck = getContainerByID(puck_id)
-            try:
-                puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
-            except IndexError:
-                raise IndexError('Failed to find container_id: "{0}"'.format(puck_id))
-
-            puck_capacity = len(puck.item_list)
-            break
-
-    # get puck# and position from absolute position
-    (puck_num, position) = divmod(abs_pos, puck_capacity)
-
-    # use puck# and position to get the sample_id
-    puck_id = pd.item_list[puck_num]
-    try:
-        puck = Container.objects(__raw__={'container_id': puck_id}).only('item_list')[0]
-    except IndexError:
-        if puck_id is None:
-            raise ValueError('no puck in position {0} in primary dewar!'.format(puck_num))
-        raise IndexError('Failed to get puck id {0}.'.format(puck_id))
-
-    return puck.item_list[position]
-
-
 def popNextRequest():
+    # is this more 'getNextRequest'? where's the 'pop'?
     orderedRequests = getOrderedRequestList()
     try:
-      if (orderedRequests[0]["priority"] != 99999):
-        if orderedRequests[0]["priority"] > 0:
-          return orderedRequests[0]
-      else: #99999 priority means it's running, try next
-        if orderedRequests[1]["priority"] > 0:
-          return orderedRequests[1]
+        if (orderedRequests[0]["priority"] != 99999):
+            if orderedRequests[0]["priority"] > 0:
+                return orderedRequests[0]
+            else: #99999 priority means it's running, try next
+                if orderedRequests[1]["priority"] > 0:
+                    return orderedRequests[1]
     except IndexError:
         pass
 
     return {}
 
 
-def getRequest(reqID):  # need to get this from searching the dewar I guess
-    r_id = int(reqID)
+def getRequest(reqID, as_mongo_obj=False):  # need to get this from searching the dewar I guess
+    reqID = int(reqID)
+    """
+    request_id:  required, integer id
+    """
+    r = Request.objects(__raw__={'request_id': reqID})
+    return _try0_maybe_mongo(r, 'request', 'request_id', reqID, None,
+                             as_mongo_obj=as_mongo_obj)
 
-    # It's faster to get the mongo obj and only .to_mongo() convert the 
-    # desired request then the opposite.
-    # Maybe with mongov9 a query can return only a specific list entry?
-    sample = Sample.objects(__raw__={'requestList.request_id': reqID}).only('requestList')
-    req_list = _try0_maybe_mongo(sample, 'request', 'request_id', reqID, None,
-                               as_mongo_obj=True).requestList
-    
-    for req in req_list:
-        if req.request_id == r_id:
-            return req.to_mongo()
-    return None
-
-
-# getAllSamples and update{Sample,Container} aren't used at the moment...
-    
-#def getAllSamples():
-#    return [s.to_mongo() for s in Sample.objects()]
-
-
-#def updateSample(sampleObj):
-#    samp_id = sampleObj['sample_id']
-#
-#    updated_samp = Sample(**sampleObj)
-#    updated_samp.sample_id = samp_id
-#    Sample.objects(__raw__={'sample_id': samp_id}).update(updated_samp)
-    
-
-#def updateContainer(containerObj):
-#    cont_id = containerObj['container_id']
-#
-#    updated_cont = Container(**containerObj)
-#    updated_cont.container_id = cont_id
-#    Container.objects(__raw__={'container_id': cont_id}).update(updated_cont)
-    
 
 # this is really "update_sample" because the request is stored with the sample.
 
-def updateRequest(reqObj):
-    sample = getSampleByID(reqObj["sample_id"], as_mongo_obj=True)
+def updateRequest(request_dict):
+    """
+    This is not recommended once results are recorded for a request!
+    Using a new request instead would keep the apparent history
+    complete and intuitive.  Although it won't hurt anything if you've
+    also recorded the request params used inside the results and query
+    against that, making requests basically ephemerally useful objects.
+    """
 
-    for req in sample.requestList:
-        #if req is not None:  # when would it ever be None?
-        try:
-            req_id = req.request_id
-        except AttributeError:
-            continue
-
-        try:
-            if reqObj["request_id"] == req.request_id:
-                updated_req = Request(**reqObj)
-                updated_req.request_id = req.request_id
-    
-                Sample.objects(__raw__={'requestList.request_id': req.request_id}
-                               ).update(set__requestList__S=updated_req)
-                return
-        except KeyError:
-            pass
-
-    addRequesttoSample(reqObj["sample_id"], reqObj)
+    if not Request.objects(__raw__={'request_id': request_dict['request_id']}).update(
+        set__request_obj=request_dict['request_obj']):
+        
+        addRequesttoSample(**request_dict)
 
 
 def deleteRequest(reqObj):
     sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
     r_id = reqObj['request_id']
 
+    # delete it from any sample first
     # maybe there's a slicker way to get the req with a query and remove it?
     for req in sample.requestList:
         if req.request_id == r_id:
@@ -776,6 +825,10 @@ def deleteRequest(reqObj):
             sample.requestList.remove(req)
             sample.save()
             break
+
+    # then directly in Requests
+    r = getRequest(r_id, as_mongo_obj=True)
+    r.delete()
 
 
 def deleteSample(sampleObj):
@@ -787,12 +840,17 @@ def removePuckFromDewar(dewarPos):
     dewar = getPrimaryDewar(as_mongo_obj=True)
     dewar.item_list[dewarPos] = None
     dewar.save()
-    
+
+
+def updatePriority(request_id, priority):
+    r = getRequest(request_id, as_mongo_obj=True)
+    r.priority = priority
+    r.save()
+
 
 def emptyLiveQueue(): #a convenience to say nothing is ready to be run
     for request in getQueue():
-        request["priority"] = 0
-        updateRequest(request)
+        updatePriority(request['request_id'], priority)
 
 
 def getSortedPriorityList(with_requests=False): # mayb an intermediate to return a list of all priorities.
@@ -870,3 +928,29 @@ def userSettings(user_id, settings_name, settings_dict=None):
     # else it's a create
     except IndexError:
         UserSettings(user_id=user_id, settings_name=settings_name, settings=settings_dict).save()
+
+
+def createField(name, description, bson_type, default_value=None,
+                validation_routine_name=None, **kwargs):
+    """
+    all params are strings except default_value, which might or might not be a string
+    depending on the type
+    """
+
+    f = Field(name=name, description=description, bson_type=bson_type,
+              default_value=default_value, validation_routine_name=validation_routine_name,
+              **kwargs)
+    f.save()
+
+
+def createType(name, desc, parent_type, field_list=None, **kwargs):
+    """
+    name must be a unique string
+    parent_type must be either, 'base', or an existing type_name
+    field_list is a list of Field objects.
+    """
+
+    t = Types(name=name, description=desc, parent_type=parent_type, **kwargs)
+    t.save()
+
+
