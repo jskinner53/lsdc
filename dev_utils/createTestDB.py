@@ -50,6 +50,7 @@ def createTestDB():
                   'description': 'generic hockey puck style subcontainer for shipping dewars',
                   'parent_type': 'container'},
                  {'name': 'pin', 'description': '', 'parent_type': 'sample'},
+                 {'name': 'standard_pin', 'description': '', 'parent_type': 'pin'},
                  {'name': 'dewar', 'description': '', 'parent_type': 'container'},
                  {'name': 'shipping_dewar', 'description': '', 'parent_type': 'dewar'},
                  {'name': 'test_request', 'description': '', 'parent_type': 'request'},
@@ -104,7 +105,7 @@ def createTestDB():
                 sampleName = 'samp_{0}_{1}'.format(i, j)
         
                 try:
-                    sampID = createSample(sampleName, type_name)
+                    sampID = createSample(sampleName, sample_type=type_name)
 
                 except NotUniqueError:
                     raise NotUniqueError('{0}'.format(sampleName))
