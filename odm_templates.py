@@ -33,6 +33,7 @@ class Container(DynamicDocument):
     container_id = SequenceField(required=True, unique=True, **args_dict)
     container_type = ReferenceField(Types, dbref=True, required=True,
                                     reverse_delete_rule=mongoengine.DENY)
+    containerName = StringField(unique=True)
 
 class Request(DynamicDocument):
     request_id = SequenceField(required=True, unique=True, **args_dict)
@@ -60,7 +61,7 @@ class Sample(DynamicDocument):
 
     #owner = StringField(required=True)
     #sampleName = StringField(required=True, unique_with='owner')
-    sampleName = StringField(required=True)
+    sampleName = StringField(required=True, unique=True)
     sample_type = ReferenceField(Types, dbref=True, required=True,
                                  reverse_delete_rule=mongoengine.DENY)
 
