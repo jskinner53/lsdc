@@ -128,6 +128,10 @@ def type_from_name(name, as_mongo_obj=False):
     Given a type name ('standard_pin', 'shipping_dewar'), return the
     name of it's base type ('sample', 'container').
     """
+
+    if isinstance(name, str):
+        name = unicode(name)
+
     try:
         if as_mongo_obj:
             return Types.objects(__raw__={'name': name})[0]
@@ -172,12 +176,12 @@ def createContainer(container_name, container_type, **kwargs):
 
     kwargs['containerName'] = container_name
 
-    if isinstance(container_type, unicode):
+    if isinstance(container_type, unicode) or isinstance(container_type, str):
         kwargs['container_type'] = type_from_name(container_type, as_mongo_obj=True)
     else:
         kwargs['container_type'] = container_type  # this seems weird?
 
-    print('container_type t({0}) v({1}'.format(type(container_type), container_type), file=sys.stderr)
+    print('container_type t({0}) v({1})'.format(type(container_type), container_type), file=sys.stderr)
 
     #try:
     #    kwargs['container_type'] = Types.objects(__raw__={'name': type_name})[0]
@@ -186,10 +190,13 @@ def createContainer(container_name, container_type, **kwargs):
 
     try:
         kwargs['item_list'] = [None] * kwargs['container_type'].capacity
+        print("capacity = {0}: {1}".format(kwargs['container_type'].capacity, kwargs['item_list']))
     except AttributeError:
         pass  # not all containers have a fixed capacity, eg. shipping dewar.
               # depends on what subcontainers are used...
-    kwargs['item_list'] = []
+        print("no capacity")
+
+#    kwargs['item_list'] = []
 
     c = Container(**kwargs)
     c.save()
@@ -209,7 +216,7 @@ def createSample(sample_name, sample_type, **kwargs):
     kwargs['requestList'] = []
     kwargs['resultList'] = []
 
-    if isinstance(sample_type, str):
+    if isinstance(sample_type, unicode) or isinstance(sample_type, str):
         kwargs['sample_type'] = type_from_name(sample_type, as_mongo_obj=True)
 
 #    try:
@@ -504,7 +511,7 @@ def createRequest(request_type, request_obj=None, timestamp=None, as_mongo_obj=F
     request_object or passed in as keyword args to get saved at the
     top level.
     """
-    if isinstance(request_type, str):
+    if isinstance(request_type, unicode) or isinstance(request_type, str):
         request_type = type_from_name(request_type, as_mongo_obj=True)
         print('rt:[{0}]'.format(request_type))
 #    elif not isinstance(request_type, Request):
@@ -601,7 +608,7 @@ def getContainers(as_mongo_obj=False):
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
 
-    if isinstance(type_name, str):
+    if isinstance(type_name, unicode):
         type_obj = type_from_name(type_name, as_mongo_obj=True)
 
     c = Container.objects(container_type=type_obj)
