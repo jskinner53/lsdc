@@ -388,7 +388,7 @@ def collectData(currentRequest):
         tempnewStratRequest["detDist"] = stratDetDist
         tempnewStratRequest["directory"] = data_directory_name
 
-        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest)        
+        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest["protocol"],tempnewStratRequest,timestamp = time.time())        
 
     else: #standard
       sweep_start = currentRequest["sweep_start"]
@@ -544,9 +544,9 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None):
     xtalpicJpegDataResult = {}
     imgRef = db_lib.addFile(data)
     xtalpicJpegDataResult["data"] = imgRef
-    xtalpicJpegDataResult["timestamp"] = time.time()
-    xtalpicJpegDataResult["type"] = "xtalpicJpeg"
-    db_lib.addResultforRequest(reqID,xtalpicJpegDataResult)
+#    xtalpicJpegDataResult["timestamp"] = time.time()
+#    xtalpicJpegDataResult["type"] = "xtalpicJpeg"
+    db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult,timestamp=time.time())
 
 
 
@@ -589,18 +589,18 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
       print "Wavelength = " + tokens[1] 
       imageJpegHeader["wave"] = float(tokens[1])
   if (reqID != None):
-    result = {}
+#    result = {}
     resultObj = {}
-    result["timestamp"] = time.time()
-    result["type"] = "diffImageJpeg"
+#    result["timestamp"] = time.time()
+#    result["type"] = "diffImageJpeg"
     imgRef = db_lib.addFile(data)
     resultObj["data"] = imgRef
     imgRef = db_lib.addFile(thumbData)
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    result["resultObj"] = resultObj
-    db_lib.addResultforRequest(reqID,result)
+#    result["resultObj"] = resultObj
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj,timestamp=time.time())
 
   return imageJpegData
 
@@ -645,18 +645,18 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
         imageJpegHeader["wave"] = float(tokens[1])
   imageJpegData["header"] = imageJpegHeader
   if (reqID != None): #this means I'll dump into mongo as a result
-    result = {}
+#    result = {}
     resultObj = {}
-    result["timestamp"] = time.time()
-    result["type"] = "diffImageJpeg"
+#    result["timestamp"] = time.time()
+#    result["type"] = "diffImageJpeg"
     imgRef = db_lib.addFile(data)
     resultObj["data"] = imgRef
     imgRef = db_lib.addFile(thumbData)
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    result["resultObj"] = resultObj
-    db_lib.addResultforRequest(reqID,result)
+#    result["resultObj"] = resultObj
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj,timestamp=time.time())
 
   return imageJpegData
 
