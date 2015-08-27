@@ -91,7 +91,8 @@ def db_connect():
 (mongo_conn, db_name, db_host) = db_connect()
 
 
-primaryDewarName = 'primaryDewar2'
+# should be in config :(
+primaryDewarName = 'primaryDewar'
 
 
 # temp stuff for web stuff
@@ -192,8 +193,8 @@ def createContainer(container_name, container_type, **kwargs):
         kwargs['item_list'] = [None] * kwargs['container_type'].capacity
         print("capacity = {0}: {1}".format(kwargs['container_type'].capacity, kwargs['item_list']))
     except AttributeError:
-        pass  # not all containers have a fixed capacity, eg. shipping dewar.
-              # depends on what subcontainers are used...
+        # not all containers have a fixed capacity, eg. shipping dewar.
+        # depends on what subcontainers are used...
         print("no capacity")
 
 #    kwargs['item_list'] = []
@@ -608,10 +609,19 @@ def getContainers(as_mongo_obj=False):
 
 def getContainersByType(type_name, group_name, as_mongo_obj=False): 
 
-    if isinstance(type_name, unicode):
+    if isinstance(type_name, unicode) or isinstance(type_name, str):
         type_obj = type_from_name(type_name, as_mongo_obj=True)
+    else:
+        type_obj = type_name
 
-    c = Container.objects(container_type=type_obj)
+    # go one level deaper for now?  maybe we should have another field to search on
+    # "class" or something?  :(
+    container_types = Types.objects(__raw__={'$or': [{'name': type_name},
+                                                     {'parent_type': type_name}]})
+
+    #c = Container.objects(container_type=type_obj)
+    #c = Container.objects(__raw__={'container_type': {'$in': container_types}})
+    c = Container.objects(container_type__in=container_types)
     return _ret_list(c, as_mongo_obj=as_mongo_obj)
 
 
@@ -619,6 +629,7 @@ def getAllPucks(as_mongo_obj=False):
     # find all the types desended from 'puck'?
     # and then we could do this?
     return getContainersByType("puck", "", as_mongo_obj=as_mongo_obj)
+    
 
 
 def getPrimaryDewar(as_mongo_obj=False):

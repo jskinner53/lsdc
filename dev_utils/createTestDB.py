@@ -78,7 +78,7 @@ def createTestDB():
         
         
         # containers
-        for i in range(3)+[6]:  # discontinuity for testing
+        for i in range(4)+[6]:  # discontinuity for testing
             containerName = 'Puck_{0}'.format(i)
             createContainer(containerName, '16_pin_puck')
         
@@ -93,7 +93,7 @@ def createTestDB():
         createContainer(primary_dewar_name, '24_puck_robot_dewar') 
         
         for i in range(4)+[6]:  # discontinuity for testing
-            containerName = 'Puck_'.format(i)
+            containerName = 'Puck_{0}'.format(i)
             insertIntoContainer(primary_dewar_name, i, getContainerIDbyName(containerName))
         
         
