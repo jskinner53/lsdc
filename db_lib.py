@@ -555,31 +555,6 @@ def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None
     return r.to_mongo()
 
 
-def createDefaultRequest(sample_id):
-    """
-    Doesn't really create a request, just returns a dictionary
-    with the default parameters that can be passed to addRequesttoSample().
-    """
-    request = {
-               "sample_id": sample_id,
-               "sweep_start": 0.0,  "sweep_end": 0.1,
-               "img_width": .1,
-               "exposure_time": .1,
-               "priority": 0,
-               "protocol": "standard",
-               "directory": "/",
-               "file_prefix": str(getSampleNamebyID(sample_id)),
-               "file_number_start": 1,
-               "wavelength": 1.1,
-               "resolution": 3.0,
-               "slit_height": 30.0,  "slit_width": 30.0,
-               "attenuation": 0,
-               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A',
-               "gridW": 0,  "gridH": 0,  "gridStep": 30}
-
-    return request
-
-
 def insertIntoContainer(container_name, position, itemID):
     c = getContainerByName(container_name, as_mongo_obj=True)
     if c is not None:
