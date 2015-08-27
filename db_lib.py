@@ -91,7 +91,8 @@ def db_connect():
 (mongo_conn, db_name, db_host) = db_connect()
 
 
-primaryDewarName = 'primaryDewar2'
+# should be in config :(
+primaryDewarName = 'primaryDewar'
 
 
 # temp stuff for web stuff
