@@ -280,6 +280,10 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
     # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
     
 
+def getRequestsBySampleID(sample_id):
+    s = getSampleByID(sample_id, as_mongo_obj=True)
+    return [r.request_id for r in s.requestList]
+
 def getSampleByID(sample_id, as_mongo_obj=False):
     """
     sample_id:  required, integer
