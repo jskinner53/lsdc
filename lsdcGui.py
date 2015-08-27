@@ -5,7 +5,6 @@ import string
 import math
 from epics import PV
 import daq_utils
-#from daq_utils import *
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4.QtCore import * 
@@ -15,13 +14,11 @@ from QtEpicsMotorEntry import *
 from QtEpicsMotorLabel import *
 from QtEpicsPVLabel import *
 from QtEpicsPVEntry import *
-#import Image
 import cv2
 from cv2 import *
 from testSimpleConsole import *
 import functools
 from QPeriodicTable import QPeriodicTable
-#from PyMca.QPeriodicTable import QPeriodicTable
 from PyMca.QtBlissGraph import QtBlissGraph
 from PyMca.McaAdvancedFit import McaAdvancedFit
 import numpy as np
@@ -52,9 +49,7 @@ class snapCommentDialog(QDialog):
 
     def commentCB(self):
       self.comment = self.textEdit.toPlainText()
-#      print self.textEdit.toPlainText()
       self.accept()
-#      self.hide()
     
     @staticmethod
     def getComment(parent = None):
@@ -82,12 +77,10 @@ class screenDefaultsDialog(QDialog):
         self.osc_end_ledit = QtGui.QLineEdit()
         self.osc_end_ledit.setFixedWidth(60)
         self.osc_end_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phi_end")))
-#        self.osc_end_ledit.setText(str(daq_utils.screenPhiend))
         hBoxColParams1.addWidget(colStartLabel)
         hBoxColParams1.addWidget(self.osc_start_ledit)
         hBoxColParams1.addWidget(colEndLabel)
         hBoxColParams1.addWidget(self.osc_end_ledit)
-
         hBoxColParams2 = QtGui.QHBoxLayout()
         colRangeLabel = QtGui.QLabel('Oscillation Range:')
         colRangeLabel.setFixedWidth(120)
@@ -105,7 +98,6 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams2.addWidget(self.osc_range_ledit)
         hBoxColParams2.addWidget(colExptimeLabel)
         hBoxColParams2.addWidget(self.exp_time_ledit)
-
         hBoxColParams3 = QtGui.QHBoxLayout()
         colEnergyLabel = QtGui.QLabel('Energy (KeV):')
         colEnergyLabel.setFixedWidth(120)
@@ -119,24 +111,20 @@ class screenDefaultsDialog(QDialog):
         self.transmission_ledit = QtGui.QLineEdit()
         self.transmission_ledit.setFixedWidth(60)
         self.transmission_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_transmission_percent")))
-
         hBoxColParams3.addWidget(colTransmissionLabel)
         hBoxColParams3.addWidget(self.transmission_ledit)
         hBoxColParams3.addWidget(colEnergyLabel)
         hBoxColParams3.addWidget(self.energy_ledit)
-
         hBoxColParams4 = QtGui.QHBoxLayout()
         colBeamWLabel = QtGui.QLabel('Beam Width:')
         colBeamWLabel.setFixedWidth(120)
         colBeamWLabel.setAlignment(QtCore.Qt.AlignCenter) 
-
         self.beamWidth_ledit = QtGui.QLineEdit()
         self.beamWidth_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamWidth")))
         self.beamWidth_ledit.setFixedWidth(60)
         colBeamHLabel = QtGui.QLabel('Beam Height:')
         colBeamHLabel.setFixedWidth(120)
         colBeamHLabel.setAlignment(QtCore.Qt.AlignCenter) 
-
         self.beamHeight_ledit = QtGui.QLineEdit()
         self.beamHeight_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamHeight")))
         self.beamHeight_ledit.setFixedWidth(60)
@@ -144,7 +132,6 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams4.addWidget(self.beamWidth_ledit)
         hBoxColParams4.addWidget(colBeamHLabel)
         hBoxColParams4.addWidget(self.beamHeight_ledit)
-
         hBoxColParams5 = QtGui.QHBoxLayout()
         colResoLabel = QtGui.QLabel('Resolution:')
         colResoLabel.setFixedWidth(120)
@@ -370,7 +357,6 @@ class DewarTree(QtGui.QTreeView):
         collectionRunning = False
         self.model.clear()
         dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
-        self.sampleRequests = db_lib.getQueue()
         for i in range (0,len(dewarContents)): #dewar contents is the list of puck IDs
           parentItem = self.model.invisibleRootItem()
           if (dewarContents[i]==None):
@@ -396,19 +382,6 @@ class DewarTree(QtGui.QTreeView):
                 item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
 #                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
 #                item.setCheckState(Qt.Unchecked)
-
-
-#this block of code was an attempt to color the currently mounted sample. It's too slow b/c of the db line
-#                samplePos = db_lib.getAbsoluteDewarPosfromSampleID(puckContents[j])  #thinking about comparing this to mountedPin, but maybe want this in the DB instead, not in comm_ioc. (SLOW!)
-#                if (samplePos == self.parent.mountedPin_pv.get()): #might slow stuff down? - NO, it is plenty fast
-#                  item.setBackground(QtGui.QColor('yellow'))       #WTF - why does it then call queueSelected???? - it's caused by setting color before it's added to the parent, somehow it triggered "itemChanged"
-#                else:
-#                  item.setBackground(QtGui.QColor('white'))                       
-#works as below, just calculate the dewarPos
-
-#                samplePos = int((i*puckSize)+j)
-
-#                if (samplePos == self.parent.mountedPin_pv.get()):
                 if (puckContents[j] == self.parent.mountedPin_pv.get()):
                   item.setForeground(QtGui.QColor('red'))       
                   font = QtGui.QFont()
@@ -421,13 +394,34 @@ class DewarTree(QtGui.QTreeView):
                 if (puckContents[j] == self.parent.mountedPin_pv.get()):
 #                if (samplePos == self.parent.mountedPin_pv.get()):
                   mountedIndex = self.model.indexFromItem(item)
-
-
                 if (puckContents[j] == self.parent.selectedSampleID): #looking for the selected item
 #                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
                   selectedSampleIndex = self.model.indexFromItem(item)
-              else :
+                sampleRequestList = db_lib.getSampleByID(puckContents[j])["requestList"]
+                for k in xrange(len(sampleRequestList)):
+                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(sampleRequestList[k]["file_prefix"]+"_"+sampleRequestList[k]["protocol"]))
+                  col_item.setData(sampleRequestList[k]["request_id"])
+                  col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+                  if (sampleRequestList[k]["priority"] == 99999):
+                    col_item.setCheckState(Qt.Checked)
+                    col_item.setBackground(QtGui.QColor('green'))
+                    collectionRunning = True
+                    self.parent.refreshCollectionParams(sampleRequestList[k])
+
+                  elif (sampleRequestList[k]["priority"] > 0):
+                    col_item.setCheckState(Qt.Checked)
+                    col_item.setBackground(QtGui.QColor('white'))
+                  elif (sampleRequestList[k]["priority"]< 0):
+                    col_item.setCheckState(Qt.Unchecked)
+                    col_item.setBackground(QtGui.QColor('cyan'))
+                  else:
+                    col_item.setCheckState(Qt.Unchecked)
+                    col_item.setBackground(QtGui.QColor('white'))
+                  item.appendRow(col_item)
+                  if (sampleRequestList[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item
+                    selectedIndex = self.model.indexFromItem(col_item)
+              else : #this is an empty spot, no sample
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
                 item.setData(-99)
@@ -435,30 +429,6 @@ class DewarTree(QtGui.QTreeView):
                 item.setCheckState(Qt.Unchecked)
                 parentItem.appendRow(item)
 
-              for k in xrange(len(self.sampleRequests)): 
-                if (self.sampleRequests[k]["sample_id"] == puckContents[j]):
-                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["file_prefix"]+"_"+self.sampleRequests[k]["protocol"]))
-#                  col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.sampleRequests[k]["protocol"]))
-                  col_item.setData(self.sampleRequests[k]["request_id"])
-                  col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-                  if (self.sampleRequests[k]["priority"] == 99999):
-                    col_item.setCheckState(Qt.Checked)
-                    col_item.setBackground(QtGui.QColor('green'))
-                    collectionRunning = True
-                    self.parent.refreshCollectionParams(self.sampleRequests[k])
-
-                  elif (self.sampleRequests[k]["priority"] > 0):
-                    col_item.setCheckState(Qt.Checked)
-                    col_item.setBackground(QtGui.QColor('white'))
-                  elif (self.sampleRequests[k]["priority"]< 0):
-                    col_item.setCheckState(Qt.Unchecked)
-                    col_item.setBackground(QtGui.QColor('cyan'))
-                  else:
-                    col_item.setCheckState(Qt.Unchecked)
-                    col_item.setBackground(QtGui.QColor('white'))
-                  item.appendRow(col_item)
-                  if (self.sampleRequests[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item
-                    selectedIndex = self.model.indexFromItem(col_item)
         self.setModel(self.model)
         if (selectedSampleIndex != None and collectionRunning == False):
           print "selectedSampleIndex = " + str(selectedSampleIndex)
@@ -660,6 +630,8 @@ class DataLocInfo(QtGui.QGroupBox):
         self.hBoxDPathParams1 = QtGui.QHBoxLayout()
         self.basePathLabel = QtGui.QLabel('Base Path:')
         self.base_path_ledit = QtGui.QLineEdit() #leave editable for now
+        self.base_path_ledit.setText(os.getcwd())
+        self.base_path_ledit.textChanged[str].connect(self.basePathTextChanged)
         self.browseBasePathButton = QtGui.QPushButton("Browse...") 
         self.browseBasePathButton.clicked.connect(self.parent.popBaseDirectoryDialogCB)
         self.hBoxDPathParams1.addWidget(self.basePathLabel)
@@ -673,12 +645,24 @@ class DataLocInfo(QtGui.QGroupBox):
         self.dataNumstartLabel = QtGui.QLabel('File Number Start:')
         self.file_numstart_ledit = QtGui.QLineEdit()
         self.file_numstart_ledit.setFixedWidth(50)
+        self.hBoxDPathParams3 = QtGui.QHBoxLayout()
+        self.dataPathLabel = QtGui.QLabel('Data Path:')
+        self.dataPath_ledit = QtGui.QLineEdit()
+        self.hBoxDPathParams3.addWidget(self.dataPathLabel)
+        self.hBoxDPathParams3.addWidget(self.dataPath_ledit)
         self.hBoxDPathParams2.addWidget(self.dataNumstartLabel)
         self.hBoxDPathParams2.addWidget(self.file_numstart_ledit)
         self.vBoxDPathParams1.addLayout(self.hBoxDPathParams1)
         self.vBoxDPathParams1.addLayout(self.hBoxDPathParams2)
+        self.vBoxDPathParams1.addLayout(self.hBoxDPathParams3)
 #        self.vBoxDPathParams1.addLayout(self.hBoxLastFileLayout1)
         self.setLayout(self.vBoxDPathParams1)
+
+
+    def basePathTextChanged(self,text):
+      prefix = self.prefix_ledit.text()
+      self.setDataPath_ledit(text+"/projID/"+prefix+"/1/")
+
 
     def setFileNumstart_ledit(self,s):
       self.file_numstart_ledit.setText(s)
@@ -688,6 +672,9 @@ class DataLocInfo(QtGui.QGroupBox):
 
     def setBasePath_ledit(self,s):
       self.base_path_ledit.setText(s)
+
+    def setDataPath_ledit(self,s):
+      self.dataPath_ledit.setText(s)
 
 
 
@@ -968,6 +955,24 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams6.addWidget(self.protoComboBox)
 #        hBoxColParams6.addWidget(centeringLabel)
 #        hBoxColParams6.addWidget(self.centeringComboBox)
+
+        self.processingOptionsFrame = QFrame()
+        self.hBoxProcessingLayout1= QtGui.QHBoxLayout()        
+        self.hBoxProcessingLayout1.setAlignment(QtCore.Qt.AlignLeft) 
+        procOptionLabel = QtGui.QLabel('Processing Options:')
+        procOptionLabel.setFixedWidth(200)
+        self.fastDPCheckBox = QCheckBox("FastDP")
+        self.fastDPCheckBox.setChecked(False)
+        self.fastEPCheckBox = QCheckBox("FastEP")
+        self.fastEPCheckBox.setChecked(False)
+        self.xia2CheckBox = QCheckBox("Xia2")
+        self.xia2CheckBox.setChecked(False)
+        self.hBoxProcessingLayout1.addWidget(procOptionLabel)
+        self.hBoxProcessingLayout1.addWidget(self.fastDPCheckBox)
+        self.hBoxProcessingLayout1.addWidget(self.fastEPCheckBox)
+        self.hBoxProcessingLayout1.addWidget(self.xia2CheckBox)
+        self.processingOptionsFrame.setLayout(self.hBoxProcessingLayout1)
+
         self.rasterParamsFrame = QFrame()
         self.hBoxRasterLayout1= QtGui.QHBoxLayout()        
         self.hBoxRasterLayout1.setAlignment(QtCore.Qt.AlignLeft) 
@@ -1061,7 +1066,9 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1.addWidget(self.rasterParamsFrame)
         vBoxColParams1.addWidget(self.vectorParamsFrame)
         vBoxColParams1.addWidget(self.characterizeParamsFrame)
+        vBoxColParams1.addWidget(self.processingOptionsFrame)
         self.vectorParamsFrame.hide()
+        self.processingOptionsFrame.hide()
         self.rasterParamsFrame.hide()
         self.characterizeParamsFrame.hide()
         colParamsGB.setLayout(vBoxColParams1)
@@ -1086,7 +1093,8 @@ class controlMain(QtGui.QMainWindow):
         self.mainToolBox.addItem(self.mainColFrame,"Standard Collection")
         self.mainToolBox.addItem(self.EScanToolFrame,"Energy Scan")
         editSampleButton = QtGui.QPushButton("Apply Changes") 
-        editSampleButton.clicked.connect(self.editSampleRequestCB)
+        editSampleButton.clicked.connect(self.editSelectedRequestsCB)
+#        editSampleButton.clicked.connect(self.editSampleRequestCB)
         hBoxPriorityLayout1= QtGui.QHBoxLayout()        
         priorityEditLabel = QtGui.QLabel("Priority Edit")
         priorityTopButton =  QtGui.QPushButton("   >>   ")
@@ -1556,19 +1564,15 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server("runChooch()")
 
 
-    def displayXrecRasterNew(self,xrecRasterFlag):
+    def displayXrecRaster(self,xrecRasterFlag):
       self.xrecRasterFlag_pv.put(0)
       if (xrecRasterFlag==100):
         for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
-#        self.eraseDisplayCB()
-#        self.eraseCB()
       else:
         rasterReq = db_lib.getRequest(xrecRasterFlag)
         rasterDef = rasterReq["rasterDef"]
-#        print "in rasterReqFlag " + str(rasterDef["status"])
-#        print rasterReq
         if (rasterDef["status"] == 1):
           self.drawPolyRaster(rasterReq)
         elif (rasterDef["status"] == 2):        
@@ -1576,46 +1580,8 @@ class controlMain(QtGui.QMainWindow):
           self.selectedSampleID = rasterReq["sample_id"]
           db_lib.deleteRequest(rasterReq)
           self.treeChanged_pv.put(1) #not sure about this
-        elif (rasterDef["status"] == 3):        
-          self.drawColumnRaster(rasterReq)
         else:
           pass
-
-    def displayXrecRaster(self,xrecRasterFlag):
-      self.xrecRasterFlag_pv.put(0)
-      if (xrecRasterFlag==1):#rect or poly raster
-        rasterDef = db_lib.getNextRunRaster(0)
-        self.drawPolyRaster(rasterDef)
-      elif (xrecRasterFlag==2): #fill the raster
-#        self.fillPolyRaster("raster_spots.txt")
-        pass
-      elif (xrecRasterFlag==100):
-        for i in xrange(len(self.rasterList)):
-          if (self.rasterList[i] != None):
-            self.scene.removeItem(self.rasterList[i]["graphicsItem"])
-#        self.eraseDisplayCB()
-#        self.eraseCB()
-      elif (xrecRasterFlag==3): #column raster
-        rasterDef = db_lib.getNextRunRaster(0)
-#        self.eraseDisplayCB()
-        self.drawColumnRaster(rasterDef)
-      else:
-        rasterReq = db_lib.getRequest(xrecRasterFlag)
-        rasterDef = rasterReq["rasterDef"]
-#        print "in rasterReqFlag " + str(rasterDef["status"])
-#        print rasterReq
-        if (rasterDef["status"] == 1):
-          self.drawPolyRaster(rasterReq)
-        elif (rasterDef["status"] == 2):        
-          self.fillPolyRaster(rasterReq)
-          self.selectedSampleID = rasterReq["sample_id"]
-          db_lib.deleteRequest(rasterReq)
-          self.treeChanged_pv.put(1) #not sure about this
-        elif (rasterDef["status"] == 3):        
-          self.drawColumnRaster(rasterReq)
-        else:
-          pass
-
 
 
     def processMountedPin(self,mountedPinPos):
@@ -1675,6 +1641,7 @@ class controlMain(QtGui.QMainWindow):
       self.rasterParamsFrame.hide()
       self.vectorParamsFrame.hide()
       self.characterizeParamsFrame.hide()
+      self.processingOptionsFrame.hide()
 
       if (protocol == "raster"):
         self.rasterParamsFrame.show()
@@ -1695,8 +1662,11 @@ class controlMain(QtGui.QMainWindow):
         self.vectorParamsFrame.show()
       elif (protocol == "characterize"):
         self.characterizeParamsFrame.show()
+      elif (protocol == "standard"):
+        self.processingOptionsFrame.show()
       else:
         pass 
+
 
 
     def resoTextChanged(self,text):
@@ -1855,21 +1825,20 @@ class controlMain(QtGui.QMainWindow):
     def fillPolyRaster(self,rasterReq): #at this point I should have a drawn polyRaster
 #      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
       print "filling poly for " + str(rasterReq["request_id"])
+      rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[0]
       rasterDef = rasterReq["rasterDef"]
       rasterListIndex = 0
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
           if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
             rasterListIndex = i
-      spotfilename = "raster_spots.txt"
-
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      numLines = sum(1 for line in open(spotfilename))
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["resultObj"]["rasterCellResults"]['resultObj']["data"]["response"]
+      numLines = len(cellResults)
       filename_array = ["" for i in xrange(numLines)]
       my_array = np.zeros(numLines)
-      spotfile = open(spotfilename,"r")
       spotLineCounter = 0
       cellIndex=0
       rowStartIndex = 0
@@ -1877,9 +1846,9 @@ class controlMain(QtGui.QMainWindow):
         rowStartIndex = spotLineCounter
         numsteps = rasterDef["rowDefs"][i]["numsteps"]
         for j in xrange(numsteps):
-          spotline = spotfile.readline()
-          (spotcount_s,filename) = spotline.split()
-          spotcount = int(spotcount_s)
+          cellResult = cellResults[spotLineCounter]
+          spotcount = cellResult["spot_count"]
+          filename =  cellResult["image"]
           if (i%2 == 0): 
             cellIndex = spotLineCounter
           else:
@@ -1906,7 +1875,6 @@ class controlMain(QtGui.QMainWindow):
           self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
           cellCounter+=1
       self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["file_prefix"]))
-      spotfile.close()
       
 
     def saveCenterCB(self):
@@ -2026,7 +1994,7 @@ class controlMain(QtGui.QMainWindow):
 #raster status - 0=nothing done, 1=run, 2=displayed
       beamWidth = float(self.beamWidth_ledit.text())
       beamHeight = float(self.beamHeight_ledit.text())
-      rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":float(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
+      rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":float(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
       numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
       numsteps_v = int(raster_h/stepsize)
       if (numsteps_h%2 == 0):
@@ -2109,44 +2077,6 @@ class controlMain(QtGui.QMainWindow):
       newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
-
-    def drawColumnRaster(self,rasterReq): #rows are really columns here
-      rasterDef = rasterReq["rasterDef"]
-      beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
-      stepsize = self.screenXmicrons2pixels(rasterDef["stepsize"])
-      penBeam = QtGui.QPen(QtCore.Qt.green)
-      if (stepsize>20):      
-        penBeam = QtGui.QPen(QtCore.Qt.green)
-      else:
-        penBeam = QtGui.QPen(QtCore.Qt.red)
-      pen = QtGui.QPen(QtCore.Qt.green)
-      pen.setStyle(QtCore.Qt.NoPen)
-      newRasterCellList = []
-###      self.currentRasterCellList = []
-      for i in xrange(len(rasterDef["rowDefs"])):
-        rowCellCount = 0
-        for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
-          newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsize)+daq_utils.screenPixCenterY
-          newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+daq_utils.screenPixCenterX
-#          print str(newCellX) + "  " + str(newCellY)
-          if (rowCellCount == 0): #start of a new row
-            rowStartX = newCellX
-            rowStartY = newCellY
-          newCell = rasterCell(newCellX,newCellY,stepsize, stepsize, self,self.scene)
-          newCell.setPen(pen)
-          newRasterCellList.append(newCell)
-          newCellBeam = QtGui.QGraphicsEllipseItem(newCellX+((stepsize-beamSize)/2.0),newCellY+((stepsize-beamSize)/2.0),beamSize, beamSize, None,self.scene)
-          newCellBeam.setPen(penBeam)
-          newRasterCellList.append(newCellBeam)
-###          self.currentRasterCellList.append(newCell) 
-          rowCellCount = rowCellCount+1
-      newItemGroup = rasterGroup(self)
-      self.scene.addItem(newItemGroup)
-      for i in xrange(len(newRasterCellList)):
-        newItemGroup.addToGroup(newRasterCellList[i])
-#      newItemGroup.addToGroup(self.rasterPoly)
-      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
-      self.rasterList.append(newRasterGraphicsDesc)
 
 
 #    def rasterItemMoveEvent(self, event): #crap?????
@@ -2247,23 +2177,47 @@ class controlMain(QtGui.QMainWindow):
       self.dewarTree.refreshTree()
 #      item.setCheckState(Qt.Checked)
 
+    def editSelectedRequestsCB(self):
+      selmod = self.dewarTree.selectionModel()
+      selection = selmod.selection()
+      indexes = selection.indexes()
+      singleRequest = 1
+      for i in xrange(len(indexes)):
+        item = self.dewarTree.model.itemFromIndex(indexes[i])
+        itemData = item.data().toInt()[0]
+        if not (itemData < -100): #then it's a request
+          self.selectedSampleRequest = db_lib.getRequest(itemData)
+          self.editSampleRequestCB(singleRequest)
+          singleRequest = 0
+#            if (len(indexes)>1):
+#            self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["file_prefix"]))
+#          self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+#      self.refreshTree()
+      self.treeChanged_pv.put(1)
 
-    def editSampleRequestCB(self):
+
+
+    def editSampleRequestCB(self,singleRequest):
       colRequest=self.selectedSampleRequest
       colRequest["sweep_start"] = float(self.osc_start_ledit.text())
       colRequest["sweep_end"] = float(self.osc_end_ledit.text())
       colRequest["img_width"] = float(self.osc_range_ledit.text())
       colRequest["exposure_time"] = float(self.exp_time_ledit.text())
       colRequest["resolution"] = float(self.resolution_ledit.text())
-      colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
-      colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
-      colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
+      if (singleRequest == 1): # a touch kludgy, but I want to be able to edit parameters for multiple requests w/o screwing the data loc info
+        colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
+        colRequest["basePath"] = str(self.dataPathGB.base_path_ledit.text())
+        colRequest["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+        colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #      colRequest["gridStep"] = self.rasterStepEdit.text()
       colRequest["attenuation"] = float(self.transmission_ledit.text())
       colRequest["slit_width"] = float(self.beamWidth_ledit.text())
       colRequest["slit_height"] = float(self.beamHeight_ledit.text())
       wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
       colRequest["wavelength"] = wave
+      colRequest["fastDP"] =(self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
+      colRequest["fastEP"] =self.fastEPCheckBox.isChecked()
+      colRequest["xia2"] =self.xia2CheckBox.isChecked()
       colRequest["protocol"] = str(self.protoComboBox.currentText())
       if (colRequest["protocol"] == "vector"):
         colRequest["vectorParams"]["fpp"] = int(self.vectorFPP_ledit.text())
@@ -2286,6 +2240,7 @@ class controlMain(QtGui.QMainWindow):
           self.selectedSampleRequest = daq_utils.createDefaultRequest(self.selectedSampleID) #7/21/15  - not sure what this does, b/c I don't pass it, ahhh probably the commented line for prefix
           if (len(indexes)>1):
             self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["file_prefix"]))
+            self.dataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["directory"]))
           self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
 #      self.refreshTree()
       self.treeChanged_pv.put(1)
@@ -2310,7 +2265,8 @@ class controlMain(QtGui.QMainWindow):
              colRequest["exposure_time"] = float(self.exp_time_ledit.text())
              colRequest["resolution"] = float(self.resolution_ledit.text())
              colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text()+"_C"+str(i+1))
-             colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
+             colRequest["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+             colRequest["basePath"] = str(self.dataPathGB.base_path_ledit.text())
              colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #             colRequest["gridStep"] = self.rasterStepEdit.text()
              colRequest["attenuation"] = float(self.transmission_ledit.text())
@@ -2322,6 +2278,9 @@ class controlMain(QtGui.QMainWindow):
              colRequest["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
              colRequest["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
              colRequest["pos_z"] = float(self.centeringMarksList[i]["sampCoords"]["z"])
+             colRequest["fastDP"] = (self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
+             colRequest["fastEP"] =self.fastEPCheckBox.isChecked()
+             colRequest["xia2"] =self.xia2CheckBox.isChecked()
              if (colRequest["protocol"] == "characterize"):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                colRequest["characterizationParams"] = characterizationParams
@@ -2339,9 +2298,13 @@ class controlMain(QtGui.QMainWindow):
         colRequest["img_width"] = float(self.osc_range_ledit.text())
         colRequest["exposure_time"] = float(self.exp_time_ledit.text())
         colRequest["resolution"] = float(self.resolution_ledit.text())
-        colRequest["directory"] = str(self.dataPathGB.base_path_ledit.text())
+        colRequest["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+        colRequest["basePath"] = str(self.dataPathGB.base_path_ledit.text())
         colRequest["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         colRequest["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
+        colRequest["fastDP"] = (self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
+        colRequest["fastEP"] =self.fastEPCheckBox.isChecked()
+        colRequest["xia2"] =self.xia2CheckBox.isChecked()
 #        colRequest["gridStep"] = self.rasterStepEdit.text()
         colRequest["attenuation"] = float(self.transmission_ledit.text())
         colRequest["slit_width"] = float(self.beamWidth_ledit.text())
@@ -2372,7 +2335,6 @@ class controlMain(QtGui.QMainWindow):
           framesPerPoint = int(self.vectorFPP_ledit.text())
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           colRequest["vectorParams"] = vectorParams
-
         newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
 #        if (rasterDef != False):
         if (rasterDef != None):
@@ -2479,6 +2441,12 @@ class controlMain(QtGui.QMainWindow):
       self.dataPathGB.setFileNumstart_ledit(str(selectedSampleRequest["file_number_start"]))
       self.beamWidth_ledit.setText(str(selectedSampleRequest["slit_width"]))
       self.beamHeight_ledit.setText(str(selectedSampleRequest["slit_height"]))
+      if (selectedSampleRequest.has_key("fastDP")):
+        self.fastDPCheckBox.setChecked((selectedSampleRequest["fastDP"] or selectedSampleRequest["fastEP"]))
+      if (selectedSampleRequest.has_key("fastEP")):
+        self.fastEPCheckBox.setChecked(selectedSampleRequest["fastEP"])
+      if (selectedSampleRequest.has_key("xia2")):
+        self.xia2CheckBox.setChecked(selectedSampleRequest["xia2"])
       energy_s = str(daq_utils.wave2energy(selectedSampleRequest["wavelength"]))
 #      energy_s = "%.4f" % (12.3985/selectedSampleRequest["wavelength"])
       self.energy_ledit.setText(str(energy_s))
@@ -2486,7 +2454,8 @@ class controlMain(QtGui.QMainWindow):
       dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,selectedSampleRequest["resolution"],1.1,0))
       self.colResoCalcDistance_ledit.setText(str(dist_s))
       self.dataPathGB.setFilePrefix_ledit(str(selectedSampleRequest["file_prefix"]))
-      self.dataPathGB.setBasePath_ledit(str(selectedSampleRequest["directory"]))
+      self.dataPathGB.setBasePath_ledit(str(selectedSampleRequest["basePath"]))
+      self.dataPathGB.setDataPath_ledit(str(selectedSampleRequest["directory"]))
       self.rasterStepEdit.setText(str(selectedSampleRequest["gridStep"]))
       rasterStep = int(selectedSampleRequest["gridStep"])
 #      self.eraseCB()
@@ -2549,6 +2518,8 @@ class controlMain(QtGui.QMainWindow):
         else:
           self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
           self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["file_prefix"]))          
+          self.dataPathGB.setBasePath_ledit(self.selectedSampleRequest["basePath"])
+          self.dataPathGB.setDataPath_ledit(self.selectedSampleRequest["directory"])
       else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
         self.selectedSampleID = self.selectedSampleRequest["sample_id"]

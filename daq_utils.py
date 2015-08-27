@@ -17,7 +17,7 @@ searchParams = {"config_params.beamline_id":beamline}
 
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port
 
 #  var_list["state"] = "Idle"
 
@@ -50,6 +50,8 @@ def init_environment():
   else: #default q4
     det_radius = 94.0 
   det_type = beamlineConfig["detector_type"]
+  imgsrv_port = beamlineConfig["imgsrv_port"]
+  imgsrv_host = beamlineConfig["imgsrv_host"]
   has_dna = int(beamlineConfig["has_edna"])
   has_beamline = int(beamlineConfig["has_beamline"])
   detectorOffline = int(beamlineConfig["detector_offline"])
@@ -182,7 +184,8 @@ def createDefaultRequest(sample_id):
     screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
     screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
     screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
-
+    sampleName = str(getSampleNamebyID(sample_id))
+    basePath = os.getcwd()
     request = {
                "sample_id": sample_id,
                "sweep_start": screenPhist,  "sweep_end": screenPhiend,
@@ -190,8 +193,9 @@ def createDefaultRequest(sample_id):
                "exposure_time": screenExptime,
                "priority": 0,
                "protocol": "standard",
-               "directory": "./",
-               "file_prefix": str(getSampleNamebyID(sample_id)),
+               "basePath": basePath,
+               "file_prefix": sampleName,
+               "directory": basePath+"/projID/"+sampleName+"/1/",
                "file_number_start": 1,
                "energy":screenEnergy,
                "wavelength": energy2wave(screenEnergy),
@@ -203,6 +207,12 @@ def createDefaultRequest(sample_id):
 
     return request
 
+def createResult(typeName,resultObj):
+  result = {}
+  result["type"] = typeName
+  result["timestamp"] = time.time()
+  result["resultObj"] = resultObj
+  return result
 
 #def calc_reso_edge(distance,wave,theta):
 #  if (distance < 1.0):
