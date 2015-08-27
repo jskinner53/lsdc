@@ -58,3 +58,8 @@ def drop_all_tmp_dbs(mongo_conn, suffixroot=None):
 
     else:
         print('no suffixroot arg passed and no DB_LIB_SUFFIX env var set', file=sys.stderr)
+
+
+def copydb(fromdb, todb):
+    client = mongoengine.connection.MongoClient()  # uses existing mongoengine connection?
+    client.admin.command('copydb', fromdb=fromdb, todb=todb)
