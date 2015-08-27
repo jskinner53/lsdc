@@ -12,9 +12,9 @@ import mongoengine
 from  mongoengine import NotUniqueError
 
 
-from .odm_templates import (Sample, Container, Request, Result,
+from odm_templates import (Sample, Container, Request, Result,
                            GenericFile, Types, Field)
-from .odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
+from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
 

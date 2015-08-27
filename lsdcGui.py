@@ -356,7 +356,7 @@ class DewarTree(QtGui.QTreeView):
         puck = None
         collectionRunning = False
         self.model.clear()
-        dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
+        dewarContents = db_lib.getContainerByName("primaryDewar")["item_list"]
         for i in range (0,len(dewarContents)): #dewar contents is the list of puck IDs
           parentItem = self.model.invisibleRootItem()
           if (dewarContents[i]==None):
@@ -471,7 +471,7 @@ class DewarTree(QtGui.QTreeView):
         selectedSampleIndex = None
         self.model.clear()
         self.orderedRequests = db_lib.getOrderedRequestList()
-        dewarContents = db_lib.getContainerByName("primaryDewar2")["item_list"]
+        dewarContents = db_lib.getContainerByName("primaryDewar")["item_list"]
         maxPucks = len(dewarContents)
         requestedSampleList = []
         for i in xrange(len(self.orderedRequests)): # I need a list of samples for parent nodes
@@ -2019,19 +2019,7 @@ class controlMain(QtGui.QMainWindow):
           rasterDef["rowDefs"].append(newRowDef)
       self.addSampleRequestCB(rasterDef)
       return #short circuit
-      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-###      tempnewRasterRequest = db_lib.createDefaultRequest(self.selectedSampleID)
-###      tempnewRasterRequest["protocol"] = "raster"
-###      tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
-      self.selectedSampleRequest["protocol"] = "raster"
-      self.selectedSampleRequest["rasterDef"] = rasterDef
-#      db_lib.updateRequest(newRasterRequest)
-      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,self.selectedSampleRequest)
-###      newRasterRequest =db_lib.addRequesttoSample(self.selectedSampleID,tempnewRasterRequest)
-      self.treeChanged_pv.put(1)      
-#      db_lib.addRaster(rasterDef)
-      self.rasterDefList.append(newRasterRequest)
-      self.drawPolyRaster(newRasterRequest)
+
 
     def rasterIsDrawn(self,rasterReq):
       for i in xrange(len(self.rasterList)):
@@ -2284,7 +2272,7 @@ class controlMain(QtGui.QMainWindow):
              if (colRequest["protocol"] == "characterize"):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                colRequest["characterizationParams"] = characterizationParams
-             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
+             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest,timestamp=time.time())
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -2335,7 +2323,7 @@ class controlMain(QtGui.QMainWindow):
           framesPerPoint = int(self.vectorFPP_ledit.text())
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           colRequest["vectorParams"] = vectorParams
-        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest)
+        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest,timestamp=time.time())
 #        if (rasterDef != False):
         if (rasterDef != None):
           self.rasterDefList.append(newSampleRequest)
@@ -2404,7 +2392,7 @@ class controlMain(QtGui.QMainWindow):
          ipos = int(dewarPos)
 #         ipos = int(dewarPos)-1
          if (ok):
-           db_lib.insertIntoContainer("primaryDewar2",ipos,db_lib.getContainerIDbyName(puckName))
+           db_lib.insertIntoContainer("primaryDewar",ipos,db_lib.getContainerIDbyName(puckName))
            self.treeChanged_pv.put(1)
 
 
