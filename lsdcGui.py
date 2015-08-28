@@ -398,7 +398,7 @@ class DewarTree(QtGui.QTreeView):
 #                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
                   selectedSampleIndex = self.model.indexFromItem(item)
-                sampleRequestList = db_lib.getSampleByID(puckContents[j])["requestList"]
+                sampleRequestList = db_lib.getRequestsBySampleID(puckContents[j])
                 for k in xrange(len(sampleRequestList)):
                   col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(sampleRequestList[k]["file_prefix"]+"_"+sampleRequestList[k]["protocol"]))
                   col_item.setData(sampleRequestList[k]["request_id"])
