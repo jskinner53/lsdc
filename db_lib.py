@@ -551,6 +551,7 @@ def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None
     top level.
     """
 
+    kwargs['sample_id'] = sample_id
     r = createRequest(request_type, request_obj=request_obj, timestamp=timestamp,
                       as_mongo_obj=True, **kwargs)
 
