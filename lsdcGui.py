@@ -400,6 +400,8 @@ class DewarTree(QtGui.QTreeView):
                   selectedSampleIndex = self.model.indexFromItem(item)
                 sampleRequestList = db_lib.getRequestsBySampleID(puckContents[j])
                 for k in xrange(len(sampleRequestList)):
+                  if not (sampleRequestList[k].has_key("protocol")):
+                    continue
                   col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(sampleRequestList[k]["file_prefix"]+"_"+sampleRequestList[k]["protocol"]))
                   col_item.setData(sampleRequestList[k]["request_id"])
                   col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
@@ -2272,7 +2274,7 @@ class controlMain(QtGui.QMainWindow):
              if (colRequest["protocol"] == "characterize"):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                colRequest["characterizationParams"] = characterizationParams
-             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest,timestamp=time.time())
+             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest)
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -2323,7 +2325,7 @@ class controlMain(QtGui.QMainWindow):
           framesPerPoint = int(self.vectorFPP_ledit.text())
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           colRequest["vectorParams"] = vectorParams
-        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest,timestamp=time.time())
+        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,colRequest["protocol"],colRequest)
 #        if (rasterDef != False):
         if (rasterDef != None):
           self.rasterDefList.append(newSampleRequest)
