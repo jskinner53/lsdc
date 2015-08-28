@@ -281,8 +281,12 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
     
 
 def getRequestsBySampleID(sample_id):
+    """
+    return a list of request dictionaries for the given sample_id
+    """
     s = getSampleByID(sample_id, as_mongo_obj=True)
-    return [r.request_id for r in s.requestList]
+    return [r.to_mongo() for r in s.requestList]
+
 
 def getSampleByID(sample_id, as_mongo_obj=False):
     """
