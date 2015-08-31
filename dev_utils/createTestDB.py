@@ -131,10 +131,17 @@ def createTestDB():
 #                      {'test_result_value': 'bare result 1'})
         
         # in requestList on sample
-#        request_id = addRequesttoSample(sampID,
-#                                 request_type,
-#                                 {'test_request_param': 'test param 1'},
-#                                 as_mongo_obj=True)
+
+        request_id = addRequesttoSample(sampID,
+                                 request_type,
+                                 {'test_request_param': 'test param 1'},
+                                 as_mongo_obj=True)
+
+        # in requestList on sample
+        request_id = addRequesttoSample(sampID,
+                                 request_type,
+                                 {'test_request_param': 'test param 2'},
+                                 as_mongo_obj=True)
         
         # in resultsList on sample
 #        addResultforRequest(result_type, request_id,

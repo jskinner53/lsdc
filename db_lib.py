@@ -515,6 +515,7 @@ def createRequest(request_type, request_obj=None, timestamp=None, as_mongo_obj=F
     request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
     request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
     timestamp:  datetime.datetime.now() if not provided
+    priority:  optional, integer priority level
 
     anything else (priority, sample_id) can either be embedded in the
     request_object or passed in as keyword args to get saved at the
@@ -809,21 +810,47 @@ def updateRequest(request_dict):
 
 
 def deleteRequest(reqObj):
-    sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
+    """
+    reqObj should be a dictionary with a 'request_id' field
+    and optionally a 'sample_id' field.
+
+    If the request to be deleted is the last entry in a sample's
+    requestList, the list attribute is removed entirely, not just set
+    to an empty list!
+
+    The request_id attribute for any results which references the deleted request
+    are also entirely removed, not just set to None!
+
+    This seems to be the way wither mongo, pymongo, or mongoengine works :(
+    """
+
     r_id = reqObj['request_id']
 
     # delete it from any sample first
-    # maybe there's a slicker way to get the req with a query and remove it?
-    for req in sample.requestList:
-        if req.request_id == r_id:
-            print("found the request to delete")
-            sample.requestList.remove(req)
-            sample.save()
-            break
+    try:
+        sample = getSampleByID(reqObj['sample_id'], as_mongo_obj=True)
+    
+        # maybe there's a slicker way to get the req with a query and remove it?
+        for req in sample.requestList:
+            if req.request_id == r_id:
+                print("found the request to delete")
+                sample.requestList.remove(req)
+                sample.save()
+                break
 
-    # then directly in Requests
+    except KeyError:
+        pass  # not all requests are linked to samples
+
+    # then any results that refer to it
+    for res in Result.objects(__raw__={'request_id': r_id}):
+        res.request_id = None
+        res.save()
+
+    # then finally directly in Requests
     r = getRequest(r_id, as_mongo_obj=True)
-    r.delete()
+    if r:
+        r.delete()
+
 
 
 def deleteSample(sampleObj):
