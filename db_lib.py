@@ -515,6 +515,7 @@ def createRequest(request_type, request_obj=None, timestamp=None, as_mongo_obj=F
     request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
     request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
     timestamp:  datetime.datetime.now() if not provided
+    priority:  optional, integer priority level
 
     anything else (priority, sample_id) can either be embedded in the
     request_object or passed in as keyword args to get saved at the
