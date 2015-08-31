@@ -12,9 +12,9 @@ import mongoengine
 from  mongoengine import NotUniqueError
 
 
-from odm_templates import (Sample, Container, Request, Result,
+from .odm_templates import (Sample, Container, Request, Result,
                            GenericFile, Types, Field)
-from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
+from .odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
 
@@ -769,11 +769,11 @@ def popNextRequest():
     # is this more 'getNextRequest'? where's the 'pop'?
     orderedRequests = getOrderedRequestList()
     try:
-        if (orderedRequests[0]["priority"] != 99999):
-            if orderedRequests[0]["priority"] > 0:
+        if (orderedRequests[0]['request_obj']["priority"] != 99999):
+            if orderedRequests[0]['request_obj']["priority"] > 0:
                 return orderedRequests[0]
             else: #99999 priority means it's running, try next
-                if orderedRequests[1]["priority"] > 0:
+                if orderedRequests[1]['request_obj']["priority"] > 0:
                     return orderedRequests[1]
     except IndexError:
         pass
@@ -839,7 +839,7 @@ def removePuckFromDewar(dewarPos):
 
 def updatePriority(request_id, priority):
     r = getRequest(request_id, as_mongo_obj=True)
-    r.priority = priority
+    r.request_obj['priority'] = priority
     r.save()
 
 
@@ -857,8 +857,8 @@ def getSortedPriorityList(with_requests=False): # mayb an intermediate to return
     requests = getQueue()
 
     for request in requests:
-        if request["priority"] not in pList:
-            pList.append(request["priority"])
+        if request['request_obj']["priority"] not in pList:
+            pList.append(request['request_obj']["priority"])
 
     if with_requests:
         return sorted(pList, reverse=True), requests
@@ -875,7 +875,7 @@ def getOrderedRequestList():
 
     for priority in priorities:  # just sorts priorities 
         for request in requests:
-            if request["priority"] == priority:
+            if request['request_obj']["priority"] == priority:
                 orderedRequestsList.append(request)
 
     return orderedRequestsList
