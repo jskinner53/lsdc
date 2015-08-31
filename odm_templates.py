@@ -43,8 +43,10 @@ class Request(DynamicDocument):
 
 class Result(DynamicDocument):
     result_id = SequenceField(required=True, unique=True, **args_dict)
-    request_id = ReferenceField(Request, dbref=True, required=True,
-                                reverse_delete_rule=mongoengine.NULLIFY)
+#    request_id = ReferenceField(Request, dbref=True, required=True,
+#                                reverse_delete_rule=mongoengine.NULLIFY)
+    request_id = ReferenceField(Request, dbref=True,
+                                reverse_delete_rule=mongoengine.DENY)
     timestamp = ComplexDateTimeField(required=True, default=datetime.datetime.now())
     result_type = ReferenceField(Types, dbref=True, required=True,
                                  reverse_delete_rule=mongoengine.DENY)
@@ -55,7 +57,7 @@ class Sample(DynamicDocument):
     # these are not required and not necessarily recommended!
     # they're mostly leftovers
     requestList = ListField(ReferenceField(Request, dbref=True,
-                                           reverse_delete_rule=mongoengine.PULL))
+                                           reverse_delete_rule=mongoengine.DENY))
     resultList = ListField(ReferenceField(Result, dbref=True,
                                           reverse_delete_rule=mongoengine.DENY))
 
