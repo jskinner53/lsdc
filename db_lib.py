@@ -424,7 +424,11 @@ def getResultsforRequest(request_id):
     """
     reslist = []
 
-    for result in Results.objects(request_id=request_id):
+    # convert int ('request_id') to ObjectID ('_id')
+    if isinstance(request_id, int):
+        request_id = Request.objects(__raw__={'request_id': request_id}).only('id')[0].id
+
+    for result in Result.objects(request_id=request_id):
         reslist.append(result.to_mongo())
 
     return reslist
@@ -842,7 +846,8 @@ def deleteRequest(reqObj):
         pass  # not all requests are linked to samples
 
     # then any results that refer to it
-    for res in Result.objects(__raw__={'request_id': r_id}):
+    req = Request.objects(__raw__={'request_id': r_id}).only('id')[0].id
+    for res in Result.objects(request_id=req):
         res.request_id = None
         res.save()
 
