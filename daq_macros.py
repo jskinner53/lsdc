@@ -180,7 +180,7 @@ def generateGridMap(rasterRequest):
   print "done parsing dials output"
   rasterResultObj = {"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
 #  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
-  db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj,timestamp=time.time())
+  db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
 
 
@@ -336,7 +336,7 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   tempnewRasterRequest["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest,timestamp=time.time())
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
 #  db_lib.addRaster(rasterDef)
 #  set_field("xrecRasterFlag",1)
@@ -382,7 +382,7 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
   tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   tempnewRasterRequest["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest,timestamp=time.time())
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   return newRasterRequest["request_id"]
 #  daq_lib.refreshGuiTree() # not sure
@@ -670,7 +670,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
  #   characterizationResult["timestamp"] = time.time()
     characterizationResultObj = {"strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
 #    characterizationResult["resultObj"] = characterizationResultObj
-    db_lib.addResultforRequest("characterizationStrategy",charRequest["request_id"], characterizationResultObj,timestamp=time.time())
+    db_lib.addResultforRequest("characterizationStrategy",charRequest["request_id"], characterizationResultObj)
 #####    pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_strat_comment)
     xsStrategyStatistics = xsCollectionPlan[0].getStatistics()
     xsStrategyResolutionBins = xsStrategyStatistics.getResolutionBin()

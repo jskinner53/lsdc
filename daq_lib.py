@@ -388,7 +388,7 @@ def collectData(currentRequest):
         tempnewStratRequest["detDist"] = stratDetDist
         tempnewStratRequest["directory"] = data_directory_name
 
-        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest["protocol"],tempnewStratRequest,timestamp = time.time())        
+        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest["protocol"],tempnewStratRequest)
 
     else: #standard
       sweep_start = currentRequest["sweep_start"]
@@ -546,7 +546,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None):
     xtalpicJpegDataResult["data"] = imgRef
 #    xtalpicJpegDataResult["timestamp"] = time.time()
 #    xtalpicJpegDataResult["type"] = "xtalpicJpeg"
-    db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult,timestamp=time.time())
+    db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult)
 
 
 
@@ -600,7 +600,7 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
 #    result["resultObj"] = resultObj
-    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj,timestamp=time.time())
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
 
   return imageJpegData
 
@@ -656,7 +656,7 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
 #    result["resultObj"] = resultObj
-    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj,timestamp=time.time())
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
 
   return imageJpegData
 
