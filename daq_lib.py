@@ -307,7 +307,7 @@ def runDCQueue(): #maybe don't run rasters from here???
 #      mountSample(samplePos)
       mountSample(sampleID)
 #      set_field("mounted_pin",samplePos)
-    currentRequest["priority"] = 99999
+    currentRequest["request_obj"]["priority"] = 99999
 #    currentRequest["priority"] = -999
     db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
@@ -322,13 +322,14 @@ def stopDCQueue():
 def collectData(currentRequest):
   global data_directory_name
 #  sampleName = sampleNameFromID(currentRequest["sample_id"])
-  data_directory_name = str(currentRequest["directory"])
+  reqObj = currentRequest["request_obj"]
+  data_directory_name = str(reqObj["directory"])
 #  data_directory_name = directory_root
   if not (os.path.isdir(data_directory_name)):
     comm_s = "mkdir -p " + data_directory_name
     os.system(comm_s)
-  print currentRequest["protocol"]
-  prot = str(currentRequest["protocol"])
+  print reqObj["protocol"]
+  prot = str(reqObj["protocol"])
   if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
     return
@@ -336,39 +337,39 @@ def collectData(currentRequest):
     daq_macros.vectorScan(currentRequest)
 #    return
   else: #standard, screening, or edna - these may require autoalign, checking first
-    if (currentRequest["pos_x"] != 0):
-      beamline_lib.mva("X",currentRequest["pos_x"])
-      beamline_lib.mva("Y",currentRequest["pos_y"])
-      beamline_lib.mva("Z",currentRequest["pos_z"])
+    if (reqObj["pos_x"] != 0):
+      beamline_lib.mva("X",reqObj["pos_x"])
+      beamline_lib.mva("Y",reqObj["pos_y"])
+      beamline_lib.mva("Z",reqObj["pos_z"])
     else:
       print "autoRaster"
       daq_macros.autoRasterLoop(currentRequest["sample_id"])    
-    exposure_period = currentRequest["exposure_time"]
-    wavelength = currentRequest["wavelength"]
-    resolution = currentRequest["resolution"]
-    slit_height = currentRequest["slit_height"]
-    slit_width = currentRequest["slit_width"]
-    attenuation = currentRequest["attenuation"]
-    img_width = currentRequest["img_width"]
+    exposure_period = reqObj["exposure_time"]
+    wavelength = reqObj["wavelength"]
+    resolution = reqObj["resolution"]
+    slit_height = reqObj["slit_height"]
+    slit_width = reqObj["slit_width"]
+    attenuation = reqObj["attenuation"]
+    img_width = reqObj["img_width"]
 
-    file_prefix = str(currentRequest["file_prefix"])
+    file_prefix = str(reqObj["file_prefix"])
 #  data_directory_name = get_data_directory_name(file_prefix) # for now
 
-    if (currentRequest["protocol"] == "screen"):
+    if (reqObj["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
       range_degrees = img_width
       for i in range (0,screenImages):
-        sweep_start = currentRequest["sweep_start"]+(i*screenRange)
-        sweep_end = currentRequest["sweep_end"]+(i*screenRange)
-        file_prefix = str(currentRequest["file_prefix"]+"_"+str(i*screenRange))
+        sweep_start = reqObj["sweep_start"]+(i*screenRange)
+        sweep_end = reqObj["sweep_end"]+(i*screenRange)
+        file_prefix = str(reqObj["file_prefix"]+"_"+str(i*screenRange))
 #      data_directory_name = get_data_directory_name(file_prefix) # for now
-        data_directory_name = str(currentRequest["directory"]) # for now
-        file_number_start = currentRequest["file_number_start"]
+        data_directory_name = str(reqObj["directory"]) # for now
+        file_number_start = reqObj["file_number_start"]
         beamline_lib.mva("Omega",sweep_start)
         imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-    elif (currentRequest["protocol"] == "characterize"):
-      characterizationParams = currentRequest["characterizationParams"]
+    elif (reqObj["protocol"] == "characterize"):
+      characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
       if (index_success):
         resultsList = db_lib.getResultsforRequest(currentRequest["request_id"]) # because for testing I keep running the same request. Probably not in usual use.
@@ -381,35 +382,36 @@ def collectData(currentRequest):
         stratDetDist = strategyResults["detDist"]
         sampleID = currentRequest["sample_id"]
         tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
-        tempnewStratRequest["sweep_start"] = stratStart
-        tempnewStratRequest["sweep_end"] = stratEnd
-        tempnewStratRequest["img_width"] = stratWidth
-        tempnewStratRequest["exposure_time"] = stratExptime
-        tempnewStratRequest["detDist"] = stratDetDist
-        tempnewStratRequest["directory"] = data_directory_name
-
-        newStratRequest = db_lib.addRequesttoSample(sampleID,tempnewStratRequest["protocol"],tempnewStratRequest)
+        newReqObj = tempnewStratRequest["request_obj"]
+        newReqObj["sweep_start"] = stratStart
+        newReqObj["sweep_end"] = stratEnd
+        newReqObj["img_width"] = stratWidth
+        newReqObj["exposure_time"] = stratExptime
+        newReqObj["detDist"] = stratDetDist
+        newReqObj["directory"] = data_directory_name
+        newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj)
 
     else: #standard
-      sweep_start = currentRequest["sweep_start"]
-      sweep_end = currentRequest["sweep_end"]
-      file_prefix = str(currentRequest["file_prefix"])
-      file_number_start = currentRequest["file_number_start"]
+      sweep_start = reqObj["sweep_start"]
+      sweep_end = reqObj["sweep_end"]
+      file_prefix = str(reqObj["file_prefix"])
+      file_number_start = reqObj["file_number_start"]
       range_degrees = abs(sweep_end-sweep_start)
       beamline_lib.mva("Omega",sweep_start)
       imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-      if (currentRequest["fastDP"]):
-        if (currentRequest["fastEP"]):
+      if (reqObj["fastDP"]):
+        if (reqObj["fastEP"]):
           fastEPFlag = 1
         else:
           fastEPFlag = 0
         comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
         print comm_s
         os.system(comm_s)
-      if (currentRequest["xia2"]):
+      if (reqObj["xia2"]):
         comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
         os.system(comm_s)
-  currentRequest["priority"] = -1
+  
+  currentRequest["request_obj"]["priority"] = -1
   db_lib.updateRequest(currentRequest)
 
   refreshGuiTree()
@@ -710,18 +712,19 @@ def vector_move(t_s,vecRequest): #I think t_s is a fraction of the total vector,
 
 #  print "vec t = " + str(t_s)
   t = float(t_s)
-  trans_total = vecRequest["vectorParams"]["trans_total"]
+  reqObj = vecRequest["request_obj"]
+  trans_total = reqObj["vectorParams"]["trans_total"]
   trans_done = trans_total*t
   percent_done = t*100.0
   vec_s = "translation total = %f, translation done = %f, translation percent done = %f\n" % (trans_total,trans_done,percent_done)
   print vec_s
 #  daq_utils.broadcast_output(vec_s)
-  x_vec_start=vecRequest["vectorParams"]["vecStart"]["x"]
-  y_vec_start=vecRequest["vectorParams"]["vecStart"]["y"]
-  z_vec_start=vecRequest["vectorParams"]["vecStart"]["z"]
-  x_vec = vecRequest["vectorParams"]["x_vec"]
-  y_vec = vecRequest["vectorParams"]["y_vec"]
-  z_vec = vecRequest["vectorParams"]["z_vec"]
+  x_vec_start=reqObj["vectorParams"]["vecStart"]["x"]
+  y_vec_start=reqObj["vectorParams"]["vecStart"]["y"]
+  z_vec_start=reqObj["vectorParams"]["vecStart"]["z"]
+  x_vec = reqObj["vectorParams"]["x_vec"]
+  y_vec = reqObj["vectorParams"]["y_vec"]
+  z_vec = reqObj["vectorParams"]["z_vec"]
   new_x = x_vec_start + (x_vec*t)
   new_y = y_vec_start + (y_vec*t)
   new_z = z_vec_start + (z_vec*t)

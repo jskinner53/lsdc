@@ -75,6 +75,11 @@ def createTestDB():
         for t in types:
             print('name: {0}, parent_type {1}'.format(t['name'], t['parent_type']))
             createType(t['name'], t['description'], t['parent_type'], capacity=t['capacity'])
+        createType("raster","","request")        
+        createType("standard","","request")        
+        createType("vector","","request")        
+        createType("characterize","","request")        
+        createType("screen","","request")        
         
         
         # containers
@@ -121,19 +126,20 @@ def createTestDB():
                                    as_mongo_obj=True)
         
         # bare results
-        result_type = 'test_result'
-        createResult(result_type, request_id,
-                      {'test_result_value': 'bare result 1'})
+#        result_type = 'test_result'
+#        createResult(result_type, request_id,
+#                      {'test_result_value': 'bare result 1'})
         
         # in requestList on sample
-        request_id = addRequesttoSample(sampID,
-                                 request_type,
-                                 {'test_request_param': 'test param 1'},
-                                 as_mongo_obj=True)
+#        request_id = addRequesttoSample(sampID,
+#                                 request_type,
+#                                 {'test_request_param': 'test param 1'},
+#                                 as_mongo_obj=True)
         
         # in resultsList on sample
-        addResultforRequest(result_type, request_id,
-                             {'test_result_val': 'test val 1'})
+#        addResultforRequest(result_type, request_id,
+#                             {'test_result_val': 'test val 1'})
+        beamlineInfo('john', 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':-99})
 
     except Exception as e:
         print('Warning! caught exception, dropping incomplete db!\n\n{0}\n'.format(e))

@@ -127,7 +127,8 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 def generateGridMap(rasterRequest):
 #  rasterDef = db_lib.getRasters()[0]
 #  print rasterDef
-  rasterDef = rasterRequest["rasterDef"]
+  reqObj = rasterRequest["request_obj"]
+  rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
   rasterStartX = float(rasterDef["x"])
@@ -135,7 +136,7 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
 #  filePrefix = "raster" #for now
-  filePrefix = rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]
+  filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
   testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
   testImgCount = 0
   rasterCellMap = {}
@@ -168,13 +169,13 @@ def generateGridMap(rasterRequest):
         zMotCellAbsoluteMove = zMotAbsoluteMove+(j*stepsize)
 #      zMotAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
       dataFileName = create_filename(filePrefix+"_"+str(i),j+1)
-      os.system("mkdir -p " + rasterRequest["directory"])
+      os.system("mkdir -p " + reqObj["directory"])
       comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
       os.system(comm_s)
       testImgCount+=1
       rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotCellAbsoluteMove}
       rasterCellMap[dataFileName] = rasterCellCoords
-  comm_s = "ls -rt " + rasterRequest["directory"]+"/"+rasterRequest["file_prefix"]+"*.cbf|dials.find_spots_client"
+  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
   print comm_s
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print "done parsing dials output"
@@ -186,7 +187,8 @@ def generateGridMap(rasterRequest):
 
 def snakeRaster(rasterReqID,grain=""):
   rasterRequest = db_lib.getRequest(rasterReqID)
-  rasterDef = rasterRequest["rasterDef"]
+  reqObj = rasterRequest["request_obj"]
+  rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
   rasterStartX = float(rasterDef["x"])
@@ -228,7 +230,7 @@ def snakeRaster(rasterReqID,grain=""):
     yxRelativeMove = -yRelativeMove*cos(omegaRad)
     mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
   rasterResult = generateGridMap(rasterRequest)
-  rasterRequest["rasterDef"]["status"] = 2
+  rasterRequest["request_obj"]["rasterDef"]["status"] = 2
   gotoMaxRaster(rasterResult)
   db_lib.updateRequest(rasterRequest)
   set_field("xrecRasterFlag",rasterRequest["request_id"])  
@@ -325,18 +327,19 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
-  tempnewRasterRequest["protocol"] = "raster"
-  tempnewRasterRequest["directory"] = os.getcwd()+"/rasterImages/"
+  reqObj = tempnewRasterRequest["request_obj"]
+  reqObj["protocol"] = "raster"
+  reqObj["directory"] = os.getcwd()+"/rasterImages/"
   if (numsteps_h == 1): #column raster
-    tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_lineRaster"
+    reqObj["file_prefix"] = reqObj["file_prefix"]+"_lineRaster"
     rasterDef["rasterType"] = "column"
   else:
-    tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_rectRaster"
+    reqObj["file_prefix"] = reqObj["file_prefix"]+"_rectRaster"
     rasterDef["rasterType"] = "normal"
-  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
-  tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-  tempnewRasterRequest["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest)
+  reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+  reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
+  reqObj["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
 #  db_lib.addRaster(rasterDef)
 #  set_field("xrecRasterFlag",1)
@@ -376,13 +379,14 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
 #  print rasterDef
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
-  tempnewRasterRequest["protocol"] = "raster"
-  tempnewRasterRequest["directory"] = os.getcwd()+"/rasterImages/"
-  tempnewRasterRequest["file_prefix"] = tempnewRasterRequest["file_prefix"]+"_polyRaster"
-  tempnewRasterRequest["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
-  tempnewRasterRequest["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-  tempnewRasterRequest["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,tempnewRasterRequest["protocol"],tempnewRasterRequest)
+  reqObj = tempnewRasterRequest["request_obj"]
+  reqObj["protocol"] = "raster"
+  reqObj["directory"] = os.getcwd()+"/rasterImages/"
+  reqObj["file_prefix"] = reqObj["file_prefix"]+"_polyRaster"
+  reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
+  reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
+  reqObj["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   return newRasterRequest["request_id"]
 #  daq_lib.refreshGuiTree() # not sure
