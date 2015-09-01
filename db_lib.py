@@ -1,19 +1,19 @@
 #!/usr/bin/python
-from __future__ import (absolute_import, print_function)
+from __future__ import print_function
+#from __future__ import (absolute_import, print_function)
 
 import sys
 import os
 import socket
 
 import bson
-from bson import DBRef
-
 import mongoengine 
-from  mongoengine import NotUniqueError
 
 
+# I would prefer if these were relative imports :(
 from odm_templates import (Sample, Container, Request, Result,
                            GenericFile, Types, Field)
+
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
 
@@ -300,7 +300,7 @@ def getSampleByID(sample_id, as_mongo_obj=False):
 
 #def getSampleByRef(sample_ref, as_mongo_obj=False):
 #    """
-#    sample_ref:  required, DBRef
+#    sample_ref:  required, bson.DBRef
 #    """
 #
 #    s = Sample.objects(__raw__={'_id': sample_ref.id})
@@ -327,7 +327,7 @@ def getSampleNamebyID(sample_id):
 
 #def getSampleNamebyRef(sample_ref):
 #    """
-#    sample_ref:  required, DBRef
+#    sample_ref:  required, bson.DBRef
 #    """
 #    s = Sample.objects(__raw__={'_id': sample_ref.id})
 #    return _try0_dict_key(s, 'sample', 'sample _id', sample_ref, -99,
@@ -356,10 +356,10 @@ def createResult(result_type, request_id, result_obj=None, timestamp=None,
     request_id:   int, Request object, or dbref, required
     """
 
-    if not isinstance(result_type, Result) and not isinstance(result_type, DBRef):
+    if not isinstance(result_type, Result) and not isinstance(result_type, bson.DBRef):
         result_type = type_from_name(result_type, as_mongo_obj=True)
 
-    if not isinstance(request_id, Request) and not isinstance(request_id, DBRef):
+    if not isinstance(request_id, Request) and not isinstance(request_id, bson.DBRef):
         request_id = getRequest(request_id, as_mongo_obj=True)
         
     kwargs['result_type'] = result_type
@@ -377,10 +377,10 @@ def createResult(result_type, request_id, result_obj=None, timestamp=None,
 
 def getResult(result_id, as_mongo_obj=False):
     """
-    result_id:  required, int or DBRef
+    result_id:  required, int or bson.DBRef
     """
 
-    if isinstance(result_id, DBRef):
+    if isinstance(result_id, bson.DBRef):
         result = Request.objects(__raw__={'_id': result_id.id})
         return _try0_maybe_mongo(result, 'result', 'result _id', result_id.id, None,
                                  as_mongo_obj=as_mongo_obj)
@@ -424,6 +424,9 @@ def getResultsforRequest(request_id):
     """
     reslist = []
 
+    # convert int ('request_id') to ObjectID ('_id')
+    if isinstance(request_id, int):
+        request_id = Request.objects(__raw__={'request_id': request_id}).only('id')[0].id
     for result in Result.objects(request_id=request_id):
         reslist.append(result.to_mongo())
 
@@ -842,7 +845,8 @@ def deleteRequest(reqObj):
         pass  # not all requests are linked to samples
 
     # then any results that refer to it
-    for res in Result.objects(__raw__={'request_id': r_id}):
+    req = Request.objects(__raw__={'request_id': r_id}).only('id')[0].id
+    for res in Result.objects(request_id=req):
         res.request_id = None
         res.save()
 
@@ -850,7 +854,6 @@ def deleteRequest(reqObj):
     r = getRequest(r_id, as_mongo_obj=True)
     if r:
         r.delete()
-
 
 
 def deleteSample(sampleObj):
