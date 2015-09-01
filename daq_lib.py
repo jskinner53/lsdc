@@ -307,9 +307,10 @@ def runDCQueue(): #maybe don't run rasters from here???
 #      mountSample(samplePos)
       mountSample(sampleID)
 #      set_field("mounted_pin",samplePos)
-    currentRequest["request_obj"]["priority"] = 99999
+##    currentRequest["request_obj"]["priority"] = 99999
+    db_lib.updatePriority(currentRequest["request_id"],99999)
 #    currentRequest["priority"] = -999
-    db_lib.updateRequest(currentRequest)
+##    db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
     colStatus = collectData(currentRequest)
 
@@ -389,7 +390,7 @@ def collectData(currentRequest):
         newReqObj["exposure_time"] = stratExptime
         newReqObj["detDist"] = stratDetDist
         newReqObj["directory"] = data_directory_name
-        newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj)
+        newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=0)
 
     else: #standard
       sweep_start = reqObj["sweep_start"]
@@ -411,8 +412,9 @@ def collectData(currentRequest):
         comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
         os.system(comm_s)
   
-  currentRequest["request_obj"]["priority"] = -1
-  db_lib.updateRequest(currentRequest)
+  db_lib.updatePriority(currentRequest["request_id"],-1)
+#  currentRequest["request_obj"]["priority"] = -1
+#  db_lib.updateRequest(currentRequest)
 
   refreshGuiTree()
 

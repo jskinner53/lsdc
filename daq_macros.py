@@ -174,14 +174,14 @@ def generateGridMap(rasterRequest):
       os.system(comm_s)
       testImgCount+=1
       rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotCellAbsoluteMove}
-      rasterCellMap[dataFileName] = rasterCellCoords
+      rasterCellMap[dataFileName[:-4]] = rasterCellCoords 
   comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
   print comm_s
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print "done parsing dials output"
   rasterResultObj = {"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
 #  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
-  db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
+  rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
 
 
@@ -230,8 +230,11 @@ def snakeRaster(rasterReqID,grain=""):
     yxRelativeMove = -yRelativeMove*cos(omegaRad)
     mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
   rasterResult = generateGridMap(rasterRequest)
+  print "1"
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
+  print "2"
   gotoMaxRaster(rasterResult)
+  print "3"
   db_lib.updateRequest(rasterRequest)
   set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
@@ -262,7 +265,7 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
 def gotoMaxRaster(rasterResult):
   ceiling = 0
   hotFile = ""
-  cellResults = rasterResult["resultObj"]["rasterCellResults"]['resultObj']["data"]["response"]
+  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
 ##  print cellResults
   for i in range (0,len(cellResults)):
     spotcount = cellResults[i]["spot_count"]
@@ -272,9 +275,9 @@ def gotoMaxRaster(rasterResult):
   if (ceiling > 0):
     print ceiling
     print hotFile
-    rasterMap = rasterResult["resultObj"]["rasterCellMap"]
+    rasterMap = rasterResult["result_obj"]["rasterCellMap"]
 ##    print rasterMap
-    hotCoords = rasterMap[hotFile]
+    hotCoords = rasterMap[hotFile[:-4]] 
     x = hotCoords["x"]
     y = hotCoords["y"]
     z = hotCoords["z"]
@@ -338,8 +341,8 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
     rasterDef["rasterType"] = "normal"
   reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-  reqObj["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj)
+##  reqObj["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
 #  db_lib.addRaster(rasterDef)
 #  set_field("xrecRasterFlag",1)
@@ -385,8 +388,8 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
   reqObj["file_prefix"] = reqObj["file_prefix"]+"_polyRaster"
   reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-  reqObj["priority"] = 5000
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj)
+##  reqObj["priority"] = 5000
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   return newRasterRequest["request_id"]
 #  daq_lib.refreshGuiTree() # not sure

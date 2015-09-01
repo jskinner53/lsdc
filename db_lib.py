@@ -424,7 +424,7 @@ def getResultsforRequest(request_id):
     """
     reslist = []
 
-    for result in Results.objects(request_id=request_id):
+    for result in Result.objects(request_id=request_id):
         reslist.append(result.to_mongo())
 
     return reslist
