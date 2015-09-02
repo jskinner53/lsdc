@@ -167,6 +167,55 @@ def constructor_from_name(name):
 
 
 
+def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, dict_key):
+    """
+    Try to get the specified key from the first ([0]th) item from a QuerySet.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
+    try:
+        return query_set.only(dict_key)[0].to_mongo()[dict_key]
+
+    except IndexError:
+        #raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+        return def_retval
+
+    except KeyError:
+        raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
+                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
+
+
+def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
+                   def_retval, as_mongo_obj=False):
+    """
+    Try to get the the first ([0]th) item from a QuerySet,
+    converted to a dictionary by default, as the raw mongo object if specified.
+    Return a default return value if there are no entries in the QuerySet.
+    """
+
+    if as_mongo_obj:
+        try:
+            return query_set[0]
+        except IndexError:
+            #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+            #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+            return def_retval
+
+    try:
+        return query_set[0].to_mongo()
+
+    except IndexError:
+        #raise ValueError('failed to find {obj} with {attr}={val}'.format(
+        #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
+        return def_retval
+
+    # hrm... .first returns the first or None, slower
+    # [0] returns the first or raises IndexError, fastest
+    # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
+    
+
 def createContainer(container_name, container_type, **kwargs):
     """
     container_name:  string, name for the new container, required
@@ -218,6 +267,10 @@ def createSample(sample_name, sample_type, **kwargs):
     kwargs['requestList'] = []
     kwargs['resultList'] = []
 
+    # initialize request count to zero
+    if not kwargs.has_key('request_count'):
+        kwargs['request_count'] = 0
+
     if isinstance(sample_type, unicode) or isinstance(sample_type, str):
         kwargs['sample_type'] = type_from_name(sample_type, as_mongo_obj=True)
 
@@ -232,54 +285,13 @@ def createSample(sample_name, sample_type, **kwargs):
     return s.sample_id
 
 
-def _try0_dict_key(query_set, obj_type_str, search_key_str, search_key_val,
-                   def_retval, dict_key):
+def incrementSampleRequestCount(sample_id):
     """
-    Try to get the specified key from the first ([0]th) item from a QuerySet.
-    Return a default return value if there are no entries in the QuerySet.
+    increment the 'request_count' attribute of the specified sample by 1
     """
-
-    try:
-        return query_set.only(dict_key)[0].to_mongo()[dict_key]
-
-    except IndexError:
-        #raise ValueError('failed to find {obj} with {attr}={val} and attr "{dk}"'.format(
-        #        obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
-        return def_retval
-
-    except KeyError:
-        raise ValueError('found {obj} with {attr}={val} but no attr "{dk}"'.format(
-                obj=obj_type_str, attr=search_key_str, val=search_key_val, dk=dict_key))
-
-
-def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
-                   def_retval, as_mongo_obj=False):
-    """
-    Try to get the the first ([0]th) item from a QuerySet,
-    converted to a dictionary by default, as the raw mongo object if specified.
-    Return a default return value if there are no entries in the QuerySet.
-    """
-
-    if as_mongo_obj:
-        try:
-            return query_set[0]
-        except IndexError:
-            #raise ValueError('failed to find {obj} with {attr}={val}'.format(
-            #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
-            return def_retval
-
-    try:
-        return query_set[0].to_mongo()
-
-    except IndexError:
-        #raise ValueError('failed to find {obj} with {attr}={val}'.format(
-        #        obj=obj_type_str, attr=search_key_str, val=search_key_val))
-        return def_retval
-
-    # hrm... .first returns the first or None, slower
-    # [0] returns the first or raises IndexError, fastest
-    # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
     
+    s = Sample.objects(__raw__={'sample_id': sample_id}).update_one(inc__request_count=1)
+
 
 def getRequestsBySampleID(sample_id):
     """
