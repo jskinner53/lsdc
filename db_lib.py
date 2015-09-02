@@ -494,7 +494,8 @@ def addFile(data=None, filename=None):
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
-    return f._id  # is this supposed to be 'id' or '_id'?
+    return f.id  # is this supposed to be 'id' or '_id'?
+#    return f._id  # is this supposed to be 'id' or '_id'?
 
 
 def getFile(_id):

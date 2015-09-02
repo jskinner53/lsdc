@@ -375,7 +375,7 @@ def collectData(currentRequest):
       if (index_success):
         resultsList = db_lib.getResultsforRequest(currentRequest["request_id"]) # because for testing I keep running the same request. Probably not in usual use.
         results = resultsList[len(resultsList)-1]
-        strategyResults = results["resultObj"]["strategy"]
+        strategyResults = results["result_obj"]["strategy"]
         stratStart = strategyResults["start"]
         stratEnd = strategyResults["end"]
         stratWidth = strategyResults["width"]

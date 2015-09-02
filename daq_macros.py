@@ -437,12 +437,12 @@ def getXrecLoopShape(sampleID):
   return rasterReqID
 
 def vectorScan(vecRequest): #bogus for now until we figure out what we want
-  print vecRequest
-  sweep_start_angle = vecRequest["sweep_start"]
-  sweep_end_angle = vecRequest["sweep_end"]
-  imgWidth = vecRequest["img_width"]
+  reqObj = vecRequest["request_obj"]
+  sweep_start_angle = reqObj["sweep_start"]
+  sweep_end_angle = reqObj["sweep_end"]
+  imgWidth = reqObj["img_width"]
   numImages = int((sweep_end_angle - sweep_start_angle) / imgWidth)
-  numSteps = int(numImages/vecRequest["vectorParams"]["fpp"])
+  numSteps = int(numImages/reqObj["vectorParams"]["fpp"])
   print "numsteps " + str(numSteps)
   for i in xrange(numSteps+1):
     vector_move(float(i)*(100.0/float(numSteps))/100.0,vecRequest)
@@ -454,7 +454,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   global dna_strategy_exptime,dna_strategy_start,dna_strategy_range,dna_strategy_end,dna_strat_dist
   global screeningoutputid
   
-  characterizationParams = charRequest["characterizationParams"]
+  characterizationParams = charRequest["request_obj"]["characterizationParams"]
   dna_res = float(characterizationParams["aimed_resolution"])
   print "dna_res = " + str(dna_res)
   dna_filename_list = []
@@ -479,7 +479,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #skinner - could move distance and wave and scan axis here, leave wave alone for now
   print "skinner about to take reference images."
   for i in range(0,int(dna_number_of_images)):
-    print "skinner prefix7 = " + prefix[0:7] + " startnum + " + str(start_image_number) + "\n"
+    print "skinner prefix7 = " + prefix[0:7] +  " " + str(start_image_number) + "\n"
     if (len(prefix)> 8):
       if ((prefix[0:7] == "postref") and (start_image_number == 1)):
         print "skinner postref bail\n"
@@ -488,33 +488,16 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   #skinner roi - maybe I can measure and use that for dna_start so that first image is face on.
     dna_start = daq_lib.get_field("datum_omega")
     colstart = float(dna_start) + (i*(abs(overlap)+float(dna_range)))
-#    colstart = colstart + daq_lib.var_list["datum_omega"]    
-#    daq_lib.move_axis_absolute(daq_lib.var_list["scan_axis"],colstart)
-#    daq_lib.move_axis_absolute("dist",dx)
     dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
     filename = daq_lib.create_filename(dna_prefix_long,image_number)
-#####    if (daq_lib.need_auto_align_xtal_pic == 1):
-    if (0):
-      daq_lib.need_auto_align_xtal_pic = 0
-      camera_offset = float(os.environ["CAMERA_OFFSET"])
-      beamline_lib.mvr("Omega",float(camera_offset))
-#####      daq_lib.move_axis_relative("omega",camera_offset)
-#####      daq_lib.take_crystal_picture_with_boxes(daq_lib.html_data_directory_name + "/xtal_align_" + str(daq_lib.sweep_seq_id))
-#####      daq_lib.move_axis_relative("omega",0-camera_offset)
-      beamline_lib.mvr("Omega",float(0-camera_offset))
-#####    if (daq_lib.need_auto_align_xtal_pic == 2 and daq_lib.has_xtalview):
-    if (0):
-      daq_lib.need_auto_align_xtal_pic = 0
-#####      daq_lib.take_crystal_picture_with_boxes(daq_lib.html_data_directory_name + "/xtal_postalign_" + str(daq_lib.sweep_seq_id))
-      postalign_jpg = "xtal_postalign_" + str(daq_lib.sweep_seq_id)
-#      postalign_jpg_th = "xtal_postalign_th_" + str(daq_lib.sweep_seq_id)    
+    print "debug " + filename
     beamline_lib.mva("Omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_lib.take_crystal_picture(reqID=charRequest["request_id"])
-    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,1) #should be a single image
+    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
     dna_filename_list.append(filename)
     diffImgJpegData = diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()

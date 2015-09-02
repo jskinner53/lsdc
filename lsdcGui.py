@@ -459,8 +459,9 @@ class DewarTree(QtGui.QTreeView):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
         if (collectionRunning == True):
-          self.setCurrentIndex(mountedIndex)
-          self.parent.row_clicked(mountedIndex)
+          if (mountedIndex != None):
+            self.setCurrentIndex(mountedIndex)
+            self.parent.row_clicked(mountedIndex)
 
         self.expandAll()
         self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
@@ -1834,7 +1835,7 @@ class controlMain(QtGui.QMainWindow):
 #      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
       print "filling poly for " + str(rasterReq["request_id"])
       rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[0]
-      rasterDef = rasterReq["rasterDef"]
+      rasterDef = rasterReq["request_obj"]["rasterDef"]
       rasterListIndex = 0
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
@@ -1843,7 +1844,7 @@ class controlMain(QtGui.QMainWindow):
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["resultObj"]["rasterCellResults"]['resultObj']["data"]["response"]
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
       numLines = len(cellResults)
       filename_array = ["" for i in xrange(numLines)]
       my_array = np.zeros(numLines)
@@ -1882,7 +1883,7 @@ class controlMain(QtGui.QMainWindow):
           self.currentRasterCellList[cellCounter*2].setData(0,spotcount)
           self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
           cellCounter+=1
-      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["file_prefix"]))
+      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]))
       
 
     def saveCenterCB(self):
@@ -2114,8 +2115,9 @@ class controlMain(QtGui.QMainWindow):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
                 try:
                   sceneReq = db_lib.getRequest(self.rasterList[i]["request_id"])
-                  self.selectedSampleID = sceneReq["sample_id"]
-                  db_lib.deleteRequest(sceneReq)
+                  if (sceneReq != None):
+                    self.selectedSampleID = sceneReq["sample_id"]
+                    db_lib.deleteRequest(sceneReq)
                 except AttributeError:
                   pass
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
@@ -2433,7 +2435,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def refreshCollectionParams(self,selectedSampleRequest):
-      reqObj = self.selectedSampleRequest["request_obj"]
+      reqObj = selectedSampleRequest["request_obj"]
       self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str(reqObj["protocol"])))
       self.osc_start_ledit.setText(str(reqObj["sweep_start"]))
       self.osc_end_ledit.setText(str(reqObj["sweep_end"]))
