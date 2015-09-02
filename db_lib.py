@@ -7,8 +7,9 @@ import os
 import socket
 
 import bson
-import mongoengine 
 
+import mongoengine 
+from  mongoengine import NotUniqueError
 
 # I would prefer if these were relative imports :(
 from odm_templates import (Sample, Container, Request, Result,
