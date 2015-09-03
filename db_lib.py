@@ -290,7 +290,21 @@ def incrementSampleRequestCount(sample_id):
     increment the 'request_count' attribute of the specified sample by 1
     """
     
-    s = Sample.objects(__raw__={'sample_id': sample_id}).update_one(inc__request_count=1)
+    # potential for race here?
+    s = Sample.objects(__raw__={'sample_id': sample_id})[0]
+    s.update(inc__request_count=1)
+    s.reload()
+    return s.request_count
+
+
+def getSampleRequestCount(sample_id):
+    """
+    get the 'request_count' attribute of the specified sample
+    """
+    
+    s = Sample.objects(__raw__={'sample_id': sample_id})
+    return _try0_dict_key(s, 'sample', 'sample_id', sample_id, None, 
+                           dict_key='request_count')
 
 
 def getRequestsBySampleID(sample_id):
