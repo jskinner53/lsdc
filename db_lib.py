@@ -285,7 +285,7 @@ def createSample(sample_name, sample_type, **kwargs):
     return s.sample_id
 
 
-def _incrementSampleRequestCount(sample_id):
+def incrementSampleRequestCount(sample_id):
     """
     increment the 'request_count' attribute of the specified sample by 1
     """
@@ -591,9 +591,6 @@ def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None
     #s.save(push__requestList=r)
     s.requestList.append(r)
     s.save()
-
-    _incrementSampleRequestCount(sample_id)
-
     if as_mongo_obj:
             return r
     return r.to_mongo()
