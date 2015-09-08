@@ -100,11 +100,25 @@ primaryDewarName = 'primaryDewar'
 
 # django doesn't seem to understand generators(?), so we need to return lists here.
 def find_container():
-    return [c.to_mongo() for c in Container.objects()]
-    #for cont in Container.objects():
-    #    cont = cont.to_mongo()
+    ret_list = []
+
+    headers = ['container_name', 'container_type', 'capacity', 'contents']
+
+    #return [c.to_mongo() for c in Container.objects()]
+    for cont in Container.objects():
+        c = cont.to_mongo()
     #    cont.pop('_id')
     #    cont.pop(
+
+        c['container_type'] = cont.container_type.name
+        try:
+            c['capacity'] = cont.item_list.__len__()
+        except AttributeError:
+            c['capacity'] = 'variable'  # indeterminate or variable capacity
+
+        ret_list.append(c)
+
+    return (headers, ret_list)
 
 def find_sample():
     return [s.to_mongo() for s in Sample.objects()]
