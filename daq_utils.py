@@ -192,7 +192,6 @@ def createDefaultRequest(sample_id):
                "sweep_start": screenPhist,  "sweep_end": screenPhiend,
                "img_width": screenWidth,
                "exposure_time": screenExptime,
-               "priority": 0,
                "protocol": "standard",
                "basePath": basePath,
                "file_prefix": sampleName,

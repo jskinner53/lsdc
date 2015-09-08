@@ -405,16 +405,16 @@ class DewarTree(QtGui.QTreeView):
                   col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(sampleRequestList[k]["request_obj"]["file_prefix"]+"_"+sampleRequestList[k]["request_obj"]["protocol"]))
                   col_item.setData(sampleRequestList[k]["request_id"])
                   col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-                  if (sampleRequestList[k]["request_obj"]["priority"] == 99999):
+                  if (sampleRequestList[k]["priority"] == 99999):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('green'))
                     collectionRunning = True
                     self.parent.refreshCollectionParams(sampleRequestList[k])
 
-                  elif (sampleRequestList[k]["request_obj"]["priority"] > 0):
+                  elif (sampleRequestList[k]["priority"] > 0):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('white'))
-                  elif (sampleRequestList[k]["request_obj"]["priority"]< 0):
+                  elif (sampleRequestList[k]["priority"]< 0):
                     col_item.setCheckState(Qt.Unchecked)
                     col_item.setBackground(QtGui.QColor('cyan'))
                   else:
@@ -459,8 +459,9 @@ class DewarTree(QtGui.QTreeView):
           self.setCurrentIndex(selectedIndex)
           self.parent.row_clicked(selectedIndex)
         if (collectionRunning == True):
-          self.setCurrentIndex(mountedIndex)
-          self.parent.row_clicked(mountedIndex)
+          if (mountedIndex != None):
+            self.setCurrentIndex(mountedIndex)
+            self.parent.row_clicked(mountedIndex)
 
         self.expandAll()
         self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
@@ -513,16 +514,16 @@ class DewarTree(QtGui.QTreeView):
 #              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["protocol"]))
               col_item.setData(self.orderedRequests[k]["request_id"])
               col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-              if (self.orderedRequests[k]["request_obj"]["priority"] == 99999):
+              if (self.orderedRequests[k]["priority"] == 99999):
                 col_item.setCheckState(Qt.Checked)
                 col_item.setBackground(QtGui.QColor('green'))
                 collectionRunning = True
                 self.parent.refreshCollectionParams(self.orderedRequests[k])
 
-              elif (self.orderedRequests[k]["request_obj"]["priority"] > 0):
+              elif (self.orderedRequests[k]["priority"] > 0):
                 col_item.setCheckState(Qt.Checked)
                 col_item.setBackground(QtGui.QColor('white'))
-              elif (self.orderedRequests[k]["request_obj"]["priority"]< 0):
+              elif (self.orderedRequests[k]["priority"]< 0):
                 col_item.setCheckState(Qt.Unchecked)
                 col_item.setBackground(QtGui.QColor('cyan'))
               else:
@@ -551,13 +552,17 @@ class DewarTree(QtGui.QTreeView):
 
     def queueSelectedSample(self,item):
         print "queueing selected sample"
-        checkedSampleRequest = db_lib.getRequest(item.data().toInt()[0])      
+        reqID = item.data().toInt()[0]
+        checkedSampleRequest = db_lib.getRequest(reqID)      
         if (item.checkState() == Qt.Checked):
-          checkedSampleRequest["request_obj"]["priority"] = 5000
+          db_lib.updatePriority(reqID,5000)
+##          checkedSampleRequest["priority"] = 5000
         else:
-          checkedSampleRequest["request_obj"]["priority"] = 0
+          db_lib.updatePriority(reqID,0)
+##          checkedSampleRequest["priority"] = 0
         item.setBackground(QtGui.QColor('white'))
-        db_lib.updateRequest(checkedSampleRequest)
+
+##        db_lib.updateRequest(checkedSampleRequest)
         self.parent.treeChanged_pv.put(1) #not sure why I don't just call the update routine, although this allows multiple guis
 #        self.refreshTree()        
 
@@ -570,8 +575,9 @@ class DewarTree(QtGui.QTreeView):
         itemData = item.data().toInt()[0]
         if (itemData > 0): #then it's a request, not a sample
           selectedSampleRequest = db_lib.getRequest(itemData)
-          selectedSampleRequest["request_obj"]["priority"] = 5000
-          db_lib.updateRequest(selectedSampleRequest)
+          db_lib.updatePriority(itemData,5000)
+##          selectedSampleRequest["priority"] = 5000
+##          db_lib.updateRequest(selectedSampleRequest)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
 
@@ -586,8 +592,9 @@ class DewarTree(QtGui.QTreeView):
         itemData = item.data().toInt()[0]
         if (itemData > 0): #then it's a request, not a sample
           selectedSampleRequest = db_lib.getRequest(itemData)
-          selectedSampleRequest["request_obj"]["priority"] = 0
-          db_lib.updateRequest(selectedSampleRequest)
+          db_lib.updatePriority(itemData,0)
+##          selectedSampleRequest["priority"] = 0
+##          db_lib.updateRequest(selectedSampleRequest)
 #        item.setCheckState(Qt.Unchecked)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
@@ -1574,7 +1581,7 @@ class controlMain(QtGui.QMainWindow):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
       else:
         rasterReq = db_lib.getRequest(xrecRasterFlag)
-        rasterDef = rasterReq["rasterDef"]
+        rasterDef = rasterReq["request_obj"]["rasterDef"]
         if (rasterDef["status"] == 1):
           self.drawPolyRaster(rasterReq)
         elif (rasterDef["status"] == 2):        
@@ -1625,16 +1632,16 @@ class controlMain(QtGui.QMainWindow):
       orderedRequests = db_lib.getOrderedRequestList()      
       priorityMax = 0
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["request_obj"]["priority"] > priorityMax):
-          priorityMax = orderedRequests[i]["request_obj"]["priority"]
+        if (orderedRequests[i]["priority"] > priorityMax):
+          priorityMax = orderedRequests[i]["priority"]
       return priorityMax
 
     def getMinPriority(self):
       orderedRequests = db_lib.getOrderedRequestList()      
       priorityMin = 10000000
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["request_obj"]["priority"] < priorityMin):
-          priorityMin = orderedRequests[i]["request_obj"]["priority"]
+        if (orderedRequests[i]["priority"] < priorityMin):
+          priorityMin = orderedRequests[i]["priority"]
       return priorityMin
 
 
@@ -1699,11 +1706,11 @@ class controlMain(QtGui.QMainWindow):
     def upPriorityCB(self):
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["request_obj"]["sample_id"] == self.selectedSampleRequest["sample_id"]):
+        if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if (i<2):
             self.topPriorityCB()
           else:
-            self.selectedSampleRequest["request_obj"]["priority"] = (orderedRequests[i-2]["request_obj"]["priority"] + orderedRequests[i-1]["request_obj"]["priority"])/2
+            self.selectedSampleRequest["priority"] = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
 ##      self.parent.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
@@ -1712,11 +1719,11 @@ class controlMain(QtGui.QMainWindow):
     def downPriorityCB(self):
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["request_obj"]["sample_id"] == self.selectedSampleRequest["request_obj"]["sample_id"]):
+        if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if ((len(orderedRequests)-i) < 3):
             self.bottomPriorityCB()
           else:
-            self.selectedSampleRequest["request_obj"]["priority"] = (orderedRequests[i+1]["request_obj"]["priority"] + orderedRequests[i+2]["request_obj"]["priority"])/2
+            self.selectedSampleRequest["priority"] = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
             db_lib.updateRequest(self.selectedSampleRequest)     
 #      self.dewarTree.refreshTree()
 ##      self.parent.treeChanged_pv.put(1)
@@ -1734,7 +1741,7 @@ class controlMain(QtGui.QMainWindow):
     def bottomPriorityCB(self):
       priority = int(self.getMinPriority())
       priority = priority-100
-      self.selectedSampleRequest["request_obj"]["priority"] = priority
+      self.selectedSampleRequest["priority"] = priority
       db_lib.updateRequest(self.selectedSampleRequest)     
 ##      self.parent.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
@@ -1828,7 +1835,7 @@ class controlMain(QtGui.QMainWindow):
 #      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
       print "filling poly for " + str(rasterReq["request_id"])
       rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[0]
-      rasterDef = rasterReq["rasterDef"]
+      rasterDef = rasterReq["request_obj"]["rasterDef"]
       rasterListIndex = 0
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
@@ -1837,7 +1844,7 @@ class controlMain(QtGui.QMainWindow):
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["resultObj"]["rasterCellResults"]['resultObj']["data"]["response"]
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
       numLines = len(cellResults)
       filename_array = ["" for i in xrange(numLines)]
       my_array = np.zeros(numLines)
@@ -1876,7 +1883,7 @@ class controlMain(QtGui.QMainWindow):
           self.currentRasterCellList[cellCounter*2].setData(0,spotcount)
           self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
           cellCounter+=1
-      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["file_prefix"]))
+      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]))
       
 
     def saveCenterCB(self):
@@ -2108,8 +2115,9 @@ class controlMain(QtGui.QMainWindow):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
                 try:
                   sceneReq = db_lib.getRequest(self.rasterList[i]["request_id"])
-                  self.selectedSampleID = sceneReq["sample_id"]
-                  db_lib.deleteRequest(sceneReq)
+                  if (sceneReq != None):
+                    self.selectedSampleID = sceneReq["sample_id"]
+                    db_lib.deleteRequest(sceneReq)
                 except AttributeError:
                   pass
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
@@ -2277,7 +2285,7 @@ class controlMain(QtGui.QMainWindow):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
-             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj)
+             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -2330,7 +2338,7 @@ class controlMain(QtGui.QMainWindow):
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           reqObj["vectorParams"] = vectorParams
         colRequest["request_obj"] = reqObj
-        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj)
+        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
 #        if (rasterDef != False):
         if (rasterDef != None):
           self.rasterDefList.append(newSampleRequest)
@@ -2409,7 +2417,7 @@ class controlMain(QtGui.QMainWindow):
 
     def mountSampleCB(self):
       print "mount selected sample"
-      self.selectedSampleID = self.selectedSampleRequest["request_obj"]["sample_id"]
+      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 #      (puckPosition,dewarPos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
 #      (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
 #      self.send_to_server("mountSample("+str(dewarPos)+")")
@@ -2427,7 +2435,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def refreshCollectionParams(self,selectedSampleRequest):
-      reqObj = self.selectedSampleRequest["request_obj"]
+      reqObj = selectedSampleRequest["request_obj"]
       self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str(reqObj["protocol"])))
       self.osc_start_ledit.setText(str(reqObj["sweep_start"]))
       self.osc_end_ledit.setText(str(reqObj["sweep_end"]))

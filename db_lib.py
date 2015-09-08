@@ -468,7 +468,6 @@ def getResultsforRequest(request_id):
     # convert int ('request_id') to ObjectID ('_id')
     if isinstance(request_id, int):
         request_id = Request.objects(__raw__={'request_id': request_id}).only('id')[0].id
-
     for result in Result.objects(request_id=request_id):
         reslist.append(result.to_mongo())
 
@@ -536,7 +535,8 @@ def addFile(data=None, filename=None):
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
-    return f._id  # is this supposed to be 'id' or '_id'?
+    return f.id  # is this supposed to be 'id' or '_id'?
+#    return f._id  # is this supposed to be 'id' or '_id'?
 
 
 def getFile(_id):

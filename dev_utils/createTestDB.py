@@ -80,6 +80,12 @@ def createTestDB():
         createType("vector","","request")        
         createType("characterize","","request")        
         createType("screen","","request")        
+        createType("xia2","","result")        
+        createType("fastDP","","result")        
+        createType("diffImageJpeg","","result")        
+        createType("xtalpicJpeg","","result")        
+        createType("rasterResult","","result")             
+        createType("characterizationStrategy","","result")        
         
         
         # containers
