@@ -89,11 +89,11 @@ def createTestDB():
         
         
         # containers
-        for i in range(4)+[6]:  # discontinuity for testing
+        for i in range(1,5)+[7]:  # 1 indexed, discontinuity for testing
             containerName = 'Puck_{0}'.format(i)
             createContainer(containerName, '16_pin_puck')
         
-        for i in range(4):  # discontinuity for testing
+        for i in range(1,5):  # discontinuity for testing
             containerName = 'dewar_{0}'.format(i)
             createContainer(containerName, 'shipping_dewar')
         
@@ -103,16 +103,16 @@ def createTestDB():
         
         createContainer(primary_dewar_name, '24_puck_robot_dewar') 
         
-        for i in range(4)+[6]:  # discontinuity for testing
+        for i in range(1,5)+[7]:  # discontinuity for testing
             containerName = 'Puck_{0}'.format(i)
             insertIntoContainer(primary_dewar_name, i, getContainerIDbyName(containerName))
         
         
         # samples
         type_name = 'pin'
-        for i in range(3)+[6]:  # discontinuity for testing
+        for i in range(1,4)+[7]:  # discontinuity for testing
             containerName = 'Puck_{0}'.format(i)
-            for j in range(4)+[6]:
+            for j in range(1,5)+[7]:
                 sampleName = 'samp_{0}_{1}'.format(i, j)
         
                 try:
