@@ -120,14 +120,36 @@ def find_container():
 
     return (headers, ret_list)
 
+
 def find_sample():
-    return [s.to_mongo() for s in Sample.objects()]
+    ret_list = []
+    headers = ['sample_name', 'sample_type']
+
+    #return [s.to_mongo() for s in Sample.objects()]
+    for samp in Sample.objects():
+        s = samp.to_mongo()
+        s['sample_type'] = samp.sample_type.name
+
+        ret_list.append(s)
+    return (headers, ret_list)
+
 
 def find_request():
-    return [r.to_mongo() for r in Request.objects()]
+    ret_list = []
+    headers = ['request_name', 'request_type']
+
+    #return [r.to_mongo() for r in Request.objects()]
+    for req in Request.objects():
+        r = req.to_mongo()
+        r['request_type'] = req.request_type.name
+
+        ret_list.append(r)
+    return (headers, ret_list)
+
 
 def find_result():
     return [r.to_mongo() for r in Result.objects()]
+
 
 def find_sample_request():
     req_list = []
