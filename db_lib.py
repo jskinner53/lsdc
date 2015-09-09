@@ -770,6 +770,36 @@ def getDewarPosfromSampleID(sample_id):
                     return (containerID, position)    
 
 
+#def getCoordsfromSampleID(sample_id):
+#    """
+#    returns the container position within the dewar and position in
+#    that container for a sample with the given id in one of the
+#    containers in the container named by the global variable
+#    'primaryDewarName'
+#    """
+#    try:
+#        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
+#    except IndexError:
+#        return None
+#
+#    for i,puck_id in enumerate(cont.item_list):
+#        if puck_id is not None:
+#            puck = getContainerByID(puck_id)
+#            sampleList = puck["item_list"]
+#
+#            for j,samp_id in enumerate(sampleList):
+#                if samp_id == sample_id and samp_id is not None:
+#                    return (i, j, puck_id)
+
+# In [133]: %timeit dl.getCoordsfromSampleID(24006)
+# 10 loops, best of 3: 26.8 ms per loop
+# 
+# In [134]: %timeit dl.getOrderedRequestList()
+# 1 loops, best of 3: 1.06 s per loop
+# 
+# In [135]: dl.getCoordsfromSampleID(24006)
+# Out[135]: (17, 13, 11585)
+
 def getCoordsfromSampleID(sample_id):
     """
     returns the container position within the dewar and position in
@@ -778,18 +808,36 @@ def getCoordsfromSampleID(sample_id):
     'primaryDewarName'
     """
     try:
-        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
+        primary_dewar_item_list = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0].item_list
+    except IndexError, AttributeError:
         return None
 
-    for i,puck_id in enumerate(cont.item_list):
-        if puck_id is not None:
-            puck = getContainerByID(puck_id)
-            sampleList = puck["item_list"]
+    # eliminate empty item_list slots
+    pdil_set = set(primary_dewar_item_list)
+    pdil_set.discard(None)
+    
+    # find container in the primary_dewar_item_list (pdil) which has the sample
+    c = Container.objects(container_id__in=pdil_set, item_list__all=[sample_id])[0]
 
-            for j,samp_id in enumerate(sampleList):
-                if samp_id == sample_id and samp_id is not None:
-                    return (i, j,puck_id)
+    # get the index of the found container in the primary dewar
+    i = primary_dewar_item_list.index(c.container_id)
+
+    # get the index of the sample in the found container item_list
+    j = c.item_list.index(sample_id)
+
+    # get the container_id of the found container
+    puck_id = c.container_id
+
+    return (i, j, puck_id)
+
+# In [116]: %timeit dl.getCoordsfromSampleID(24006)
+# 100 loops, best of 3: 3.16 ms per loop
+# 
+# In [117]: %timeit dl.getOrderedRequestList()
+# 1 loops, best of 3: 1.06 s per loop
+# 
+# In [118]: dl.getCoordsfromSampleID(24006)
+# Out[118]: (17, 13, 11585)
 
 
 def getSampleIDfromCoords(puck_num, position):
