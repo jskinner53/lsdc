@@ -613,7 +613,7 @@ def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None
 def insertIntoContainer(container_name, position, itemID):
     c = getContainerByName(container_name, as_mongo_obj=True)
     if c is not None:
-        c.item_list[position] = itemID
+        c.item_list[position - 1] = itemID  # most people don't zero index things
         c.save()
         return True
     else:
@@ -766,7 +766,7 @@ def getDewarPosfromSampleID(sample_id):
             for j,samp_id in enumerate(puck.item_list):
                 if samp_id == sample_id and samp_id is not None:
                     containerID = puck_id
-                    position = j
+                    position = j + 1  # most people don't zero index things
                     return (containerID, position)    
 
 
@@ -807,7 +807,7 @@ def getSampleIDfromCoords(puck_num, position):
     puck_id = cont.item_list[puck_num]
     puck = getContainerByID(puck_id)
             
-    sample_id = puck["item_list"][position]
+    sample_id = puck["item_list"][position - 1]  # most people don't zero index things
     return sample_id
 
 
