@@ -1030,7 +1030,7 @@ def getPriorityMap():
 def getOrderedRequestList():
 #def getOrderedRequests():
     """
-    returns a generator of requests sorted by priority
+    returns a list of requests sorted by priority
     """
 
     orderedRequestsList = []
