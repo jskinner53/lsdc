@@ -209,22 +209,6 @@ def create_filename(prefix,number):
   return filename
 
 
-#based on a file prefix, return the directory path to which data will be written.
-def get_data_directory_name(prefix):
-  if (prefix[0] == "/"):
-    return prefix[0:prefix.rindex("/")+1]
-  elif ("/" in prefix):
-#    return os.getcwd()+"/"+prefix[0:prefix.rindex("/")]
-    return "/home/pxuser/proto_data/"+prefix[0:prefix.rindex("/")]
-  else:
-#    return os.getcwd()
-    return "/home/pxuser/proto_data"
-
-
-def get_data_prefix():
-  return var_list["file_prefix0"]
-
-      
 def refreshGuiTree():
   beamline_support.set_any_epics_pv(daq_utils.beamline+"_comm:live_q_change_flag","VAL",1)
 
@@ -242,22 +226,7 @@ def runChooch():
   set_field("choochResultFlag",1)
 
 
-# while something in the q
-#    req = pop
-#    populate dc variables with the request data
-#    create directories?
-#    mount if necessary
-#    align automatically or manually based on user input, this aligning will deposit alignment coordinates in the dc request
-#    collect
-#    unmount? - not if next sample is same pinpos
-#    ship to autoprocess
-
-
-# need to be able to pause/abort this at any time
-
-
 def mountSample(sampID):
-#  currentMountedSampleID = get_field("mounted_pin")
   mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
   if (currentMountedSampleID != 99): #then unmount what's there
@@ -275,7 +244,7 @@ def mountSample(sampID):
     robot_lib.mountRobotSample(puckPos,pinPos,sampID)
   db_lib.beamlineInfo('john', 'mountedSample', info_dict={'puckPos':puckPos,'pinPos':pinPos,'sampleID':sampID})
 
-#    (puckPos,pinPos,puckID) = getCoordsfromSampleID(currentMountedSampleID)
+
 
 def unmountSample():
   mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
@@ -299,18 +268,9 @@ def runDCQueue(): #maybe don't run rasters from here???
     if (currentRequest == {}):
       break
     sampleID = currentRequest["sample_id"]
-#    (puckPosition,samplePos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(sampleID)
-#    (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
-#    print str(sampleID) + " in " + str(samplePos)
     if (get_field("mounted_pin") != sampleID):
-#      robot_lib.unmountSample()
-#      mountSample(samplePos)
       mountSample(sampleID)
-#      set_field("mounted_pin",samplePos)
-##    currentRequest["request_obj"]["priority"] = 99999
     db_lib.updatePriority(currentRequest["request_id"],99999)
-#    currentRequest["priority"] = -999
-##    db_lib.updateRequest(currentRequest)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
     colStatus = collectData(currentRequest)
 
@@ -322,10 +282,9 @@ def stopDCQueue():
 
 def collectData(currentRequest):
   global data_directory_name
-#  sampleName = sampleNameFromID(currentRequest["sample_id"])
+
   reqObj = currentRequest["request_obj"]
   data_directory_name = str(reqObj["directory"])
-#  data_directory_name = directory_root
   if not (os.path.isdir(data_directory_name)):
     comm_s = "mkdir -p " + data_directory_name
     os.system(comm_s)
@@ -333,7 +292,7 @@ def collectData(currentRequest):
   prot = str(reqObj["protocol"])
   if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
-    return
+#    return
   elif (prot == "vector"):
     daq_macros.vectorScan(currentRequest)
 #    return
@@ -352,10 +311,7 @@ def collectData(currentRequest):
     slit_width = reqObj["slit_width"]
     attenuation = reqObj["attenuation"]
     img_width = reqObj["img_width"]
-
     file_prefix = str(reqObj["file_prefix"])
-#  data_directory_name = get_data_directory_name(file_prefix) # for now
-
     if (reqObj["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
@@ -364,7 +320,6 @@ def collectData(currentRequest):
         sweep_start = reqObj["sweep_start"]+(i*screenRange)
         sweep_end = reqObj["sweep_end"]+(i*screenRange)
         file_prefix = str(reqObj["file_prefix"]+"_"+str(i*screenRange))
-#      data_directory_name = get_data_directory_name(file_prefix) # for now
         data_directory_name = str(reqObj["directory"]) # for now
         file_number_start = reqObj["file_number_start"]
         beamline_lib.mva("Omega",sweep_start)
@@ -390,6 +345,8 @@ def collectData(currentRequest):
         newReqObj["exposure_time"] = stratExptime
         newReqObj["detDist"] = stratDetDist
         newReqObj["directory"] = data_directory_name
+        runNum = db_lib.incrementSampleRequestCount(sampleID)
+        reqObj["runNum"] = runNum
         newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=0)
 
     else: #standard
@@ -413,9 +370,6 @@ def collectData(currentRequest):
         os.system(comm_s)
   
   db_lib.updatePriority(currentRequest["request_id"],-1)
-#  currentRequest["request_obj"]["priority"] = -1
-#  db_lib.updateRequest(currentRequest)
-
   refreshGuiTree()
 
     
@@ -453,9 +407,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
   detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),get_field("xbeam"),get_field("ybeam"),get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))
-
   print "collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
-    
   detector_start()
   image_started = range_seconds
   time.sleep(1.0) #4/15 - why so long?
@@ -469,8 +421,6 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
-def get_data_prefix():
-  return var_list["file_prefix0"]
 
 
 def center_on_click(x,y,maglevel=0,source="screen",jog=0): #maglevel=0 means lowmag, high fov, #1 = himag with digizoom option, 
@@ -515,7 +465,6 @@ def take_crystal_pictureCURL(filename,czoom=0):
     return
 #  if (daq_utils.xtalview_user == "None"):
   if (1):
-#    comm_s = "lynx -source %s > %s.jpg" % (xtal_url,filename)
     if (zoom==0):
       comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url)
     else:
@@ -523,8 +472,6 @@ def take_crystal_pictureCURL(filename,czoom=0):
       comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url_small)
   else:
     comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (daq_utils.xtalview_user,daq_utils.xtalview_pass,filename,daq_utils.xtal_url)
-#    comm_s = "lynx -source -auth=%s:%s %s > %s.jpg" % (xtalview_user,xtalview_pass,xtal_url,filename) 
-#  daq_utils.broadcast_output(comm_s)
   os.system(comm_s)
 
 
@@ -548,10 +495,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None):
     xtalpicJpegDataResult = {}
     imgRef = db_lib.addFile(data)
     xtalpicJpegDataResult["data"] = imgRef
-#    xtalpicJpegDataResult["timestamp"] = time.time()
-#    xtalpicJpegDataResult["type"] = "xtalpicJpeg"
     db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult)
-
 
 
 def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
@@ -593,20 +537,16 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
       print "Wavelength = " + tokens[1] 
       imageJpegHeader["wave"] = float(tokens[1])
   if (reqID != None):
-#    result = {}
     resultObj = {}
-#    result["timestamp"] = time.time()
-#    result["type"] = "diffImageJpeg"
     imgRef = db_lib.addFile(data)
     resultObj["data"] = imgRef
     imgRef = db_lib.addFile(thumbData)
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-#    result["resultObj"] = resultObj
     db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
-
   return imageJpegData
+
 
 def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
   imageJpegData = {}
@@ -649,34 +589,15 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
         imageJpegHeader["wave"] = float(tokens[1])
   imageJpegData["header"] = imageJpegHeader
   if (reqID != None): #this means I'll dump into mongo as a result
-#    result = {}
     resultObj = {}
-#    result["timestamp"] = time.time()
-#    result["type"] = "diffImageJpeg"
     imgRef = db_lib.addFile(data)
     resultObj["data"] = imgRef
     imgRef = db_lib.addFile(thumbData)
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-#    result["resultObj"] = resultObj
     db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
-
   return imageJpegData
-
-
-##  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getThumbnail\?fileName="+ filename+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
-##  comm_s = "lynx -source %s >%s" % (img_url,output_thumb_name) 
-###    print comm_s
-##  os.system(comm_s)
-##  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getHeader\?fileName="+ filename+"\&userName=me\&sessionId=E"
-##  comm_s = "lynx -source " + img_url
-#  os.system(comm_s)
-#      comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url)
-#      comm_s = "curl -o %s.jpg -s %s" % (filename,daq_utils.xtal_url_small)
-#    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (daq_utils.xtalview_user,daq_utils.xtalview_pass,filename,daq_utils.xtal_url)
-
-
 
 
 def set_vector_start():

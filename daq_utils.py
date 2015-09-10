@@ -186,6 +186,7 @@ def createDefaultRequest(sample_id):
     screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
     sampleName = str(getSampleNamebyID(sample_id))
     basePath = os.getcwd()
+    runNum = getSampleRequestCount(sample_id)
     request = {"sample_id": sample_id}
     requestObj = {
                "sample_id": sample_id,
@@ -195,7 +196,7 @@ def createDefaultRequest(sample_id):
                "protocol": "standard",
                "basePath": basePath,
                "file_prefix": sampleName,
-               "directory": basePath+"/projID/"+sampleName+"/1/",
+               "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/",
                "file_number_start": 1,
                "energy":screenEnergy,
                "wavelength": energy2wave(screenEnergy),

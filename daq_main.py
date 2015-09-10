@@ -16,10 +16,7 @@ import beamline_support
 import beamline_lib
 from beamline_lib import *
 
-
-
 sitefilename = ""
-
 global command_list,immediate_command_list,z
 command_list = []
 immediate_command_list = []
@@ -28,7 +25,6 @@ z = 25
   
 def execute_command(command_s):
 ###  from daq_macros import * #this is so macros can be reloaded on-the-fly
-
 #  refresh_screen(0,0)  
   exec command_s
 
