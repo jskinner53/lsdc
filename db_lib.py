@@ -100,20 +100,56 @@ primaryDewarName = 'primaryDewar'
 
 # django doesn't seem to understand generators(?), so we need to return lists here.
 def find_container():
-    return [c.to_mongo() for c in Container.objects()]
-    #for cont in Container.objects():
-    #    cont = cont.to_mongo()
+    ret_list = []
+
+    headers = ['container_name', 'container_type', 'capacity', 'contents']
+
+    #return [c.to_mongo() for c in Container.objects()]
+    for cont in Container.objects():
+        c = cont.to_mongo()
     #    cont.pop('_id')
     #    cont.pop(
 
+        c['container_type'] = cont.container_type.name
+        try:
+            c['capacity'] = cont.item_list.__len__()
+        except AttributeError:
+            c['capacity'] = 'variable'  # indeterminate or variable capacity
+
+        ret_list.append(c)
+
+    return (headers, ret_list)
+
+
 def find_sample():
-    return [s.to_mongo() for s in Sample.objects()]
+    ret_list = []
+    headers = ['sample_name', 'sample_type']
+
+    #return [s.to_mongo() for s in Sample.objects()]
+    for samp in Sample.objects():
+        s = samp.to_mongo()
+        s['sample_type'] = samp.sample_type.name
+
+        ret_list.append(s)
+    return (headers, ret_list)
+
 
 def find_request():
-    return [r.to_mongo() for r in Request.objects()]
+    ret_list = []
+    headers = ['request_name', 'request_type']
+
+    #return [r.to_mongo() for r in Request.objects()]
+    for req in Request.objects():
+        r = req.to_mongo()
+        r['request_type'] = req.request_type.name
+
+        ret_list.append(r)
+    return (headers, ret_list)
+
 
 def find_result():
     return [r.to_mongo() for r in Result.objects()]
+
 
 def find_sample_request():
     req_list = []
@@ -599,7 +635,7 @@ def addRequesttoSample(sample_id, request_type, request_obj=None, timestamp=None
 def insertIntoContainer(container_name, position, itemID):
     c = getContainerByName(container_name, as_mongo_obj=True)
     if c is not None:
-        c.item_list[position] = itemID
+        c.item_list[position - 1] = itemID  # most people don't zero index things
         c.save()
         return True
     else:
@@ -672,6 +708,15 @@ def getContainerByID(container_id, as_mongo_obj=False):
 #stuff I forgot - alignment type?, what about some sort of s.sample lock?,
 
 
+def getQueueFast():
+    requests = Request.objects(sample_id__exists=True)
+
+#    return [request.to_mongo() for request in requests]
+    # generator seems slightly faster even when wrapped by list()
+    for request in requests:
+        yield request.to_mongo()
+
+
 def getQueue():
     """
     returns a list of request dicts for all the samples in the container
@@ -687,48 +732,57 @@ def getQueue():
     # .first() returns None while [0] generates an IndexError
     # Nah... [0] is faster and catch Exception...
     try:
-        items = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
+        items = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0].item_list
+    except IndexError, AttributeError:
         raise ValueError('could not find container: "{0}"!'.format(primaryDewarName))
+    
+    items = set(items)
+    items.discard(None)  # skip empty positions
 
-    for item_id in items.item_list:
-        if item_id is not None:
-            try:
-                puck = Container.objects(__raw__={'container_id': item_id}).only('item_list')[0]
-            except IndexError:
-                raise ValueError('could not find container id: "{0}"!'.format(item_id))
+    sample_list = []
+    for samp in Container.objects(container_id__in=items).only('item_list'):
+        sil = set(samp.item_list)
+        sil.discard(None)
+        sample_list += sil
 
-            for sample_id in puck.item_list:
-                if sample_id is not None:
-                    #print("sample ID = " + str(sample_id))
-                    # If we don't request sample_id it gets set to the next id in the sequence!?
-                    # maybe that doesn't matter if we don't use or return it?
-                    try:
-                        sampleObj = Sample.objects(__raw__={'sample_id': sample_id}).only('requestList','sample_id')[0]
-                    except IndexError:
-                        raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
+    for request in Request.objects(sample_id__in=sample_list):
+        yield request.to_mongo()
 
-#                    # stick this in try/except too....
-#                    if sampleObj.requestList is None:
-#                        print(sampleObj.to_mongo())
-#                    else:
+#    
+##    for item_id in items.item_list:
+##        if item_id is not None:
+#    for item_id in items:
+#            try:
+#                puck_items = Container.objects(__raw__={'container_id': item_id}).only('item_list')[0].item_list
+#            except IndexError, AttributeError:
+#                raise ValueError('could not find container id: "{0}"!'.format(item_id))
+#
+#            puck_items = set(puck_items)
+#            puck_items.discard(None)  # skip empty positions
+#            
+##            for sample_id in puck.item_list:
+##                if sample_id is not None:
+#            for sample_id in puck_items:
+#                    #print("sample ID = " + str(sample_id))
+#                    # If we don't request sample_id it gets set to the next id in the sequence!?
+#                    # maybe that doesn't matter if we don't use or return it?
+#                    try:
+#                        sampleObj = Sample.objects(__raw__={'sample_id': sample_id}).only('requestList','sample_id')[0]
+#                    except IndexError:
+#                        raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
+#
+#                    try:
 #                        for request in sampleObj.requestList:
-#                            if request is not None:
+#                            try:
+#                                # testing shows generator version is the same speed?
 #                                #yield request.to_mongo()
 #                                ret_list.append(request.to_mongo())
-
-                    try:
-                        for request in sampleObj.requestList:
-                            try:
-                                # testing shows generator version is the same speed?
-                                #yield request.to_mongo()
-                                ret_list.append(request.to_mongo())
-                            except AttributeError:
-                                pass
-                    except TypeError:
-                        print(sampleObj.to_mongo())
-
-    return ret_list
+#                            except AttributeError:
+#                                pass
+#                    except TypeError:
+#                        print(sampleObj.to_mongo())
+#
+#   return ret_list
 
 
 def getDewarPosfromSampleID(sample_id):
@@ -752,9 +806,39 @@ def getDewarPosfromSampleID(sample_id):
             for j,samp_id in enumerate(puck.item_list):
                 if samp_id == sample_id and samp_id is not None:
                     containerID = puck_id
-                    position = j
+                    position = j + 1  # most people don't zero index things
                     return (containerID, position)    
 
+
+#def getCoordsfromSampleID(sample_id):
+#    """
+#    returns the container position within the dewar and position in
+#    that container for a sample with the given id in one of the
+#    containers in the container named by the global variable
+#    'primaryDewarName'
+#    """
+#    try:
+#        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
+#    except IndexError:
+#        return None
+#
+#    for i,puck_id in enumerate(cont.item_list):
+#        if puck_id is not None:
+#            puck = getContainerByID(puck_id)
+#            sampleList = puck["item_list"]
+#
+#            for j,samp_id in enumerate(sampleList):
+#                if samp_id == sample_id and samp_id is not None:
+#                    return (i, j, puck_id)
+
+# In [133]: %timeit dl.getCoordsfromSampleID(24006)
+# 10 loops, best of 3: 26.8 ms per loop
+# 
+# In [134]: %timeit dl.getOrderedRequestList()
+# 1 loops, best of 3: 1.06 s per loop
+# 
+# In [135]: dl.getCoordsfromSampleID(24006)
+# Out[135]: (17, 13, 11585)
 
 def getCoordsfromSampleID(sample_id):
     """
@@ -764,18 +848,36 @@ def getCoordsfromSampleID(sample_id):
     'primaryDewarName'
     """
     try:
-        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-    except IndexError:
+        primary_dewar_item_list = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0].item_list
+    except IndexError, AttributeError:
         return None
 
-    for i,puck_id in enumerate(cont.item_list):
-        if puck_id is not None:
-            puck = getContainerByID(puck_id)
-            sampleList = puck["item_list"]
+    # eliminate empty item_list slots
+    pdil_set = set(primary_dewar_item_list)
+    pdil_set.discard(None)
+    
+    # find container in the primary_dewar_item_list (pdil) which has the sample
+    c = Container.objects(container_id__in=pdil_set, item_list__all=[sample_id])[0]
 
-            for j,samp_id in enumerate(sampleList):
-                if samp_id == sample_id and samp_id is not None:
-                    return (i, j,puck_id)
+    # get the index of the found container in the primary dewar
+    i = primary_dewar_item_list.index(c.container_id)
+
+    # get the index of the sample in the found container item_list
+    j = c.item_list.index(sample_id)
+
+    # get the container_id of the found container
+    puck_id = c.container_id
+
+    return (i, j, puck_id)
+
+# In [116]: %timeit dl.getCoordsfromSampleID(24006)
+# 100 loops, best of 3: 3.16 ms per loop
+# 
+# In [117]: %timeit dl.getOrderedRequestList()
+# 1 loops, best of 3: 1.06 s per loop
+# 
+# In [118]: dl.getCoordsfromSampleID(24006)
+# Out[118]: (17, 13, 11585)
 
 
 def getSampleIDfromCoords(puck_num, position):
@@ -793,7 +895,7 @@ def getSampleIDfromCoords(puck_num, position):
     puck_id = cont.item_list[puck_num]
     puck = getContainerByID(puck_id)
             
-    sample_id = puck["item_list"][position]
+    sample_id = puck["item_list"][position - 1]  # most people don't zero index things
     return sample_id
 
 
