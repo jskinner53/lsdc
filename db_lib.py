@@ -7,6 +7,7 @@ import os
 import socket
 
 import bson
+import six
 
 import mongoengine 
 from  mongoengine import NotUniqueError
@@ -1008,35 +1009,38 @@ def emptyLiveQueue(): #a convenience to say nothing is ready to be run
         updatePriority(request['request_id'], priority)
 
 
-def getSortedPriorityList(with_requests=False): # mayb an intermediate to return a list of all priorities.
+def getPriorityMap():
     """
-    returns a sorted list of the priority levels found on requests in the database.
-    optionally also returns the list of requests, since it had to get them.
+    returns a dictionary with priorities as keys and lists of requests
+    having those priorities as values
     """
-    pList = []
-    requests = getQueue()
 
-    for request in requests:
-        if request["priority"] not in pList:
-            pList.append(request["priority"])
+    priority_map = {}
 
-    if with_requests:
-        return sorted(pList, reverse=True), requests
-    return sorted(pList, reverse=True)
+    for request in getQueue():
+        try:
+            priority_map[request['priority']].append(request)
 
+        except KeyError:
+            priority_map[request['priority']] = [request]
+
+    return priority_map
+    
 
 def getOrderedRequestList():
+#def getOrderedRequests():
     """
-    returns the request list sorted by priority
+    returns a generator of requests sorted by priority
     """
+
     orderedRequestsList = []
 
-    (priorities, requests) = getSortedPriorityList(with_requests=True)
+    priority_map = getPriorityMap()
 
-    for priority in priorities:  # just sorts priorities 
-        for request in requests:
-            if request["priority"] == priority:
-                orderedRequestsList.append(request)
+    for priority in sorted(six.iterkeys(priority_map), reverse=True):
+        orderedRequestsList += priority_map[priority]
+        #for request in priority_map[priority]:
+        #    yield request
 
     return orderedRequestsList
 
