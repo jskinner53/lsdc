@@ -24,6 +24,7 @@ from PyMca.McaAdvancedFit import McaAdvancedFit
 import numpy as np
 import thread
 import lsdcOlog
+import six
 
 class snapCommentDialog(QDialog):
     def __init__(self,parent = None):
@@ -1629,20 +1630,22 @@ class controlMain(QtGui.QMainWindow):
 
 
     def getMaxPriority(self):
-      orderedRequests = db_lib.getOrderedRequestList()      
-      priorityMax = 0
-      for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["priority"] > priorityMax):
-          priorityMax = orderedRequests[i]["priority"]
-      return priorityMax
+#      orderedRequests = db_lib.getOrderedRequestList()      
+#      priorityMax = 0
+#      for i in xrange(len(orderedRequests)):
+#        if (orderedRequests[i]["priority"] > priorityMax):
+#          priorityMax = orderedRequests[i]["priority"]
+#      return priorityMax
+      return max(six.iterkeys(db_lib.getPriorityMap()))
 
     def getMinPriority(self):
-      orderedRequests = db_lib.getOrderedRequestList()      
-      priorityMin = 10000000
-      for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["priority"] < priorityMin):
-          priorityMin = orderedRequests[i]["priority"]
-      return priorityMin
+#      orderedRequests = db_lib.getOrderedRequestList()      
+#      priorityMin = 10000000
+#      for i in xrange(len(orderedRequests)):
+#        if (orderedRequests[i]["priority"] < priorityMin):
+#          priorityMin = orderedRequests[i]["priority"]
+#      return priorityMin
+      return min(six.iterkeys(db_lib.getPriorityMap()))
 
 
     def showProtParams(self):
