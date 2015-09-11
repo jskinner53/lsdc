@@ -1629,6 +1629,7 @@ class controlMain(QtGui.QMainWindow):
       self.choochResultFlag_pv.put(0)
 
 
+# seems like we should be able to do an aggregate query to mongo for max/min :(
     def getMaxPriority(self):
 #      orderedRequests = db_lib.getOrderedRequestList()      
 #      priorityMax = 0
