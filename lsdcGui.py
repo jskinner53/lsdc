@@ -473,9 +473,9 @@ class DewarTree(QtGui.QTreeView):
             requestedSampleList.append(self.orderedRequests[i]["sample_id"])
         for i in xrange(len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
-          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
-          containerName = db_lib.getContainerNameByID(containerID)
-          index_s = "%d%s" % ((puckPosition)/self.pucksPerDewarSector+1,chr(((puckPosition)%self.pucksPerDewarSector)+ord('A')))
+#          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
+#          containerName = db_lib.getContainerNameByID(containerID)
+#          index_s = "%d%s" % ((puckPosition)/self.pucksPerDewarSector+1,chr(((puckPosition)%self.pucksPerDewarSector)+ord('A')))
           nodeString = QtCore.QString(str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
           item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
@@ -1591,22 +1591,22 @@ class controlMain(QtGui.QMainWindow):
 
 
     def getMaxPriority(self):
-#      orderedRequests = db_lib.getOrderedRequestList()      
-#      priorityMax = 0
-#      for i in xrange(len(orderedRequests)):
-#        if (orderedRequests[i]["priority"] > priorityMax):
-#          priorityMax = orderedRequests[i]["priority"]
-#      return priorityMax
-      return max(six.iterkeys(db_lib.getPriorityMap()))
+      orderedRequests = db_lib.getOrderedRequestList()      
+      priorityMax = 0
+      for i in xrange(len(orderedRequests)):
+        if (orderedRequests[i]["priority"] > priorityMax):
+          priorityMax = orderedRequests[i]["priority"]
+      return priorityMax
+#      return max(six.iterkeys(db_lib.getPriorityMap()))
 
     def getMinPriority(self):
-#      orderedRequests = db_lib.getOrderedRequestList()      
-#      priorityMin = 10000000
-#      for i in xrange(len(orderedRequests)):
-#        if (orderedRequests[i]["priority"] < priorityMin):
-#          priorityMin = orderedRequests[i]["priority"]
-#      return priorityMin
-      return min(six.iterkeys(db_lib.getPriorityMap()))
+      orderedRequests = db_lib.getOrderedRequestList()      
+      priorityMin = 10000000
+      for i in xrange(len(orderedRequests)):
+        if ((orderedRequests[i]["priority"] < priorityMin) and orderedRequests[i]["priority"]>0):
+          priorityMin = orderedRequests[i]["priority"]
+      return priorityMin
+#      return min(six.iterkeys(db_lib.getPriorityMap()))
 
 
     def showProtParams(self):
@@ -1668,7 +1668,10 @@ class controlMain(QtGui.QMainWindow):
         self.dataPathGB.setBasePath_ledit(fname)
 
 
-    def upPriorityCB(self):
+    def upPriorityCB(self): #neither of these are very elegant, and might even be glitchy if overused
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
@@ -1676,12 +1679,17 @@ class controlMain(QtGui.QMainWindow):
             self.topPriorityCB()
           else:
             priority = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
+            if (currentPriority == priority):
+              priority = priority+20
             db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
       self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
             
       
     def downPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
@@ -1689,12 +1697,17 @@ class controlMain(QtGui.QMainWindow):
             self.bottomPriorityCB()
           else:
             priority = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
+            if (currentPriority == priority):
+              priority = priority-20
             db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
 #      self.dewarTree.refreshTree()
       self.treeChanged_pv.put(1)
 
 
     def topPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       priority = int(self.getMaxPriority())
       priority = priority+100
       db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
@@ -1703,6 +1716,9 @@ class controlMain(QtGui.QMainWindow):
 
 
     def bottomPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       priority = int(self.getMinPriority())
       priority = priority-100
       db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
@@ -2375,8 +2391,8 @@ class controlMain(QtGui.QMainWindow):
 #       print puckName
        if (ok):
          dewarPos, ok = DewarDialog.getDewarPos()
-#         print dewarPos
-         ipos = int(dewarPos)
+         print dewarPos
+         ipos = int(dewarPos)+1
 #         ipos = int(dewarPos)-1
          if (ok):
            db_lib.insertIntoContainer("primaryDewar",ipos,db_lib.getContainerIDbyName(puckName))
