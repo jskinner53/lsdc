@@ -6,8 +6,9 @@ import sys
 import os
 import socket
 
-import bson
 import six
+
+import bson
 
 import mongoengine 
 from  mongoengine import NotUniqueError
@@ -1030,7 +1031,7 @@ def getPriorityMap():
 def getOrderedRequestList():
 #def getOrderedRequests():
     """
-    returns a generator of requests sorted by priority
+    returns a list of requests sorted by priority
     """
 
     orderedRequestsList = []
@@ -1041,6 +1042,12 @@ def getOrderedRequestList():
         orderedRequestsList += priority_map[priority]
         #for request in priority_map[priority]:
         #    yield request
+        # or if we want this to be a generator could it be more efficient
+        # with itertools.chain?
+        # foo=['abc','def','ghi']
+        # [a for a in itertools.chain(*foo)]
+        # ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
+        # or [a for a in itertools.chain.from_iterable(foo)]
 
     return orderedRequestsList
 
