@@ -446,14 +446,14 @@ def getResult(result_id, as_mongo_obj=False):
     """
 
     if isinstance(result_id, bson.DBRef):
-        result = Request.objects(__raw__={'_id': result_id.id})
+        result = Result.objects(__raw__={'_id': result_id.id})
         return _try0_maybe_mongo(result, 'result', 'result _id', result_id.id, None,
                                  as_mongo_obj=as_mongo_obj)
 
     else:
         result_id = int(result_id)  # do we need this cast?
         
-        r = Result.objects(__raw__={'result_id': result_id})
+        result = Result.objects(__raw__={'result_id': result_id})
         return _try0_maybe_mongo(result, 'result', 'result_id', result_id, None,
                                  as_mongo_obj=as_mongo_obj)
 
