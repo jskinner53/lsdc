@@ -60,7 +60,7 @@ def loop_center_xrec():
     mva("Omega",i)
     pic_prefix = "findloop_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(filename=pic_prefix)
+    daq_utils.take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
   print comm_s
   os.system(comm_s)
@@ -389,7 +389,7 @@ def getXrecLoopShape(sampleID):
     mvr("Omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(filename=pic_prefix,czoom=1)
+    daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
   mva("Omega",face_on)
@@ -477,7 +477,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     beamline_lib.mva("Omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
-    daq_lib.take_crystal_picture(reqID=charRequest["request_id"])
+    daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
 ######### BECAUSE I FAKE IT    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
     if (i==0):
       commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00001.cbf " + filename
@@ -485,7 +485,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
       commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00181.cbf " + filename
     os.system(commFake)
     dna_filename_list.append(filename)
-    diffImgJpegData = diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
+    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()
 #    imgRef = db_lib.addFile(diffImgJpegData["data"])
 #    diffImgJpegData["data"] = imgRef

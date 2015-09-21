@@ -86,6 +86,7 @@ def createTestDB():
         createType("xtalpicJpeg","","result")        
         createType("rasterResult","","result")             
         createType("characterizationStrategy","","result")        
+        createType("mxExpParams","","result") 
         
         
         # containers
