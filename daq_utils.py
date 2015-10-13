@@ -7,6 +7,7 @@ import metadatastore.commands as mdsc
 import db_lib
 from db_lib import *
 import requests
+import dectris.albula
 
 #global det_radius
 #det_radius = 0
@@ -15,6 +16,32 @@ beamline = "john"
 global searchParams
 searchParams = {"config_params.beamline_id":beamline}
 
+global albulaFrame, albulaSubFrame
+albulaFrame = None
+albulaSubframeFrame = None
+
+def albulaClose(): #not used
+  global albulaFrame,albulaSubFrame
+  if (albulaSubFrame != None):
+     albulaSubFrame.close()
+
+  if (albulaFrame != None):
+     albulaFrame.close()
+  
+
+def albulaDisp(filename):
+  global albulaFrame,albulaSubFrame
+
+  if (albulaFrame == None or albulaSubFrame == None):
+     albulaFrame = dectris.albula.openMainFrame()
+     albulaFrame.disableClose()
+     albulaSubFrame = albulaFrame.openSubFrame()
+  try:
+    albulaSubFrame.loadFile(filename)
+  except dectris.albula.DNoObject:
+   albulaFrame = dectris.albula.openMainFrame()
+   albulaSubFrame = albulaFrame.openSubFrame()
+   albulaSubFrame.loadFile(filename)
 
 
 def init_environment():
@@ -356,6 +383,15 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["header"] = imageJpegHeader
     db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
   return imageJpegData
+
+def create_filename(prefix,number):
+  tmp_filename = "%s_%05d.cbf" % (prefix,int(number))
+  if (prefix[0] != "/"):
+    cwd = os.getcwd()
+    filename = "%s/%s" % (cwd,tmp_filename)
+  else:
+    filename = tmp_filename
+  return filename
 
 
 

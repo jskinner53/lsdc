@@ -24,7 +24,8 @@ from PyMca.McaAdvancedFit import McaAdvancedFit
 import numpy as np
 import thread
 import lsdcOlog
-import six
+import StringIO
+
 
 class snapCommentDialog(QDialog):
     def __init__(self,parent = None):
@@ -58,6 +59,56 @@ class snapCommentDialog(QDialog):
         result = dialog.exec_()
         return (dialog.comment, result == QDialog.Accepted)
 
+class rasterExploreDialog(QDialog):
+    def __init__(self):
+        QDialog.__init__(self)
+        self.setModal(False)
+        self.setWindowTitle("Raster Explore")
+        vBoxParams1 = QtGui.QVBoxLayout()
+        hBoxParams1 = QtGui.QHBoxLayout()
+        hBoxParams2 = QtGui.QHBoxLayout()
+        hBoxParams3 = QtGui.QHBoxLayout()
+        spotCountLabel = QtGui.QLabel('Spot Count:')
+        spotCountLabel.setFixedWidth(120)
+        self.spotCount_ledit = QtGui.QLabel()
+        self.spotCount_ledit.setFixedWidth(60)
+        hBoxParams1.addWidget(spotCountLabel)
+        hBoxParams1.addWidget(self.spotCount_ledit)
+        intensityLabel = QtGui.QLabel('Total Intensity:')
+        intensityLabel.setFixedWidth(120)
+        self.intensity_ledit = QtGui.QLabel()
+        self.intensity_ledit.setFixedWidth(60)
+        hBoxParams2.addWidget(intensityLabel)
+        hBoxParams2.addWidget(self.intensity_ledit)
+        resoLabel = QtGui.QLabel('Resolution:')
+        resoLabel.setFixedWidth(120)
+        self.reso_ledit = QtGui.QLabel()
+        self.reso_ledit.setFixedWidth(60)
+        hBoxParams3.addWidget(resoLabel)
+        hBoxParams3.addWidget(self.reso_ledit)
+
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.Cancel,
+            Qt.Horizontal, self)
+        self.buttons.buttons()[0].clicked.connect(self.rasterExploreCancelCB)
+        vBoxParams1.addLayout(hBoxParams1)
+        vBoxParams1.addLayout(hBoxParams2)
+        vBoxParams1.addLayout(hBoxParams3)
+        vBoxParams1.addWidget(self.buttons)
+        self.setLayout(vBoxParams1)
+
+
+    def setSpotCount(self,val):
+      self.spotCount_ledit.setText(str(val))
+
+    def setTotalIntensity(self,val):
+      self.intensity_ledit.setText(str(val))
+
+    def setResolution(self,val):
+      self.reso_ledit.setText(str(val))
+
+    def rasterExploreCancelCB(self):
+      self.done(QDialog.Rejected)
 
 
 class screenDefaultsDialog(QDialog):
@@ -257,10 +308,12 @@ class PuckDialog(QtGui.QDialog):
 
 
 class DewarDialog(QtGui.QDialog):
-    def __init__(self, parent = None):
+    def __init__(self, parent = None,action="add"):
         super(DewarDialog, self).__init__(parent)
         self.pucksPerDewarSector = 3
         self.dewarSectors = 8
+        self.action = action
+        self.parent=parent
 
         self.initData()
         self.initUI()
@@ -273,7 +326,7 @@ class DewarDialog(QtGui.QDialog):
         if (puckLocs[i] != None):
           self.data.append(db_lib.getContainerNameByID(puckLocs[i]))
         else:
-          self.data.append("empty")
+          self.data.append("Empty")
 
     def initUI(self):
         layout = QtGui.QVBoxLayout()
@@ -288,40 +341,45 @@ class DewarDialog(QtGui.QDialog):
         cLabel.setFixedWidth(10)
         headerLabelLayout.addWidget(cLabel)
         layout.addLayout(headerLabelLayout)
- 
+        self.allButtonList = [None]*(self.dewarSectors*self.pucksPerDewarSector)
         for i in range (0,self.dewarSectors):
           rowLayout = QtGui.QHBoxLayout()
           numLabel = QtGui.QLabel(str(i+1))
           rowLayout.addWidget(numLabel)
 #          numLabel.setFixedWidth(
-          buttons = QDialogButtonBox(Qt.Horizontal, self)
+          self.buttons = QDialogButtonBox(Qt.Horizontal, self)
 #          for j in range (0,self.pucksPerDewarSector):
           for j in range (self.pucksPerDewarSector,0,-1):
             dataIndex = (i*self.pucksPerDewarSector)+j-1
 #            print dataIndex
-            buttons.addButton(str(self.data[dataIndex]),0)
-            buttons.buttons()[self.pucksPerDewarSector-j].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
-          rowLayout.addWidget(buttons)
+            self.allButtonList[dataIndex] = self.buttons.addButton(str(self.data[dataIndex]),0)
+            self.buttons.buttons()[self.pucksPerDewarSector-j].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
+          rowLayout.addWidget(self.buttons)
           layout.addLayout(rowLayout)
-#        for i in xrange(len(self.data),0,-1): #counting backwards
-#          self.buttons.addButton(str(self.data[i-1]),0)
-#          self.buttons.buttons()[len(self.data)-i].clicked.connect(functools.partial(self.on_button,str(i)))
-        cancelButton = QtGui.QPushButton("Cancel")        
+        cancelButton = QtGui.QPushButton("Done")        
         cancelButton.clicked.connect(self.containerCancelCB)
         layout.addWidget(cancelButton)
         self.setLayout(layout)        
             
     def on_button(self, n):
+      if (self.action == "remove"):
+        self.dewarPos = n
+#        print "delete puck " + str(n)
+        db_lib.removePuckFromDewar(int(n))
+        self.allButtonList[int(n)].setText("Empty")
+        self.parent.treeChanged_pv.put(1)
+      else:
         self.dewarPos = n
         self.accept()
+
 
     def containerCancelCB(self):
       self.dewarPos = 0
       self.reject()
 
     @staticmethod
-    def getDewarPos(parent = None):
-        dialog = DewarDialog(parent)
+    def getDewarPos(parent = None,action="add"):
+        dialog = DewarDialog(parent,action)
         result = dialog.exec_()
         return (dialog.dewarPos, result == QDialog.Accepted)
 
@@ -336,6 +394,7 @@ class DewarTree(QtGui.QTreeView):
         self.setAnimated(True)
         self.model = QtGui.QStandardItemModel()
         self.model.itemChanged.connect(self.queueSelectedSample)
+        self.isExpanded = 1
 
     def keyPressEvent(self, event):
       if (event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
@@ -453,7 +512,10 @@ class DewarTree(QtGui.QTreeView):
             self.setCurrentIndex(mountedIndex)
             self.parent.row_clicked(mountedIndex)
 
-        self.expandAll()
+        if (self.isExpanded):
+          self.expandAll()
+        else:
+          self.collapseAll()
         self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
 
 
@@ -575,7 +637,11 @@ class DewarTree(QtGui.QTreeView):
       selmod = self.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
+      progressInc = 100.0/float(len(indexes))
+      self.parent.progressDialog.setWindowTitle("Deleting Requests")
+      self.parent.progressDialog.show()
       for i in xrange(len(indexes)):
+        self.parent.progressDialog.setValue(int((i+1)*progressInc))
         item = self.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         if (itemData > 0): #then it's a request, not a sample
@@ -588,14 +654,17 @@ class DewarTree(QtGui.QTreeView):
                 if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
                   self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
                   self.parent.rasterList[i] = None
+      self.parent.progressDialog.close()
       self.parent.treeChanged_pv.put(1)
       
 
     def expandAllCB(self):
       self.expandAll()
+      self.isExpanded = 1
 
     def collapseAllCB(self):
       self.collapseAll()
+      self.isExpanded = 0
 
 
 
@@ -665,11 +734,19 @@ class rasterCell(QtGui.QGraphicsRectItem):
       self.topParent = topParent
 
     def mousePressEvent(self, e):
-      print "mouse pressed on raster cell"
       if (self.topParent.vidActionRasterExploreRadio.isChecked()):
         if (self.data(0) != None):
-          print "found " + str(self.data(0).toInt()[0]) + " spots"
-          print "for file " + str(self.data(1).toString())
+          spotcount = self.data(0).toInt()[0]
+          filename = self.data(1).toString()
+          d_min = self.data(2).toDouble()[0]
+          intensity = self.data(3).toInt()[0]
+          if (self.topParent.albulaDispCheckBox.isChecked()):
+            daq_utils.albulaDisp(str(self.data(1).toString()))
+          if not (self.topParent.rasterExploreDialog.isVisible()):
+            self.topParent.rasterExploreDialog.show()
+          self.topParent.rasterExploreDialog.setSpotCount(spotcount)
+          self.topParent.rasterExploreDialog.setTotalIntensity(intensity)
+          self.topParent.rasterExploreDialog.setResolution(d_min)
       else:
         super(rasterCell, self).mousePressEvent(e)
 
@@ -742,6 +819,7 @@ class controlMain(QtGui.QMainWindow):
         self.groupName = "skinner"        
         self.vectorStart = None
         self.vectorEnd = None
+        self.currentRasterCellList = []
         self.initUI()
         self.createSampleTab()
         self.initCallbacks()
@@ -750,6 +828,12 @@ class controlMain(QtGui.QMainWindow):
         if (self.mountedPin_pv.get() == 0):
           mountedPin = db_lib.beamlineInfo('john', 'mountedSample')["sampleID"]
           self.mountedPin_pv.put(mountedPin)
+        self.rasterExploreDialog = rasterExploreDialog()
+
+
+    def closeEvent(self, evnt):
+       evnt.accept()
+       sys.exit() #doing this to close any windows left open
 
 
     def initVideo2(self,frequency):
@@ -840,13 +924,13 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1 = QtGui.QVBoxLayout()
         hBoxColParams1 = QtGui.QHBoxLayout()
         colStartLabel = QtGui.QLabel('Oscillation Start:')
-        colStartLabel.setFixedWidth(120)
+        colStartLabel.setFixedWidth(140)
         colStartLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_start_ledit = QtGui.QLineEdit()
         self.osc_start_ledit.setFixedWidth(60)
         colEndLabel = QtGui.QLabel('Oscillation End:')
         colEndLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        colEndLabel.setFixedWidth(120)
+        colEndLabel.setFixedWidth(140)
         self.osc_end_ledit = QtGui.QLineEdit()
         self.osc_end_ledit.setFixedWidth(60)
         hBoxColParams1.addWidget(colStartLabel)
@@ -855,12 +939,12 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams1.addWidget(self.osc_end_ledit)
         hBoxColParams2 = QtGui.QHBoxLayout()
         colRangeLabel = QtGui.QLabel('Oscillation Range:')
-        colRangeLabel.setFixedWidth(120)
+        colRangeLabel.setFixedWidth(140)
         colRangeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_range_ledit = QtGui.QLineEdit()
         self.osc_range_ledit.setFixedWidth(60)
         colExptimeLabel = QtGui.QLabel('ExposureTime:')
-        colExptimeLabel.setFixedWidth(120)
+        colExptimeLabel.setFixedWidth(140)
         colExptimeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.exp_time_ledit = QtGui.QLineEdit()
         self.exp_time_ledit.setFixedWidth(60)
@@ -870,14 +954,14 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams2.addWidget(self.exp_time_ledit)
         hBoxColParams3 = QtGui.QHBoxLayout()
         colEnergyLabel = QtGui.QLabel('Energy (KeV):')
-        colEnergyLabel.setFixedWidth(120)
+        colEnergyLabel.setFixedWidth(140)
         colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.energy_ledit = QtGui.QLineEdit()
         self.energy_ledit.setFixedWidth(60)
         self.energy_ledit.textChanged[str].connect(self.energyTextChanged)
         colTransmissionLabel = QtGui.QLabel('Transmission (%):')
         colTransmissionLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        colTransmissionLabel.setFixedWidth(120)
+        colTransmissionLabel.setFixedWidth(140)
         self.transmission_ledit = QtGui.QLineEdit()
         self.transmission_ledit.setFixedWidth(60)
         hBoxColParams3.addWidget(colTransmissionLabel)
@@ -886,12 +970,12 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams3.addWidget(self.energy_ledit)
         hBoxColParams4 = QtGui.QHBoxLayout()
         colBeamWLabel = QtGui.QLabel('Beam Width:')
-        colBeamWLabel.setFixedWidth(120)
+        colBeamWLabel.setFixedWidth(140)
         colBeamWLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamWidth_ledit = QtGui.QLineEdit()
         self.beamWidth_ledit.setFixedWidth(60)
         colBeamHLabel = QtGui.QLabel('Beam Height:')
-        colBeamHLabel.setFixedWidth(120)
+        colBeamHLabel.setFixedWidth(140)
         colBeamHLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamHeight_ledit = QtGui.QLineEdit()
         self.beamHeight_ledit.setFixedWidth(60)
@@ -901,13 +985,13 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams4.addWidget(self.beamHeight_ledit)
         hBoxColParams5 = QtGui.QHBoxLayout()
         colResoLabel = QtGui.QLabel('Edge Resolution:')
-        colResoLabel.setFixedWidth(120)
+        colResoLabel.setFixedWidth(140)
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
         self.resolution_ledit.textChanged[str].connect(self.resoTextChanged)
         self.resolution_ledit.setFixedWidth(60)
         colResoDistLabel = QtGui.QLabel('Detector Distance')
-        colResoDistLabel.setFixedWidth(120)
+        colResoDistLabel.setFixedWidth(140)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.colResoCalcDistance_ledit = QtGui.QLabel()
 #        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
@@ -1052,10 +1136,14 @@ class controlMain(QtGui.QMainWindow):
         self.characterizeParamsFrame.hide()
         colParamsGB.setLayout(vBoxColParams1)
         self.dataPathGB = DataLocInfo(self)
-        self.hBoxLastFileLayout1= QtGui.QHBoxLayout()        
+        hBoxDisplayOptionLayout= QtGui.QHBoxLayout()        
+        self.albulaDispCheckBox = QCheckBox("Display Data (Albula)")
+        self.albulaDispCheckBox.setChecked(True)
+#        self.albulaDispCheckBox.stateChanged.connect(self.albulaCheckCB)
+        hBoxDisplayOptionLayout.addWidget(self.albulaDispCheckBox)
         vBoxMainColLayout.addWidget(colParamsGB)
         vBoxMainColLayout.addWidget(self.dataPathGB)
-        vBoxMainColLayout.addLayout(self.hBoxLastFileLayout1)
+        vBoxMainColLayout.addLayout(hBoxDisplayOptionLayout)
         self.mainColFrame.setLayout(vBoxMainColLayout)
         self.EScanToolFrame = QFrame()
         vBoxEScanTool = QtGui.QVBoxLayout()
@@ -1087,13 +1175,13 @@ class controlMain(QtGui.QMainWindow):
         queueSampleButton.clicked.connect(self.addRequestsToAllSelectedCB)
         deleteSampleButton = QtGui.QPushButton("Delete Requests") 
         deleteSampleButton.clicked.connect(self.dewarTree.deleteSelectedCB)
-        editScreenParamsButton = QtGui.QPushButton("Edit Screening Parmams...") 
+        editScreenParamsButton = QtGui.QPushButton("Edit Screening Params...") 
         editScreenParamsButton.clicked.connect(self.editScreenParamsCB)
         vBoxMainSetup.addWidget(self.mainToolBox)
         vBoxMainSetup.addLayout(hBoxPriorityLayout1)
-        vBoxMainSetup.addWidget(editSampleButton)
         vBoxMainSetup.addWidget(queueSampleButton)
-        vBoxMainSetup.addWidget(deleteSampleButton)
+        vBoxMainSetup.addWidget(editSampleButton)
+#        vBoxMainSetup.addWidget(deleteSampleButton)
         vBoxMainSetup.addWidget(editScreenParamsButton)
         self.mainSetupFrame.setLayout(vBoxMainSetup)
         self.VidFrame = QFrame()
@@ -1137,10 +1225,13 @@ class controlMain(QtGui.QMainWindow):
         self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.VAL",self,70,2)
         moveOmegaButton = QtGui.QPushButton("Move")
         moveOmegaButton.clicked.connect(self.moveOmegaCB)
-        omega90Button = QtGui.QPushButton("+90")
-        omega90Button.clicked.connect(self.omega90CB)
-        omegaMinus90Button = QtGui.QPushButton("-90")
-        omegaMinus90Button.clicked.connect(self.omegaMinus90CB)
+        omegaTweakNegButton = QtGui.QPushButton("<")
+        omegaTweakNegButton.clicked.connect(self.omegaTweakNegCB)
+        self.omegaTweakVal_ledit = QtGui.QLineEdit()
+        self.omegaTweakVal_ledit.setFixedWidth(60)
+        self.omegaTweakVal_ledit.setText("90.0")         
+        omegaTweakPosButton = QtGui.QPushButton(">")
+        omegaTweakPosButton.clicked.connect(self.omegaTweakPosCB)
         hBoxSampleOrientationLayout.addWidget(omegaLabel)
         hBoxSampleOrientationLayout.addWidget(omegaRBLabel)
         hBoxSampleOrientationLayout.addWidget(self.sampleOmegaRBVLedit.getEntry())
@@ -1149,8 +1240,9 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout.addWidget(moveOmegaButton)
         spacerItem = QtGui.QSpacerItem(50, 1, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         hBoxSampleOrientationLayout.addItem(spacerItem)
-        hBoxSampleOrientationLayout.addWidget(omega90Button)
-        hBoxSampleOrientationLayout.addWidget(omegaMinus90Button)
+        hBoxSampleOrientationLayout.addWidget(omegaTweakNegButton)
+        hBoxSampleOrientationLayout.addWidget(self.omegaTweakVal_ledit)
+        hBoxSampleOrientationLayout.addWidget(omegaTweakPosButton)
         hBoxSampleOrientationLayout.addStretch(1)
         hBoxVidControlLayout = QtGui.QHBoxLayout()
 #        lightLevelLabel = QtGui.QLabel("Sample Illumination:")
@@ -1219,18 +1311,27 @@ class controlMain(QtGui.QMainWindow):
         self.vidActionC2CRadio.setChecked(True)
         self.vidActionC2CRadio.toggled.connect(self.vidActionToggledCB)
         self.vidActionRadioGroup.addButton(self.vidActionC2CRadio)
-        self.vidActionRasterExploreRadio = QtGui.QRadioButton("RasterExplore")
+        self.vidActionRasterExploreRadio = QtGui.QRadioButton("Raster\nExplore")
         self.vidActionRasterExploreRadio.setChecked(False)
         self.vidActionRasterExploreRadio.toggled.connect(self.vidActionToggledCB)
         self.vidActionRadioGroup.addButton(self.vidActionRasterExploreRadio)
-        self.vidActionRasterSelectRadio = QtGui.QRadioButton("RasterSelect")
+        self.vidActionRasterSelectRadio = QtGui.QRadioButton("Raster\nSelect")
         self.vidActionRasterSelectRadio.setChecked(False)
         self.vidActionRasterSelectRadio.toggled.connect(self.vidActionToggledCB)
         self.vidActionRadioGroup.addButton(self.vidActionRasterSelectRadio)
-        self.vidActionRasterDefRadio = QtGui.QRadioButton("Define Raster Polygon")
+        self.vidActionRasterDefRadio = QtGui.QRadioButton("Define\nRaster")
         self.vidActionRasterDefRadio.setChecked(False)
         self.vidActionRasterDefRadio.toggled.connect(self.vidActionToggledCB)
         self.vidActionRadioGroup.addButton(self.vidActionRasterDefRadio)
+
+        rasterEvalLabel = QtGui.QLabel('Raster\nEvaluate By:')
+        rasterEvalOptionList = ["Spot Count","Resolution","Intensity"]
+#        rasterEvalOptionList = db_lib.beamlineInfo('john','rasterScoreFlag')["optionList"]
+        self.rasterEvalComboBox = QtGui.QComboBox(self)
+        self.rasterEvalComboBox.addItems(rasterEvalOptionList)
+        self.rasterEvalComboBox.setCurrentIndex(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
+        self.rasterEvalComboBox.activated[str].connect(self.rasterEvalComboActivatedCB) 
+
 #        self.vidActionRasterMoveRadio = QtGui.QRadioButton("RasterMove")
 #        self.vidActionRasterMoveRadio.toggled.connect(self.vidActionToggledCB)
 #        self.vidActionRadioGroup.addButton(self.vidActionRasterMoveRadio)
@@ -1238,6 +1339,8 @@ class controlMain(QtGui.QMainWindow):
         hBoxRadioLayout100.addWidget(self.vidActionRasterExploreRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterSelectRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterDefRadio)
+        hBoxRadioLayout100.addWidget(rasterEvalLabel)
+        hBoxRadioLayout100.addWidget(self.rasterEvalComboBox)
 #        hBoxRadioLayout100.addWidget(self.vidActionPolyRasterDefRadio)
 #######        hBoxRadioLayout100.addWidget(self.vidActionRasterMoveRadio)
 ##        vBoxDFlayout.addLayout(hBoxRadioLayout1)                   
@@ -1304,6 +1407,9 @@ class controlMain(QtGui.QMainWindow):
         self.tabs.addTab(sampleTab,"Collect")
         self.tabs.addTab(self.XRFTab,"XRF Spectrum")
 
+    def albulaCheckCB(self,state):
+      if state != QtCore.Qt.Checked:
+        daq_utils.albulaClose()
 
     def rasterGrainToggledCB(self,identifier):
       if (identifier == "Coarse"):
@@ -1396,8 +1502,8 @@ class controlMain(QtGui.QMainWindow):
         self.saveVidSnapshotCB(comment)
 
 
-    def saveVidSnapshotCB(self,comment=""):
-      totalRect = QtCore.QRectF(self.view.frameRect())
+    def saveVidSnapshotCB(self,comment="",reqID=None):
+#      totalRect = QtCore.QRectF(self.view.frameRect())
       width = 646
       height = 482
       targetrect = QRectF(0, 0, width, height)
@@ -1411,8 +1517,22 @@ class controlMain(QtGui.QMainWindow):
       now = time.time()
       imagePath = os.getcwd()+"/snapshots/capture"+str(int(now))+".jpg"
       pix.save(imagePath, "JPG")
-      lsdcOlog.toOlog(imagePath,comment,self.omegaRBV_pv)
+      if (reqID != None):
+        byte_array = QByteArray()
+        buffer = QBuffer(byte_array)
+        buffer.open(QIODevice.WriteOnly)
+        pix.save(buffer, 'JPG')
+        string_io = StringIO.StringIO(byte_array)
+        string_io.seek(0)
+        data = string_io.read()
+        resultObj = {}
+        imgRef = db_lib.addFile(data)
+        resultObj["data"] = imgRef
+        db_lib.addResultforRequest("rasterJpeg",reqID,resultObj)
+#      print string_io.read()
+###      lsdcOlog.toOlog(imagePath,comment,self.omegaRBV_pv)
       del painter
+
 
     def changeZoomCB(self, state):
       fov = {}      
@@ -1598,7 +1718,6 @@ class controlMain(QtGui.QMainWindow):
         if (orderedRequests[i]["priority"] > priorityMax):
           priorityMax = orderedRequests[i]["priority"]
       return priorityMax
-#      return max(six.iterkeys(db_lib.getPriorityMap()))
 
     def getMinPriority(self):
       orderedRequests = db_lib.getOrderedRequestList()      
@@ -1607,7 +1726,6 @@ class controlMain(QtGui.QMainWindow):
         if ((orderedRequests[i]["priority"] < priorityMin) and orderedRequests[i]["priority"]>0):
           priorityMin = orderedRequests[i]["priority"]
       return priorityMin
-#      return min(six.iterkeys(db_lib.getPriorityMap()))
 
 
     def showProtParams(self):
@@ -1661,6 +1779,12 @@ class controlMain(QtGui.QMainWindow):
       protocol = str(self.protoComboBox.currentText())
       if (protocol == "raster"):
         self.vidActionRasterDefRadio.setChecked(True)        
+
+    def rasterEvalComboActivatedCB(self, text):
+#      print "protocol = " + str(text)
+      db_lib.beamlineInfo('john','rasterScoreFlag',info_dict={"index":self.rasterEvalComboBox.findText(str(text))})
+      if (self.currentRasterCellList != []):
+        self.reFillPolyRaster()
 
 
     def  popBaseDirectoryDialogCB(self):
@@ -1748,6 +1872,18 @@ class controlMain(QtGui.QMainWindow):
       comm_s = "mva(\"Omega\"," + str(self.sampleOmegaMoveLedit.getEntry().text()) + ")"
       self.send_to_server(comm_s)
 
+
+    def omegaTweakNegCB(self):
+      tv = float(self.omegaTweakVal_ledit.text())
+      comm_s = "mvr(\"Omega\",-" + str(tv) + ")"
+      self.send_to_server(comm_s)
+
+    def omegaTweakPosCB(self):
+      tv = float(self.omegaTweakVal_ledit.text())
+      comm_s = "mvr(\"Omega\"," + str(tv) + ")"
+      self.send_to_server(comm_s)
+
+
     def omega90CB(self):
       self.send_to_server("mvr(\"Omega\",90)")
 
@@ -1814,7 +1950,8 @@ class controlMain(QtGui.QMainWindow):
     def fillPolyRaster(self,rasterReq): #at this point I should have a drawn polyRaster
 #      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
       print "filling poly for " + str(rasterReq["request_id"])
-      rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[0]
+      resultCount = len(db_lib.getResultsforRequest(rasterReq["request_id"]))
+      rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]
       rasterDef = rasterReq["request_obj"]["rasterDef"]
       rasterListIndex = 0
       for i in xrange(len(self.rasterList)):
@@ -1824,13 +1961,15 @@ class controlMain(QtGui.QMainWindow):
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[0]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
       numLines = len(cellResults)
-      filename_array = ["" for i in xrange(numLines)]
+      cellResults_array = [{} for i in xrange(numLines)]
+#      filename_array = ["" for i in xrange(numLines)]
       my_array = np.zeros(numLines)
       spotLineCounter = 0
       cellIndex=0
       rowStartIndex = 0
+      rasterEvalOption = str(self.rasterEvalComboBox.currentText())
       for i in xrange(len(rasterDef["rowDefs"])):
         rowStartIndex = spotLineCounter
         numsteps = rasterDef["rowDefs"][i]["numsteps"]
@@ -1842,8 +1981,13 @@ class controlMain(QtGui.QMainWindow):
             cellIndex = spotLineCounter
           else:
             cellIndex = rowStartIndex + ((numsteps-1)-j)          
-          my_array[cellIndex] = spotcount
-          filename_array[cellIndex] = filename
+          if (rasterEvalOption == "Spot Count"):
+            my_array[cellIndex] = spotcount 
+          elif (rasterEvalOption == "Intensity"):
+            my_array[cellIndex] = cellResult["total_intensity"]
+          else:
+            my_array[cellIndex] = float(cellResult["d_min"])
+          cellResults_array[cellIndex] = cellResult #instead of just grabbing filename, get everything,
           spotLineCounter+=1
 #  plt.text(int_w+.6,int_h+.5, str(spotcount), size=10,ha="right", va="top", color='r')
       floor = np.amin(my_array)
@@ -1852,18 +1996,71 @@ class controlMain(QtGui.QMainWindow):
       for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
-          spotcount = int(my_array[cellCounter])
-          filenameArrayIndex = cellCounter
-          cellFilename = filename_array[filenameArrayIndex]
+##          spotcount = int(my_array[cellCounter])
+##          cellResultsArrayIndex = cellCounter
+          cellResult = cellResults_array[cellCounter]
+          spotcount = int(cellResult["spot_count"])
+          cellFilename = cellResult["image"]
+          d_min =  float(cellResult["d_min"])
+          total_intensity =  int(cellResult["total_intensity"])
+          if (rasterEvalOption == "Spot Count"):
+            param = spotcount 
+          elif (rasterEvalOption == "Intensity"):
+            param = total_intensity
+          else:
+            param = d_min
           if (ceiling == 0):
             color_id = 255
           else:
-            color_id = int(255-(255.0*(float(spotcount-floor)/float(ceiling-floor))))
+            if (rasterEvalOption == "Resolution"):
+              color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
+            else:
+              color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
           self.currentRasterCellList[cellCounter*2].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
           self.currentRasterCellList[cellCounter*2].setData(0,spotcount)
           self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
+          self.currentRasterCellList[cellCounter*2].setData(2,d_min)
+          self.currentRasterCellList[cellCounter*2].setData(3,total_intensity)
           cellCounter+=1
-      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]))
+      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]),reqID=rasterReq["request_id"])
+
+
+
+    def reFillPolyRaster(self):
+
+      rasterEvalOption = str(self.rasterEvalComboBox.currentText())
+      my_array = np.zeros(len(self.currentRasterCellList)/2)
+      for i in range (0,len(self.currentRasterCellList),2): #first loop is to get floor and ceiling
+        cellIndex = i/2
+        if (rasterEvalOption == "Spot Count"):
+          spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
+          my_array[cellIndex] = spotcount 
+        elif (rasterEvalOption == "Intensity"):
+          total_intensity  = self.currentRasterCellList[i].data(3).toInt()[0]
+          my_array[cellIndex] = total_intensity
+        else:
+          d_min = self.currentRasterCellList[i].data(2).toDouble()[0]
+          my_array[cellIndex] = d_min
+      floor = np.amin(my_array)
+      ceiling = np.amax(my_array)
+      for i in range (0,len(self.currentRasterCellList),2):
+        if (rasterEvalOption == "Spot Count"):
+          spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
+          param = spotcount 
+        elif (rasterEvalOption == "Intensity"):
+          total_intensity  = self.currentRasterCellList[i].data(3).toInt()[0]
+          param = total_intensity
+        else:
+          d_min = self.currentRasterCellList[i].data(2).toDouble()[0]
+          param = d_min
+        if (ceiling == 0):
+          color_id = 255
+        if (rasterEvalOption == "Resolution"):
+          color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
+        else:
+          color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
+        self.currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
+
       
 
     def saveCenterCB(self):
@@ -1916,6 +2113,7 @@ class controlMain(QtGui.QMainWindow):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
         self.rasterList = []
         self.rasterDefList = []
+        self.currentRasterCellList = []
       self.clearVectorCB()
       if (self.rasterPoly != None):      
         self.scene.removeItem(self.rasterPoly)
@@ -2019,7 +2217,10 @@ class controlMain(QtGui.QMainWindow):
 
 
     def drawPolyRaster(self,rasterReq): #rasterDef in microns,offset from center, need to convert to pixels to draw
-      rasterDef = rasterReq["request_obj"]["rasterDef"]
+      try:
+        rasterDef = rasterReq["request_obj"]["rasterDef"]
+      except KeyError:
+        return
       beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
       stepsize = self.screenXmicrons2pixels(rasterDef["stepsize"])
       penBeam = QtGui.QPen(QtCore.Qt.green)
@@ -2211,7 +2412,13 @@ class controlMain(QtGui.QMainWindow):
       selmod = self.dewarTree.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
+      progressInc = 100.0/float(len(indexes))
+#      self.progressDialog.setLabelText("Creating Requests")
+      self.progressDialog.setWindowTitle("Creating Requests")
+      self.progressDialog.show()
+#      time.sleep(0.1)
       for i in xrange(len(indexes)):
+        self.progressDialog.setValue(int((i+1)*progressInc))
         item = self.dewarTree.model.itemFromIndex(indexes[i])
         itemData = item.data().toInt()[0]
         if (itemData < -100): #then it's a sample
@@ -2222,6 +2429,7 @@ class controlMain(QtGui.QMainWindow):
             self.dataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
           self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
 #      self.refreshTree()
+      self.progressDialog.close()
       self.treeChanged_pv.put(1)
 
 
@@ -2345,14 +2553,15 @@ class controlMain(QtGui.QMainWindow):
 
 
     def removePuckCB(self):
-      dewarPos, ok = DewarDialog.getDewarPos()
-      ipos = int(dewarPos)
+      dewarPos, ok = DewarDialog.getDewarPos(parent=self,action="remove")
+#      ipos = int(dewarPos)
 #      ipos = int(dewarPos)-1
 #      print ipos
-      if (ok):
-        db_lib.removePuckFromDewar(ipos)
-        self.treeChanged_pv.put(1)
-#        self.dewarTree.refreshTree()
+#      if (ok):
+##      if (1):
+#        db_lib.removePuckFromDewar(ipos)
+##        self.treeChanged_pv.put(1)
+##        self.dewarTree.refreshTree()
 
     def setVectorStartCB(self): #save sample x,y,z
       print "set vector start"        
@@ -2391,8 +2600,7 @@ class controlMain(QtGui.QMainWindow):
        puckName, ok = PuckDialog.getPuckName()
 #       print puckName
        if (ok):
-         dewarPos, ok = DewarDialog.getDewarPos()
-         print dewarPos
+         dewarPos, ok = DewarDialog.getDewarPos(parent=self,action="add")
          ipos = int(dewarPos)+1
 #         ipos = int(dewarPos)-1
          if (ok):
@@ -2440,6 +2648,12 @@ class controlMain(QtGui.QMainWindow):
       self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))
       self.dataPathGB.setBasePath_ledit(str(reqObj["basePath"]))
       self.dataPathGB.setDataPath_ledit(str(reqObj["directory"]))
+      prefix_long = str(reqObj["directory"])+"/"+str(reqObj["file_prefix"])
+      fnumstart=reqObj["file_number_start"]
+      firstFilename = daq_utils.create_filename(prefix_long,fnumstart)
+      if (selectedSampleRequest.has_key("priority")):
+        if (selectedSampleRequest["priority"] < 0 and self.albulaDispCheckBox.isChecked()):
+          daq_utils.albulaDisp(firstFilename)
       self.rasterStepEdit.setText(str(reqObj["gridStep"]))
       rasterStep = int(reqObj["gridStep"])
 #      self.eraseCB()
@@ -2570,6 +2784,10 @@ class controlMain(QtGui.QMainWindow):
         self.text_output = Console(parent=self)
         self.comm_pv = PV(daq_utils.beamline + "_comm:command_s")
         self.immediate_comm_pv = PV(daq_utils.beamline + "_comm:immediate_command_s")
+#        self.progressDialog = QtGui.QProgressDialog(QtCore.QString("Creating Requests"),QtCore.QString(),0,100)
+        self.progressDialog = QtGui.QProgressDialog()
+        self.progressDialog.setCancelButtonText(QtCore.QString())
+        self.progressDialog.setModal(False)
         tab1= QtGui.QWidget()
         vBoxlayout1= QtGui.QVBoxLayout()
         splitter1 = QtGui.QSplitter(QtCore.Qt.Vertical,self)
@@ -2581,7 +2799,8 @@ class controlMain(QtGui.QMainWindow):
         exitAction = QtGui.QAction(QtGui.QIcon('exit24.png'), 'Exit', self)
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.close)
+#        exitAction.triggered.connect(self.close)
+        exitAction.triggered.connect(self.closeAll)
         self.statusBar()
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
@@ -2589,6 +2808,9 @@ class controlMain(QtGui.QMainWindow):
         self.setGeometry(300, 300, 300, 970)
         self.setWindowTitle('Main window')    
         self.show()
+
+    def closeAll(self):
+      QtGui.QApplication.closeAllWindows()
 
     def initCallbacks(self):
       self.treeChanged_pv = PV(daq_utils.beamline + "_comm:live_q_change_flag")

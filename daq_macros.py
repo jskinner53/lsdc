@@ -114,7 +114,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
   prefix_long = directory+"/"+filePrefix
   expectedFilenameList = []
   for i in range (numstart,numstart+numimages):
-    filename = create_filename(prefix_long,i)
+    filename = daq_utils.create_filename(prefix_long,i)
     expectedFilenameList.append(filename)
   for i in range (0,len(expectedFilenameList)):
     comm_s = "ln -sf " + testImgFileList[i] + " " + expectedFilenameList[i]
@@ -132,7 +132,8 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
-  testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
+#  testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
+  testImgFileList = glob.glob("/h/pxuser/skinner/Eiger1M/*.cbf")
   testImgCount = 0
   rasterCellMap = {}
   for i in xrange(len(rasterDef["rowDefs"])):
@@ -159,7 +160,7 @@ def generateGridMap(rasterRequest):
       else:
         zMotCellAbsoluteMove = zMotAbsoluteMove+(j*stepsize)
 #      zMotAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
-      dataFileName = create_filename(filePrefix+"_"+str(i),j+1)
+      dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
       os.system("mkdir -p " + reqObj["directory"])
       comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
       os.system(comm_s)
@@ -252,18 +253,33 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
 
 
 def gotoMaxRaster(rasterResult):
-  ceiling = 0
+  ceiling = 0.0
+  floor = 100000000.0 #for resolution where small number means high score
   hotFile = ""
+  scoreOption = ""
   print "in gotomax"
   print rasterResult
   cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
+  rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
+  if (rasterScoreFlag==0):
+    scoreOption = "spot_count"
+  elif (rasterScoreFlag==1):
+    scoreOption = "d_min"
+  else:
+    scoreOption = "total_intensity"
   for i in range (0,len(cellResults)):
-    spotcount = cellResults[i]["spot_count"]
-    if (spotcount > ceiling):
-      ceiling = spotcount    
-      hotFile = cellResults[i]["image"]
-  if (ceiling > 0):
+    scoreVal = float(cellResults[i][scoreOption])
+    if (scoreOption == "d_min"):
+      if (scoreVal < floor):
+        floor = scoreVal
+        hotFile = cellResults[i]["image"]
+    else:
+      if (scoreVal > ceiling):
+        ceiling = scoreVal
+        hotFile = cellResults[i]["image"]
+  if (hotFile != ""):
     print ceiling
+    print floor
     print hotFile
     rasterMap = rasterResult["result_obj"]["rasterCellMap"]
     hotCoords = rasterMap[hotFile[:-4]] 
@@ -473,16 +489,16 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
-    filename = daq_lib.create_filename(dna_prefix_long,image_number)
+    filename = daq_utils.create_filename(dna_prefix_long,image_number)
     beamline_lib.mva("Omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
 ######### BECAUSE I FAKE IT    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
     if (i==0):
-      commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00001.cbf " + filename
+      commFake = "ln -sf /h/pxuser/skinner/testdata/B1GGTApo_9_00001.cbf " + filename
     else:
-      commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00181.cbf " + filename
+      commFake = "ln -sf /h/pxuser/skinner/testdata/B1GGTApo_9_00181.cbf " + filename
     os.system(commFake)
     dna_filename_list.append(filename)
     diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
@@ -669,3 +685,5 @@ def addFileToDB(filename):
   print "you stored fileID " + str(fID)
   return fID
 
+def demoMac():
+  print "hi"
