@@ -86,6 +86,7 @@ def createTestDB():
         createType("xtalpicJpeg","","result")        
         createType("rasterResult","","result")             
         createType("characterizationStrategy","","result")        
+        createType("mxExpParams","","result") 
         
         
         # containers
@@ -126,10 +127,10 @@ def createTestDB():
         
         
         # bare requests
-        request_type = 'test_request'
-        request_id = createRequest(request_type,
-                                   {'test_request_param': 'bare request 1'},
-                                   as_mongo_obj=True)
+#        request_type = 'test_request'
+#        request_id = createRequest(request_type,
+#                                   {'test_request_param': 'bare request 1'},
+#                                   as_mongo_obj=True)
         
         # bare results
 #        result_type = 'test_result'
@@ -138,16 +139,16 @@ def createTestDB():
         
         # in requestList on sample
 
-        request_id = addRequesttoSample(sampID,
-                                 request_type,
-                                 {'test_request_param': 'test param 1'},
-                                 as_mongo_obj=True)
+#        request_id = addRequesttoSample(sampID,
+#                                 request_type,
+#                                 {'test_request_param': 'test param 1'},
+#                                 as_mongo_obj=True)
 
         # in requestList on sample
-        request_id = addRequesttoSample(sampID,
-                                 request_type,
-                                 {'test_request_param': 'test param 2'},
-                                 as_mongo_obj=True)
+#        request_id = addRequesttoSample(sampID,
+#                                 request_type,
+#                                 {'test_request_param': 'test param 2'},
+#                                 as_mongo_obj=True)
         
         # in resultsList on sample
 #        addResultforRequest(result_type, request_id,

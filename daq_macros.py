@@ -60,7 +60,7 @@ def loop_center_xrec():
     mva("Omega",i)
     pic_prefix = "findloop_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(filename=pic_prefix)
+    daq_utils.take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
   print comm_s
   os.system(comm_s)
@@ -103,15 +103,13 @@ def loop_center_xrec():
   print "center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec)
   center_on_click(x_center,y_center-radius,source="macro")
   center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,source="macro")
-#cheating here, not accounting for scaling. Diameter=2*Radius cancelled out by halved image.  
-#  daq_lib.set_field("grid_w",int(radius))
-#  daq_lib.set_field("grid_h",int(radius))
   mva("Omega",face_on)
   #now try to get the loopshape starting from here
   return 1
 
 def fakeDC(directory,filePrefix,numstart,numimages):
-  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
+#  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
+  testImgFileList = glob.glob("/h/pxuser/skinner/testdata/B1GGTApo_9_*.cbf")
   testImgFileList.sort()
   prefix_long = directory+"/"+filePrefix
   expectedFilenameList = []
@@ -125,8 +123,6 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 
 
 def generateGridMap(rasterRequest):
-#  rasterDef = db_lib.getRasters()[0]
-#  print rasterDef
   reqObj = rasterRequest["request_obj"]
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
@@ -135,7 +131,6 @@ def generateGridMap(rasterRequest):
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-#  filePrefix = "raster" #for now
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
   testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
   testImgCount = 0
@@ -151,16 +146,12 @@ def generateGridMap(rasterRequest):
     yyRelativeMove = startY*sin(omegaRad)
     yxRelativeMove = startY*cos(omegaRad)
 #old    yxRelativeMove = startY*sin(omegaRad)
-#    yyRelativeMove = startY*cos(omegaRad)
-
     zMotAbsoluteMove = rasterStartZ-xRelativeMove
 
 #old    yMotAbsoluteMove = rasterStartY-yyRelativeMove
 #    xMotAbsoluteMove = yxRelativeMove+rasterStartX
-
     yMotAbsoluteMove = rasterStartY+yyRelativeMove
     xMotAbsoluteMove = rasterStartX-yxRelativeMove
-
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     for j in xrange(numsteps):
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
@@ -179,6 +170,7 @@ def generateGridMap(rasterRequest):
   print comm_s
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print "done parsing dials output"
+  print dialsResultObj
   rasterResultObj = {"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
 #  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
   rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
@@ -230,7 +222,6 @@ def snakeRaster(rasterReqID,grain=""):
     yxRelativeMove = -yRelativeMove*cos(omegaRad)
     mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
   rasterResult = generateGridMap(rasterRequest)
-  print "1"
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
   print "2"
   gotoMaxRaster(rasterResult)
@@ -244,8 +235,6 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
     set_field("xrecRasterFlag",100)    
     rasterReqID = defineRectRaster(sampleID,50,50,10) 
     snakeRaster(rasterReqID)
-#    gotoMaxRaster("raster_spots.txt","raster_map.txt")
-#    set_field("xrecRasterFlag",2)  
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
     mvr("Omega",90)
@@ -265,8 +254,9 @@ def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
 def gotoMaxRaster(rasterResult):
   ceiling = 0
   hotFile = ""
+  print "in gotomax"
+  print rasterResult
   cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
-##  print cellResults
   for i in range (0,len(cellResults)):
     spotcount = cellResults[i]["spot_count"]
     if (spotcount > ceiling):
@@ -276,7 +266,6 @@ def gotoMaxRaster(rasterResult):
     print ceiling
     print hotFile
     rasterMap = rasterResult["result_obj"]["rasterCellMap"]
-##    print rasterMap
     hotCoords = rasterMap[hotFile[:-4]] 
     x = hotCoords["x"]
     y = hotCoords["y"]
@@ -328,11 +317,10 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
     newRowDef = {"start":{"x": point_offset_x,"y":point_offset_y+(i*stepsize)},"numsteps":numsteps_h}
     rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
-#  print rasterDef
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   reqObj = tempnewRasterRequest["request_obj"]
   reqObj["protocol"] = "raster"
-  reqObj["directory"] = os.getcwd()+"/rasterImages/"
+  reqObj["directory"] = reqObj["directory"]+"/rasterImages/"
   if (numsteps_h == 1): #column raster
     reqObj["file_prefix"] = reqObj["file_prefix"]+"_lineRaster"
     rasterDef["rasterType"] = "column"
@@ -341,18 +329,16 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
     rasterDef["rasterType"] = "normal"
   reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-##  reqObj["priority"] = 5000
+  runNum = db_lib.incrementSampleRequestCount(sampleID)
+  reqObj["runNum"] = runNum
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
-#  db_lib.addRaster(rasterDef)
-#  set_field("xrecRasterFlag",1)
   time.sleep(1)
   return newRasterRequest["request_id"]
 
 
 def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
   newRowDef = {}
-#  print "draw raster " + str(raster_w) + " " + str(raster_h) + " " + str(stepsizeMicrons)
   beamWidth = stepsizeMicrons
   beamHeight = stepsizeMicrons
   rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":get_epics_motor_pos("X"),"y":get_epics_motor_pos("Y"),"z":get_epics_motor_pos("Z"),"omega":get_epics_motor_pos("Omega"),"stepsize":stepsizeMicrons,"rowDefs":[]} #just storing step as microns, not using here
@@ -380,21 +366,19 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
 #      newRowDef = {"start":{"x": screenXPixels2microns(rowStartX-daq_utils.highMagPixX/2.0),"y":screenYPixels2microns(rowStartY-daq_utils.highMagPixY/2.0)},"numsteps":rowCellCount}
       rasterDef["rowDefs"].append(newRowDef)
 ##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
-#  print rasterDef
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   reqObj = tempnewRasterRequest["request_obj"]
   reqObj["protocol"] = "raster"
-  reqObj["directory"] = os.getcwd()+"/rasterImages/"
+  reqObj["directory"] = reqObj["directory"]+"/rasterImages/"
   reqObj["file_prefix"] = reqObj["file_prefix"]+"_polyRaster"
   reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-##  reqObj["priority"] = 5000
+  runNum = db_lib.incrementSampleRequestCount(sampleID)
+  reqObj["runNum"] = runNum
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   return newRasterRequest["request_id"]
 #  daq_lib.refreshGuiTree() # not sure
-
-
 
 
 def getXrecLoopShape(sampleID):
@@ -405,13 +389,11 @@ def getXrecLoopShape(sampleID):
     mvr("Omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
 #    time.sleep(0.1)
-    take_crystal_picture(filename=pic_prefix,czoom=1)
+    daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
-#  xrec_out_file = open("xrec30_result.txt","r")
   mva("Omega",face_on)
   os.system("cp /dev/shm/masks2_hull_0.txt loopPoints.txt")
-
   polyPoints = [] 
   rasterPoly = None     
   filename = "loopPoints.txt"
@@ -492,22 +474,23 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
     filename = daq_lib.create_filename(dna_prefix_long,image_number)
-    print "debug " + filename
     beamline_lib.mva("Omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
-    daq_lib.take_crystal_picture(reqID=charRequest["request_id"])
-    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
+    daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
+######### BECAUSE I FAKE IT    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
+    if (i==0):
+      commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00001.cbf " + filename
+    else:
+      commFake = "ln -s /h/pxuser/skinner/testdata/B1GGTApo_9_00181.cbf " + filename
+    os.system(commFake)
     dna_filename_list.append(filename)
-    diffImgJpegData = diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
+    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()
 #    imgRef = db_lib.addFile(diffImgJpegData["data"])
 #    diffImgJpegData["data"] = imgRef
 #    imgRef = db_lib.addFile(diffImgJpegData["thumbData"])
 #    diffImgJpegData["thumbData"] = imgRef
-#    print diffImgJpegData
-    
-#####    daq_lib.take_crystal_picture_with_boxes(daq_lib.html_data_directory_name + "/xtal_" + str(daq_lib.sweep_seq_id) + "_" + str(i))
     picture_taken = 1
 #                xml_from_file_list(flux,x_beamsize,y_beamsize,max_exptime_per_dc,aimed_completeness,file_list):
   edna_energy_ev = (12.3985/wave) * 1000.0
@@ -674,9 +657,6 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
       print  str(maxResolution_bin) + " " + str(i_over_sigma_bin)
       isig_plot_file.write(str(maxResolution_bin) + " " + str(i_over_sigma_bin)+"\n")
     isig_plot_file.close()
-#####    comm_s = "isig_res_plot.pl -i " + edna_isig_plot_filename + " -o " + daq_lib.html_data_directory_name + "/edna_isig_res_plot" + str(int(now))
-#####    os.system(comm_s)
-#####  broadcast_output(dna_comment)
   if (dna_have_strategy_results):
     broadcast_output(dna_strat_comment)  
   
@@ -688,3 +668,4 @@ def addFileToDB(filename):
   fID = db_lib.addFile(fd.read())
   print "you stored fileID " + str(fID)
   return fID
+

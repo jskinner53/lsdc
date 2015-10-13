@@ -134,7 +134,7 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams4.addWidget(colBeamHLabel)
         hBoxColParams4.addWidget(self.beamHeight_ledit)
         hBoxColParams5 = QtGui.QHBoxLayout()
-        colResoLabel = QtGui.QLabel('Resolution:')
+        colResoLabel = QtGui.QLabel('Edge Resolution:')
         colResoLabel.setFixedWidth(120)
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
@@ -149,7 +149,6 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams5.addWidget(self.resolution_ledit)
 #        hBoxColParams5.addWidget(colResoDistLabel)
 #        hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
-
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Apply | QDialogButtonBox.Cancel,
@@ -309,8 +308,6 @@ class DewarDialog(QtGui.QDialog):
 #          self.buttons.buttons()[len(self.data)-i].clicked.connect(functools.partial(self.on_button,str(i)))
         cancelButton = QtGui.QPushButton("Cancel")        
         cancelButton.clicked.connect(self.containerCancelCB)
-
-
         layout.addWidget(cancelButton)
         self.setLayout(layout)        
             
@@ -366,23 +363,18 @@ class DewarTree(QtGui.QTreeView):
           else:
             puck = db_lib.getContainerByID(dewarContents[i])
             puckName = puck["containerName"]
-#            puckName = db_lib.getContainerNameByID(dewarContents[i])
-#          item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(str(i+1) + " " + puckName))
           index_s = "%d%s" % ((i)/self.pucksPerDewarSector+1,chr(((i)%self.pucksPerDewarSector)+ord('A')))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(index_s + " " + puckName))
           parentItem.appendRow(item)
           parentItem = item
           if (puck != None):
             puckContents = puck["item_list"]
-#            puckContents = db_lib.getContainerByID(dewarContents[i])["item_list"]
             puckSize = len(puckContents)
             for j in range (0,len(puckContents)):#should be the list of samples
               if (puckContents[j] != None):
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
                 item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
-#                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-#                item.setCheckState(Qt.Unchecked)
                 if (puckContents[j] == self.parent.mountedPin_pv.get()):
                   item.setForeground(QtGui.QColor('red'))       
                   font = QtGui.QFont()
@@ -390,13 +382,10 @@ class DewarTree(QtGui.QTreeView):
                   font.setOverline(True)
                   font.setUnderline(True)
                   item.setFont(font)
-#                  item.setBackground(QtGui.QColor('yellow'))       
                 parentItem.appendRow(item)
                 if (puckContents[j] == self.parent.mountedPin_pv.get()):
-#                if (samplePos == self.parent.mountedPin_pv.get()):
                   mountedIndex = self.model.indexFromItem(item)
                 if (puckContents[j] == self.parent.selectedSampleID): #looking for the selected item
-#                if ((-100-puckContents[j]) == self.parent.SelectedItemData): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
                   selectedSampleIndex = self.model.indexFromItem(item)
                 sampleRequestList = db_lib.getRequestsBySampleID(puckContents[j])
@@ -428,8 +417,8 @@ class DewarTree(QtGui.QTreeView):
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
                 item.setData(-99)
-                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
-                item.setCheckState(Qt.Unchecked)
+##                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+##                item.setCheckState(Qt.Unchecked)
                 parentItem.appendRow(item)
 
         self.setModel(self.model)
@@ -478,41 +467,34 @@ class DewarTree(QtGui.QTreeView):
         dewarContents = db_lib.getContainerByName("primaryDewar")["item_list"]
         maxPucks = len(dewarContents)
         requestedSampleList = []
+        mountedPin = self.parent.mountedPin_pv.get()
         for i in xrange(len(self.orderedRequests)): # I need a list of samples for parent nodes
           if (self.orderedRequests[i]["sample_id"] not in requestedSampleList):
             requestedSampleList.append(self.orderedRequests[i]["sample_id"])
         for i in xrange(len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
-#          (puckPosition,absDewarPos,containerID,samplePositionInContainer) = db_lib.getAbsoluteDewarPosfromSampleID(requestedSampleList[i])
-          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
-       
-          containerName = db_lib.getContainerNameByID(containerID)
-          index_s = "%d%s" % ((puckPosition)/self.pucksPerDewarSector+1,chr(((puckPosition)%self.pucksPerDewarSector)+ord('A')))
-          nodeString = QtCore.QString(index_s + " " +str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
-#          nodeString = QtCore.QString(str(containerName)+ "-" + str(samplePositionInContainer) + "-" + str(db_lib.getSampleNamebyID(requestedSampleList[i])))
+#          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
+#          containerName = db_lib.getContainerNameByID(containerID)
+#          index_s = "%d%s" % ((puckPosition)/self.pucksPerDewarSector+1,chr(((puckPosition)%self.pucksPerDewarSector)+ord('A')))
+          nodeString = QtCore.QString(str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
           item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
-#          if (absDewarPos == self.parent.mountedPin_pv.get()):
-          if (requestedSampleList[i] == self.parent.mountedPin_pv.get()):
+          if (requestedSampleList[i] == mountedPin):
             item.setForeground(QtGui.QColor('red'))       
             font = QtGui.QFont()
             font.setItalic(True)
             font.setOverline(True)
             font.setUnderline(True)
             item.setFont(font)
-
           parentItem.appendRow(item)
-#          if (absDewarPos == self.parent.mountedPin_pv.get()):
-          if (requestedSampleList[i] == self.parent.mountedPin_pv.get()):
+          if (requestedSampleList[i] == mountedPin):
             mountedIndex = self.model.indexFromItem(item)
           if (requestedSampleList[i] == self.parent.selectedSampleID): #looking for the selected item
-#          if ((-100-requestedSampleList[i]) == self.parent.SelectedItemData): #looking for the selected item
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
           for k in xrange(len(self.orderedRequests)):
             if (self.orderedRequests[k]["sample_id"] == requestedSampleList[i]):
               col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["request_obj"]["file_prefix"]+"_"+self.orderedRequests[k]["request_obj"]["protocol"]))
-#              col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["protocol"]))
               col_item.setData(self.orderedRequests[k]["request_id"])
               col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
               if (self.orderedRequests[k]["priority"] == 99999):
@@ -557,13 +539,9 @@ class DewarTree(QtGui.QTreeView):
         checkedSampleRequest = db_lib.getRequest(reqID)      
         if (item.checkState() == Qt.Checked):
           db_lib.updatePriority(reqID,5000)
-##          checkedSampleRequest["priority"] = 5000
         else:
           db_lib.updatePriority(reqID,0)
-##          checkedSampleRequest["priority"] = 0
         item.setBackground(QtGui.QColor('white'))
-
-##        db_lib.updateRequest(checkedSampleRequest)
         self.parent.treeChanged_pv.put(1) #not sure why I don't just call the update routine, although this allows multiple guis
 #        self.refreshTree()        
 
@@ -577,11 +555,8 @@ class DewarTree(QtGui.QTreeView):
         if (itemData > 0): #then it's a request, not a sample
           selectedSampleRequest = db_lib.getRequest(itemData)
           db_lib.updatePriority(itemData,5000)
-##          selectedSampleRequest["priority"] = 5000
-##          db_lib.updateRequest(selectedSampleRequest)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
-
 
 
     def deQueueAllSelectedCB(self):
@@ -594,10 +569,6 @@ class DewarTree(QtGui.QTreeView):
         if (itemData > 0): #then it's a request, not a sample
           selectedSampleRequest = db_lib.getRequest(itemData)
           db_lib.updatePriority(itemData,0)
-##          selectedSampleRequest["priority"] = 0
-##          db_lib.updateRequest(selectedSampleRequest)
-#        item.setCheckState(Qt.Unchecked)
-#      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
 
     def deleteSelectedCB(self):
@@ -617,7 +588,6 @@ class DewarTree(QtGui.QTreeView):
                 if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
                   self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
                   self.parent.rasterList[i] = None
-#      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
       
 
@@ -665,13 +635,13 @@ class DataLocInfo(QtGui.QGroupBox):
         self.vBoxDPathParams1.addLayout(self.hBoxDPathParams1)
         self.vBoxDPathParams1.addLayout(self.hBoxDPathParams2)
         self.vBoxDPathParams1.addLayout(self.hBoxDPathParams3)
-#        self.vBoxDPathParams1.addLayout(self.hBoxLastFileLayout1)
         self.setLayout(self.vBoxDPathParams1)
 
 
     def basePathTextChanged(self,text):
       prefix = self.prefix_ledit.text()
-      self.setDataPath_ledit(text+"/projID/"+prefix+"/1/")
+#      runNum = db_lib.getSampleRequestCount(self.selectedSampleID)
+      self.setDataPath_ledit(text+"/projID/"+prefix+"/#/")
 
 
     def setFileNumstart_ledit(self,s):
@@ -796,7 +766,6 @@ class controlMain(QtGui.QMainWindow):
         self.selectedSampleRequest = {}
         self.selectedSampleID = -1
         self.dewarTree   = DewarTree(self)
-#        self.connect(self.dewarTree.model, QtCore.SIGNAL('dataChanged(QModelIndex,QModelIndex)'), self.tree_changed)
         QtCore.QObject.connect(self.dewarTree, QtCore.SIGNAL("clicked (QModelIndex)"),self.row_clicked)
         treeSelectBehavior = QtGui.QAbstractItemView.SelectItems
         treeSelectMode = QtGui.QAbstractItemView.ExtendedSelection
@@ -931,7 +900,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams4.addWidget(colBeamHLabel)
         hBoxColParams4.addWidget(self.beamHeight_ledit)
         hBoxColParams5 = QtGui.QHBoxLayout()
-        colResoLabel = QtGui.QLabel('Resolution:')
+        colResoLabel = QtGui.QLabel('Edge Resolution:')
         colResoLabel.setFixedWidth(120)
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
@@ -1084,11 +1053,6 @@ class controlMain(QtGui.QMainWindow):
         colParamsGB.setLayout(vBoxColParams1)
         self.dataPathGB = DataLocInfo(self)
         self.hBoxLastFileLayout1= QtGui.QHBoxLayout()        
-#        self.lastFileLabel = QtGui.QLabel('Last File:')
-#        self.lastFileLabel.setFixedWidth(70)
-#        self.lastFileRBV = QtEpicsPVLabel("XF:AMXFMX:det1:FullFileName_RBV",self,0)
-#        self.hBoxLastFileLayout1.addWidget(self.lastFileLabel)
-#        self.hBoxLastFileLayout1.addWidget(self.lastFileRBV.getEntry())
         vBoxMainColLayout.addWidget(colParamsGB)
         vBoxMainColLayout.addWidget(self.dataPathGB)
         vBoxMainColLayout.addLayout(self.hBoxLastFileLayout1)
@@ -1104,7 +1068,6 @@ class controlMain(QtGui.QMainWindow):
         self.mainToolBox.addItem(self.EScanToolFrame,"Energy Scan")
         editSampleButton = QtGui.QPushButton("Apply Changes") 
         editSampleButton.clicked.connect(self.editSelectedRequestsCB)
-#        editSampleButton.clicked.connect(self.editSampleRequestCB)
         hBoxPriorityLayout1= QtGui.QHBoxLayout()        
         priorityEditLabel = QtGui.QLabel("Priority Edit")
         priorityTopButton =  QtGui.QPushButton("   >>   ")
@@ -1122,9 +1085,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxPriorityLayout1.addWidget(priorityTopButton)
         queueSampleButton = QtGui.QPushButton("Add Requests to Queue") 
         queueSampleButton.clicked.connect(self.addRequestsToAllSelectedCB)
-#        queueSampleButton.clicked.connect(self.addSampleRequestCB)
         deleteSampleButton = QtGui.QPushButton("Delete Requests") 
-#        deleteSampleButton.clicked.connect(self.deleteFromQueueCB)
         deleteSampleButton.clicked.connect(self.dewarTree.deleteSelectedCB)
         editScreenParamsButton = QtGui.QPushButton("Edit Screening Parmams...") 
         editScreenParamsButton.clicked.connect(self.editScreenParamsCB)
@@ -1631,22 +1592,22 @@ class controlMain(QtGui.QMainWindow):
 
 # seems like we should be able to do an aggregate query to mongo for max/min :(
     def getMaxPriority(self):
-#      orderedRequests = db_lib.getOrderedRequestList()      
-#      priorityMax = 0
-#      for i in xrange(len(orderedRequests)):
-#        if (orderedRequests[i]["priority"] > priorityMax):
-#          priorityMax = orderedRequests[i]["priority"]
-#      return priorityMax
-      return max(six.iterkeys(db_lib.getPriorityMap()))
+      orderedRequests = db_lib.getOrderedRequestList()      
+      priorityMax = 0
+      for i in xrange(len(orderedRequests)):
+        if (orderedRequests[i]["priority"] > priorityMax):
+          priorityMax = orderedRequests[i]["priority"]
+      return priorityMax
+#      return max(six.iterkeys(db_lib.getPriorityMap()))
 
     def getMinPriority(self):
-#      orderedRequests = db_lib.getOrderedRequestList()      
-#      priorityMin = 10000000
-#      for i in xrange(len(orderedRequests)):
-#        if (orderedRequests[i]["priority"] < priorityMin):
-#          priorityMin = orderedRequests[i]["priority"]
-#      return priorityMin
-      return min(six.iterkeys(db_lib.getPriorityMap()))
+      orderedRequests = db_lib.getOrderedRequestList()      
+      priorityMin = 10000000
+      for i in xrange(len(orderedRequests)):
+        if ((orderedRequests[i]["priority"] < priorityMin) and orderedRequests[i]["priority"]>0):
+          priorityMin = orderedRequests[i]["priority"]
+      return priorityMin
+#      return min(six.iterkeys(db_lib.getPriorityMap()))
 
 
     def showProtParams(self):
@@ -1704,50 +1665,65 @@ class controlMain(QtGui.QMainWindow):
 
     def  popBaseDirectoryDialogCB(self):
       fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '/home')
-      self.dataPathGB.setBasePath_ledit(fname)
+      if (fname != ""):
+        self.dataPathGB.setBasePath_ledit(fname)
 
 
-    def upPriorityCB(self):
+    def upPriorityCB(self): #neither of these are very elegant, and might even be glitchy if overused
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if (i<2):
             self.topPriorityCB()
           else:
-            self.selectedSampleRequest["priority"] = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
-            db_lib.updateRequest(self.selectedSampleRequest)     
-##      self.parent.treeChanged_pv.put(1)
+            priority = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
+            if (currentPriority == priority):
+              priority = priority+20
+            db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+      self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
             
       
     def downPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       orderedRequests = db_lib.getOrderedRequestList()
       for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
           if ((len(orderedRequests)-i) < 3):
             self.bottomPriorityCB()
           else:
-            self.selectedSampleRequest["priority"] = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
-            db_lib.updateRequest(self.selectedSampleRequest)     
+            priority = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
+            if (currentPriority == priority):
+              priority = priority-20
+            db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
 #      self.dewarTree.refreshTree()
-##      self.parent.treeChanged_pv.put(1)
+      self.treeChanged_pv.put(1)
 
 
     def topPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       priority = int(self.getMaxPriority())
       priority = priority+100
-      self.selectedSampleRequest["priority"] = priority
-      db_lib.updateRequest(self.selectedSampleRequest)     
+      db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
       self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
 
 
     def bottomPriorityCB(self):
+      currentPriority = self.selectedSampleRequest["priority"]
+      if (currentPriority<1):
+        return
       priority = int(self.getMinPriority())
       priority = priority-100
-      self.selectedSampleRequest["priority"] = priority
-      db_lib.updateRequest(self.selectedSampleRequest)     
-##      self.parent.treeChanged_pv.put(1)
+      db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+      self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
       
 
@@ -2262,15 +2238,20 @@ class controlMain(QtGui.QMainWindow):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
              colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
+             sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
+             runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
              reqObj = colRequest["request_obj"]
+             reqObj["runNum"] = runNum
              reqObj["sweep_start"] = float(self.osc_start_ledit.text())
              reqObj["sweep_end"] = float(self.osc_end_ledit.text())
              reqObj["img_width"] = float(self.osc_range_ledit.text())
              reqObj["exposure_time"] = float(self.exp_time_ledit.text())
              reqObj["resolution"] = float(self.resolution_ledit.text())
              reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text()+"_C"+str(i+1))
-             reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+
+#             reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
              reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
+             reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
              reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #             colRequest["gridStep"] = self.rasterStepEdit.text()
              reqObj["attenuation"] = float(self.transmission_ledit.text())
@@ -2298,13 +2279,17 @@ class controlMain(QtGui.QMainWindow):
           message.showMessage("You need to select a centering.")
       else: #autocenter
         colRequest=self.selectedSampleRequest
+        sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
+        runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
         reqObj = colRequest["request_obj"]
+        reqObj["runNum"] = runNum
         reqObj["sweep_start"] = float(self.osc_start_ledit.text())
         reqObj["sweep_end"] = float(self.osc_end_ledit.text())
         reqObj["img_width"] = float(self.osc_range_ledit.text())
         reqObj["exposure_time"] = float(self.exp_time_ledit.text())
         reqObj["resolution"] = float(self.resolution_ledit.text())
-        reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+#        reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
+        reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
         reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
         reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
@@ -2407,8 +2392,8 @@ class controlMain(QtGui.QMainWindow):
 #       print puckName
        if (ok):
          dewarPos, ok = DewarDialog.getDewarPos()
-#         print dewarPos
-         ipos = int(dewarPos)
+         print dewarPos
+         ipos = int(dewarPos)+1
 #         ipos = int(dewarPos)-1
          if (ok):
            db_lib.insertIntoContainer("primaryDewar",ipos,db_lib.getContainerIDbyName(puckName))
@@ -2422,20 +2407,11 @@ class controlMain(QtGui.QMainWindow):
     def mountSampleCB(self):
       print "mount selected sample"
       self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-#      (puckPosition,dewarPos,puckID,position) = db_lib.getAbsoluteDewarPosfromSampleID(self.selectedSampleID)
-#      (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
-#      self.send_to_server("mountSample("+str(dewarPos)+")")
       self.send_to_server("mountSample("+str(self.selectedSampleID)+")")
 
     def unmountSampleCB(self):
       print "unmount sample"
       self.send_to_server("unmountSample()")
-
-#not used yet
-    def tree_changed(self, topLeft, bottomRight):
-        sg = self.gen_mystructure_from_tree(self.dewarTree.model)
-        print sg 
-#        print "tree changed"
 
 
     def refreshCollectionParams(self,selectedSampleRequest):
@@ -2692,7 +2668,7 @@ def main():
     ex = controlMain()
     sys.exit(app.exec_())
 
-
+#skinner - I think Matt did a lot of what's below and I have no idea what it is. 
 if __name__ == '__main__':
     if '-pc' in sys.argv or '-p' in sys.argv:
         print 'cProfile not working yet :('

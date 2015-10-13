@@ -6,6 +6,7 @@ from math import *
 import metadatastore.commands as mdsc
 import db_lib
 from db_lib import *
+import requests
 
 #global det_radius
 #det_radius = 0
@@ -186,6 +187,7 @@ def createDefaultRequest(sample_id):
     screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
     sampleName = str(getSampleNamebyID(sample_id))
     basePath = os.getcwd()
+    runNum = getSampleRequestCount(sample_id)
     request = {"sample_id": sample_id}
     requestObj = {
                "sample_id": sample_id,
@@ -195,7 +197,7 @@ def createDefaultRequest(sample_id):
                "protocol": "standard",
                "basePath": basePath,
                "file_prefix": sampleName,
-               "directory": basePath+"/projID/"+sampleName+"/1/",
+               "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/",
                "file_number_start": 1,
                "energy":screenEnergy,
                "wavelength": energy2wave(screenEnergy),
@@ -214,6 +216,148 @@ def createResult(typeName,resultObj):
   result["timestamp"] = time.time()
   result["resultObj"] = resultObj
   return result
+
+def take_crystal_pictureCURL(filename,czoom=0):
+  zoom = int(czoom)
+  if not (has_xtalview):
+    return
+#  if (daq_utils.xtalview_user == "None"):
+  if (1):
+    if (zoom==0):
+      comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url)
+    else:
+#      beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1")
+      comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url_small)
+  else:
+    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)
+  os.system(comm_s)
+
+
+def take_crystal_picture(filename=None,czoom=0,reqID=None):
+  zoom = int(czoom)
+  if not (has_xtalview):
+    return
+  if (1):
+    if (zoom==0):
+      r=requests.get(xtal_url)
+    else:
+      r=requests.get(xtal_url_small)
+  else: #password, need to change to requests module if we need this
+    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)
+  data = r.content
+  if (filename != None):
+    fd = open(filename+".jpg","w+")
+    fd.write(data)
+    fd.close()
+  if (reqID != None):
+    xtalpicJpegDataResult = {}
+    imgRef = db_lib.addFile(data)
+    xtalpicJpegDataResult["data"] = imgRef
+    db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult)
+
+
+def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
+  imageJpegData = {}
+  imageJpegHeader = {}
+  imageJpegData["dataFilePath"]=diffimageName
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getImage\?fileName="+ diffimageName+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
+#  comm_s = "lynx -source %s >%s" % (img_url,JPEGfilename) 
+  comm_s = "lynx -source %s" % (img_url) 
+  print comm_s
+  data = os.popen(comm_s).read()
+  imageJpegData["data"] = data
+#  os.system(comm_s)
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getThumbnail\?fileName="+ diffimageName+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
+  comm_s = "lynx -source %s" % (img_url) 
+  thumbData = os.popen(comm_s).read()
+  imageJpegData["thumbData"] = thumbData
+#  comm_s = "lynx -source %s >%s" % (img_url,"thumb_"+JPEGfilename) 
+  print comm_s
+#  os.system(comm_s)
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getHeader\?fileName="+ diffimageName+"\&userName=me\&sessionId=E"
+  comm_s = "lynx -source " + img_url
+  for outputline in os.popen(comm_s).readlines():    
+    print outputline
+    tokens = string.split(outputline)      
+    if (tokens[0] == "OSC_START"):
+      print "Omega start = " + tokens[1]
+      imageJpegHeader["oscStart"] = float(tokens[1])
+    elif (tokens[0] == "OSC_RANGE"):
+      print "Omega range = " + tokens[1] 
+      imageJpegHeader["oscRange"] = float(tokens[1])
+    elif (tokens[0] == "EXPOSURE"):
+      print "Exposure Time = " + tokens[2]
+      imageJpegHeader["exptime"] = float(tokens[2])
+    elif (tokens[0] == "DISTANCE"):
+      print "Distance = " + str(float(tokens[1])/1000.0)
+      imageJpegHeader["detDist"] = float(tokens[1])
+    elif (tokens[0] == "WAVELENGTH"):
+      print "Wavelength = " + tokens[1] 
+      imageJpegHeader["wave"] = float(tokens[1])
+  if (reqID != None):
+    resultObj = {}
+    imgRef = db_lib.addFile(data)
+    resultObj["data"] = imgRef
+    imgRef = db_lib.addFile(thumbData)
+    resultObj["thumbData"] = imgRef
+    resultObj["dataFilePath"] = diffimageName
+    resultObj["header"] = imageJpegHeader
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
+  return imageJpegData
+
+
+def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
+  imageJpegData = {}
+  imageJpegHeader = {}
+  imageJpegData["dataFilePath"]=diffimageName
+  payload = {"fileName":diffimageName,"sizeX":500,"sizeY":500,"gray":100,"percentX":0.5,"percentY":0.5,"userName":"me","sessionId":"E","zoom":1.0}
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getImage" 
+  r = requests.get(img_url,params=payload)
+  data = r.content
+  imageJpegData["data"] = data
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getThumbnail"
+  r = requests.get(img_url,params=payload)
+  thumbData = r.content
+  imageJpegData["thumbData"] = thumbData
+  payload = {"fileName":diffimageName,"userName":"me","sessionId":"E"}
+  img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getHeader"
+  r = requests.get(img_url,params=payload)
+  imageJpegData["header"] = r
+  headerData = r.text
+  lines = headerData.split("\n")
+  for i in range (0,len(lines)):
+    line = lines[i]
+    print line
+    tokens = line.split()
+    if (len(tokens) > 1):
+      if (tokens[0] == "OSC_START"):
+        print "Omega start = " + tokens[1]
+        imageJpegHeader["oscStart"] = float(tokens[1])
+      elif (tokens[0] == "OSC_RANGE"):
+        print "Omega range = " + tokens[1] 
+        imageJpegHeader["oscRange"] = float(tokens[1])
+      elif (tokens[0] == "EXPOSURE"):
+        print "Exposure Time = " + tokens[2]
+        imageJpegHeader["exptime"] = float(tokens[2])
+      elif (tokens[0] == "DISTANCE"):
+        print "Distance = " + str(float(tokens[1])/1000.0)
+        imageJpegHeader["detDist"] = float(tokens[1])
+      elif (tokens[0] == "WAVELENGTH"):
+        print "Wavelength = " + tokens[1] 
+        imageJpegHeader["wave"] = float(tokens[1])
+  imageJpegData["header"] = imageJpegHeader
+  if (reqID != None): #this means I'll dump into mongo as a result
+    resultObj = {}
+    imgRef = db_lib.addFile(data)
+    resultObj["data"] = imgRef
+    imgRef = db_lib.addFile(thumbData)
+    resultObj["thumbData"] = imgRef
+    resultObj["dataFilePath"] = diffimageName
+    resultObj["header"] = imageJpegHeader
+    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
+  return imageJpegData
+
+
 
 #def calc_reso_edge(distance,wave,theta):
 #  if (distance < 1.0):
