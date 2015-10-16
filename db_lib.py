@@ -100,6 +100,20 @@ primaryDewarName = 'primaryDewar'
 
 # temp stuff for web stuff
 
+def _find_types(object_type, as_mongo_obj=False):
+    types = {}
+
+    for t in Types.objects(__raw__={'$or': [{'name': object_type},
+                                            {'parent_type': object_type}]}):
+        if as_mongo_obj:
+            types[t.id] = t
+        else:
+            types[t.id] = t.to_mongo()
+
+    return types
+
+
+
 # django doesn't seem to understand generators(?), so we need to return lists here.
 def find_container():
     ret_list = []
@@ -138,7 +152,7 @@ def find_sample():
 
 def find_request():
     ret_list = []
-    headers = ['request_name', 'request_type']
+    headers = ['request_name', 'request_type', 'fields']
 
     #return [r.to_mongo() for r in Request.objects()]
     for req in Request.objects():
@@ -150,7 +164,30 @@ def find_request():
 
 
 def find_result():
-    return [r.to_mongo() for r in Result.objects()]
+    ret_list = []
+    common_headers = ['timestamp', 'result_id', 'result_type', 'fields']
+
+    res_types = _find_types('result')
+
+    for res in Result.objects.order_by('-timestamp'):
+        r = res.to_mongo()
+        r['result_type'] = res_types[res.result_type.id]
+
+#        try:
+#            for f in res.result_type.field_list:
+#                try:
+#                    for element in f.lookup_path:
+#                        val = r[element]
+#                    r['value'] = val
+#
+#                except AttributeError:
+#                    pass
+#        except AttributeError:
+#            pass  # skip results without field_lists
+
+        ret_list.append(r)
+
+    return (common_headers, ret_list)
 
 
 def find_sample_request():
