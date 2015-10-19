@@ -15,7 +15,7 @@ from  mongoengine import NotUniqueError
 
 # I would prefer if these were relative imports :(
 from odm_templates import (Sample, Container, Request, Result,
-                           GenericFile, Types, Field)
+                           Beamline, GenericFile, Types, Field)
 
 from odm_templates import (BeamlineInfo, UserSettings)   # for bl info and user settings
 
@@ -289,6 +289,29 @@ def _try0_maybe_mongo(query_set, obj_type_str, search_key_str, search_key_val,
     # hrm... .first returns the first or None, slower
     # [0] returns the first or raises IndexError, fastest
     # .get() returns the only or raises DoesNotExist or MultipleObjectsReturned, slowest
+
+
+def createBeamline(bl_name, bl_num):
+    bl = Beamline(name=bl_name, number=bl_num)
+    bl.save()
+
+def getBeamlineByID(beamline_id, as_mongo_obj=False):
+    """beamline_id is the integer field 'beamline_id'"""
+    b = Beamline.objects(__raw__={'beamline_id': beamline_id})
+    return _try0_maybe_mongo(b, 'beamline', 'beamline_id', beamline_id, None,
+                             as_mongo_obj=as_mongo_obj)
+
+def getBeamlineByName(name, as_mongo_obj=False):
+    """eg. fmx, xfp, chx..."""
+    b = Beamline.objects(__raw__={'name': name})
+    return _try0_maybe_mongo(b, 'beamline', 'name', name, None,
+                             as_mongo_obj=as_mongo_obj)
+
+def getBeamlineByNumber(num, as_mongo_obj=False):
+    """eg. 17id1, 17id2, 16id1"""
+    b = Beamline.objects(__raw__={'number': num})
+    return _try0_maybe_mongo(b, 'beamline', 'number', num, None,
+                             as_mongo_obj=as_mongo_obj)
     
 
 def createContainer(container_name, container_type, **kwargs):
@@ -451,21 +474,30 @@ def getContainerNameByID(container_id):
                            dict_key='containerName')
 
 
-def createResult(result_type, request_id, result_obj=None, timestamp=None,
+def createResult(result_type, request_id=None, sample_id=None, result_obj=None, timestamp=None,
                  as_mongo_obj=False, **kwargs):
     """
     result_type:  string, Type object, or dbref, required
-    request_id:   int, Request object, or dbref, required
+    request_id:   int, Request object, or dbref (optional)
+    sample_id:    int, Sample object, or dbref (optional, unecessary if request_id is specified)
+    result_obj:   dict to attach
+    timestamp:    
     """
 
     if not isinstance(result_type, Result) and not isinstance(result_type, bson.DBRef):
         result_type = type_from_name(result_type, as_mongo_obj=True)
 
-    if not isinstance(request_id, Request) and not isinstance(request_id, bson.DBRef):
-        request_id = getRequest(request_id, as_mongo_obj=True)
+    if request_id is not None:
+        if not isinstance(request_id, Request) and not isinstance(request_id, bson.DBRef):
+            request_id = getRequest(request_id, as_mongo_obj=True)
+        kwargs['request_id'] = request_id
+
+    if sample_id is not None:
+        if isinstance(sample_id, Sample) or isinstance(sample_id, bson.DBRef):
+            sample_id = sample_id.sample_id
+        kwargs['sample_id'] = sample_id
         
     kwargs['result_type'] = result_type
-    kwargs['request_id'] = request_id
     kwargs['timestamp'] = timestamp
     kwargs['result_obj'] = result_obj
 
@@ -571,6 +603,42 @@ def addResultforRequest(result_type, request_id, result_obj=None, timestamp=None
     sample.save()
 
     return r.to_mongo()
+
+
+def addResulttoSample(result_type, sample_id, result_obj=None, timestamp=None,
+                        as_mongo_obj=False, **kwargs):
+
+    """
+    like addResulttoRequest, but without a request
+    """
+    r = createResult(result_type, sample_id=sample_id, result_obj=result_obj, timestamp=timestamp,
+                     as_mongo_obj=True, **kwargs)
+
+    try:
+        sample = Sample.objects(sample_id=sample_id)[0]
+    except IndexError:
+        return None
+    
+    sample.resultList.append(r)
+    sample.save()
+
+    return r.to_mongo()
+
+
+def addResulttoBL(result_type, beamline_id, result_obj=None, timestamp=None,
+                  **kwargs):
+    """
+    add result to beamline
+    beamline_id: the integer, 'beamline_id' field of the beamline entry
+
+    other fields are as for createRequest
+    """
+
+    r = createResult(result_type, beamline_id=beamline_id, result_obj=result_obj, timestamp=timestamp,
+                     as_mongo_obj=True, **kwargs)
+    r.save()
+    return r.to_mongo()
+
 
 
 def addFile(data=None, filename=None):

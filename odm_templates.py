@@ -29,6 +29,16 @@ class Types(DynamicDocument):
     version = StringField()
 
 
+class Beamline(DynamicDocument):
+    """
+    name:  eg. fmx, xpd, chx...
+    number:  eg. 17id
+    """
+    beamline_id = SequenceField(required=True, unique=True, **args_dict)
+    name = StringField(required=True, unique=True)
+    number = StringField(required=True, unique=True)
+
+
 class Container(DynamicDocument):
     container_id = SequenceField(required=True, unique=True, **args_dict)
     container_type = ReferenceField(Types, dbref=True, required=True,

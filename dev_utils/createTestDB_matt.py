@@ -188,6 +188,13 @@ def createTestDB():
         beamlineInfo('john', 'mountedSample', info_dict={'puckPos': 0, 'pinPos': 0,
                                                          'sampleID': -99})
 
+        beamlines = [{'name': 'lix', 'number': '16id1'}, 
+                     {'name': 'fmx', 'number': '17id1'}, 
+                     {'name': 'amx', 'number': '17id2'},
+                     ]
+        for bl in beamlines:
+            createBeamline(bl['name'], bl['number'])
+
 
     except Exception as e:
         print('Warning! caught exception, dropping incomplete db!\n\n{0}\n'.format(e))
