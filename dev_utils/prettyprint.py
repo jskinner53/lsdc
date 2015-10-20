@@ -20,7 +20,11 @@ def _dbref_fix(obj):
     "collection" : { "$ref" : "collection", "$id" : { "$oid" : "505cdd127e89297d6f000421" } }
     """
     if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
-        return {k: _dbref_fix(v) for k, v in obj.iteritems()}
+        #return {k: _dbref_fix(v) for k, v in obj.iteritems()}
+        ret = {}
+        for k,v in obj.iteritems():
+            ret[k] = v
+        return ret
 
     elif hasattr(obj, '__iter__') and not isinstance(obj, string_types):
         return [_dbref_fix(v) for v in obj]
@@ -34,6 +38,7 @@ def _dbref_fix(obj):
         if coll: d['$ref'] = coll
         if db: d['$db'] = db
         return d
+
     else:
         return obj
 
