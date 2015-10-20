@@ -23,7 +23,7 @@ class Field(DynamicDocument):
 
 class Types(DynamicDocument):
     parent_type = StringField(required=True)
-    name = StringField(required=True, unique_with=parent_type)  # unique_with='owner'?  or base_type?
+    name = StringField(required=True, unique_with='parent_type')  # unique_with='owner'?  or base_type?
     description = StringField(required=True)
     field_list = ListField(ReferenceField(Field, dbref=True, reverse_delete_rule=mongoengine.DENY))
     version = StringField()
