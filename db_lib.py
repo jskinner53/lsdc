@@ -624,7 +624,6 @@ def addResulttoSample(result_type, sample_id, result_obj=None, timestamp=None,
 
     return r.to_mongo()
 
-
 def addResulttoBL(result_type, beamline_id, result_obj=None, timestamp=None,
                   **kwargs):
     """
@@ -639,6 +638,30 @@ def addResulttoBL(result_type, beamline_id, result_obj=None, timestamp=None,
     r.save()
     return r.to_mongo()
 
+def getResultsforBL(id=None, name=None, number=None):
+    """
+    Retrieve results using either BL id, name, or number (tried in that order)
+    Returns a generator of results
+    """
+    if id is None:
+        if name is None:
+            key = 'number'
+            val = number
+        else:
+            key = 'name'
+            val = name
+
+        query = {key: val}
+        b = Beamline.objects(__raw__=query)
+
+        id = _try0_dict_key(b, 'beamline', key, val, None, 'beamline_id')
+
+        if id is None:
+            yield None
+            raise StopIteration
+
+    for r in Result.objects(__raw__={'beamline_id': id}):
+        yield r
 
 
 def addFile(data=None, filename=None):
