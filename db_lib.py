@@ -687,14 +687,13 @@ def addFile(data=None, filename=None):
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
-    return f.id  # is this supposed to be 'id' or '_id'?
-#    return f._id  # is this supposed to be 'id' or '_id'?
+    return f.to_dbref()
 
 
 def getFile(_id):
     """
     Retrieve the data from the GenericFile collection
-    for the given _id.
+    for the given _id or db_ref
 
     Returns the data in Binary.  If you know it's a txt file and want a string,
     convert with str()
@@ -702,6 +701,12 @@ def getFile(_id):
     Maybe this will be automatically deref'd most of the time?
     Only if they're mongoengine ReferenceFields...
     """
+
+    try:
+        _id = _id.id
+
+    except AttributeError:
+        pass
 
     f = GenericFile.objects(__raw__={'_id': _id})  # yes it's '_id' here but just 'id' below, gofigure
     return _try0_dict_key(f, 'file', 'id', _id, None,
