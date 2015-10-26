@@ -883,42 +883,6 @@ def getQueue():
     for request in Request.objects(sample_id__in=sample_list):
         yield request.to_mongo()
 
-#    
-##    for item_id in items.item_list:
-##        if item_id is not None:
-#    for item_id in items:
-#            try:
-#                puck_items = Container.objects(__raw__={'container_id': item_id}).only('item_list')[0].item_list
-#            except IndexError, AttributeError:
-#                raise ValueError('could not find container id: "{0}"!'.format(item_id))
-#
-#            puck_items = set(puck_items)
-#            puck_items.discard(None)  # skip empty positions
-#            
-##            for sample_id in puck.item_list:
-##                if sample_id is not None:
-#            for sample_id in puck_items:
-#                    #print("sample ID = " + str(sample_id))
-#                    # If we don't request sample_id it gets set to the next id in the sequence!?
-#                    # maybe that doesn't matter if we don't use or return it?
-#                    try:
-#                        sampleObj = Sample.objects(__raw__={'sample_id': sample_id}).only('requestList','sample_id')[0]
-#                    except IndexError:
-#                        raise ValueError('could not find sample id: "{0}"!'.format(sample_id))
-#
-#                    try:
-#                        for request in sampleObj.requestList:
-#                            try:
-#                                # testing shows generator version is the same speed?
-#                                #yield request.to_mongo()
-#                                ret_list.append(request.to_mongo())
-#                            except AttributeError:
-#                                pass
-#                    except TypeError:
-#                        print(sampleObj.to_mongo())
-#
-#   return ret_list
-
 
 def getDewarPosfromSampleID(sample_id):
 
@@ -944,36 +908,6 @@ def getDewarPosfromSampleID(sample_id):
                     position = j + 1  # most people don't zero index things
                     return (containerID, position)    
 
-
-#def getCoordsfromSampleID(sample_id):
-#    """
-#    returns the container position within the dewar and position in
-#    that container for a sample with the given id in one of the
-#    containers in the container named by the global variable
-#    'primaryDewarName'
-#    """
-#    try:
-#        cont = Container.objects(__raw__={'containerName': primaryDewarName}).only('item_list')[0]
-#    except IndexError:
-#        return None
-#
-#    for i,puck_id in enumerate(cont.item_list):
-#        if puck_id is not None:
-#            puck = getContainerByID(puck_id)
-#            sampleList = puck["item_list"]
-#
-#            for j,samp_id in enumerate(sampleList):
-#                if samp_id == sample_id and samp_id is not None:
-#                    return (i, j, puck_id)
-
-# In [133]: %timeit dl.getCoordsfromSampleID(24006)
-# 10 loops, best of 3: 26.8 ms per loop
-# 
-# In [134]: %timeit dl.getOrderedRequestList()
-# 1 loops, best of 3: 1.06 s per loop
-# 
-# In [135]: dl.getCoordsfromSampleID(24006)
-# Out[135]: (17, 13, 11585)
 
 def getCoordsfromSampleID(sample_id):
     """
