@@ -624,7 +624,6 @@ def addResulttoSample(result_type, sample_id, result_obj=None, timestamp=None,
 
     return r.to_mongo()
 
-
 def addResulttoBL(result_type, beamline_id, result_obj=None, timestamp=None,
                   **kwargs):
     """
@@ -639,6 +638,30 @@ def addResulttoBL(result_type, beamline_id, result_obj=None, timestamp=None,
     r.save()
     return r.to_mongo()
 
+def getResultsforBL(id=None, name=None, number=None):
+    """
+    Retrieve results using either BL id, name, or number (tried in that order)
+    Returns a generator of results
+    """
+    if id is None:
+        if name is None:
+            key = 'number'
+            val = number
+        else:
+            key = 'name'
+            val = name
+
+        query = {key: val}
+        b = Beamline.objects(__raw__=query)
+
+        id = _try0_dict_key(b, 'beamline', key, val, None, 'beamline_id')
+
+        if id is None:
+            yield None
+            raise StopIteration
+
+    for r in Result.objects(__raw__={'beamline_id': id}):
+        yield r
 
 
 def addFile(data=None, filename=None):
@@ -664,14 +687,13 @@ def addFile(data=None, filename=None):
     f = GenericFile(data=data)
     f.save()
     f.reload()  # to fetch generated id
-    return f.id  # is this supposed to be 'id' or '_id'?
-#    return f._id  # is this supposed to be 'id' or '_id'?
+    return f.to_dbref()
 
 
 def getFile(_id):
     """
     Retrieve the data from the GenericFile collection
-    for the given _id.
+    for the given _id or db_ref
 
     Returns the data in Binary.  If you know it's a txt file and want a string,
     convert with str()
@@ -679,6 +701,12 @@ def getFile(_id):
     Maybe this will be automatically deref'd most of the time?
     Only if they're mongoengine ReferenceFields...
     """
+
+    try:
+        _id = _id.id
+
+    except AttributeError:
+        pass
 
     f = GenericFile.objects(__raw__={'_id': _id})  # yes it's '_id' here but just 'id' below, gofigure
     return _try0_dict_key(f, 'file', 'id', _id, None,
