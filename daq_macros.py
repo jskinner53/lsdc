@@ -679,11 +679,5 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   return 1
 
 
-def addFileToDB(filename):
-  fd = open(filename)
-  fID = db_lib.addFile(fd.read())
-  print "you stored fileID " + str(fID)
-  return fID
-
 def demoMac():
   print "hi"
