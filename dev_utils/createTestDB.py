@@ -90,6 +90,9 @@ def createTestDB():
         createType("rasterResult","","result")             
         createType("characterizationStrategy","","result")        
         createType("mxExpParams","","result") 
+
+        createBeamline("fmx", "17id1")
+        createBeamline("john", "99id1")
         
         
         # containers

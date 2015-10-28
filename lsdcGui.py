@@ -1531,10 +1531,14 @@ class controlMain(QtGui.QMainWindow):
       if (reqID != None): #assuming raster here, but will probably need to check the type
         db_lib.addResultforRequest("rasterJpeg",reqID,resultObj)
       else: # the user pushed the snapshot button on the gui
-        if (self.mountedPin_pv.get()>-1): #not sure what to do if no sample is mounted
-          newSampleRequest = db_lib.addRequesttoSample(self.mountedPin_pv.get(),"snapshot")
-          db_lib.addResultforRequest("snapshotResult",newSampleRequest["request_id"],resultObj)        
-          db_lib.deleteRequest(newSampleRequest)
+        mountedSampleID = self.mountedPin_pv.get()
+        if (mountedSampleID>-1): #not sure what to do if no sample is mounted
+#          newSampleRequest = db_lib.addRequesttoSample(self.mountedPin_pv.get(),"snapshot")
+#          db_lib.addResultforRequest("snapshotResult",newSampleRequest["request_id"],resultObj)        
+          db_lib.addResulttoSample("snapshotResult",mountedSampleID,resultObj)        
+#          db_lib.deleteRequest(newSampleRequest)
+        else: #beamline result, no sample mounted
+          db_lib.addResulttoBL("snapshotResult",daq_utils.beamline,resultObj)        
 #      print string_io.read()
 ###      lsdcOlog.toOlog(imagePath,comment,self.omegaRBV_pv)
       del painter
