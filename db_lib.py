@@ -969,6 +969,10 @@ def getSampleIDfromCoords(puck_num, position):
 
 
 def popNextRequest():
+    """
+    this just gives you the next one, it doesn't
+    actually pop it off the stack
+    """
     # is this more 'getNextRequest'? where's the 'pop'?
     orderedRequests = getOrderedRequestList()
     try:
@@ -1023,7 +1027,7 @@ def deleteRequest(reqObj):
     The request_id attribute for any results which references the deleted request
     are also entirely removed, not just set to None!
 
-    This seems to be the way wither mongo, pymongo, or mongoengine works :(
+    This seems to be the way either mongo, pymongo, or mongoengine works :(
     """
 
     r_id = reqObj['request_id']
