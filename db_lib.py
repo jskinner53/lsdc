@@ -5,6 +5,7 @@ from __future__ import print_function
 import sys
 import os
 import socket
+import time
 
 import six
 
@@ -1143,6 +1144,26 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
     # else it's a create
     except IndexError:
         BeamlineInfo(beamline_id=beamline_id, info_name=info_name, info=info_dict).save()
+
+
+def setBeamlineConfigParams(paramDict, searchParams):
+    # get current config
+    beamlineConfig = beamlineInfo(**searchParams)
+  
+    # update with given param dict and last_modified
+    paramDict['last_modified'] = time.time()
+    beamlineConfig.update(paramDict)
+    
+    # save  
+    beamlineInfo(info_dict=beamlineConfig, **searchParams)
+
+def getBeamlineConfigParam(paramName, searchParams):
+    beamlineConfig = beamlineInfo(**searchParams)
+    return beamlineConfig[paramName] 
+
+def getAllBeamlineConfigParams(searchParams):
+    beamlineConfig = beamlineInfo(**searchParams)
+    return beamlineConfig
 
 
 def userSettings(user_id, settings_name, settings_dict=None):
