@@ -84,6 +84,7 @@ def createTestDB():
         createType("snapshotResult","","result")        
         createType("xia2","","result")        
         createType("fastDP","","result")        
+        createType("dials","","result")        
         createType("diffImageJpeg","","result")        
         createType("xtalpicJpeg","","result")        
         createType("rasterJpeg","","result")        

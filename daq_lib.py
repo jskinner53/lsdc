@@ -21,6 +21,7 @@ var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.
 global x_vec_start, y_vec_start, z_vec_start, x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec
 global var_channel_list
 global message_string_pv
+global gui_popup_message_string_pv
 global data_directory_name
 var_channel_list = {}
 
@@ -36,13 +37,11 @@ def init_var_channels():
     beamline_support.pvPut(var_channel_list[varname],var_list[varname])
 
 
-def gui_message(message_string): #for now, later in python
-    command_string = "tkmessage %s\n" % message_string
-    os.system(command_string)
-
+def gui_message(message_string): 
+  beamline_support.pvPut(gui_popup_message_string_pv,message_string)
 
 def destroy_gui_message():
-  os.system("killall -KILL tkmessage")
+  beamline_support.pvPut(gui_popup_message_string_pv,"killMessage")
 
 
 def monitored_sleep(sleep_time):   #this sleeps while checking for aborts every second, good for stills
@@ -210,7 +209,6 @@ def broadcast_output(s):
   beamline_support.pvPut(message_string_pv,s)
 
 
-
 def runChooch():
   broadcast_output("running chooch")
   time.sleep(4)
@@ -300,7 +298,7 @@ def collectData(currentRequest):
       beamline_lib.mva("Z",reqObj["pos_z"])
     else:
       print "autoRaster"
-      daq_macros.autoRasterLoop(currentRequest["sample_id"])    
+      daq_macros.autoRasterLoop(currentRequest)    
     exposure_period = reqObj["exposure_time"]
     wavelength = reqObj["wavelength"]
     resolution = reqObj["resolution"]
@@ -414,7 +412,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
   image_started = 0        
   set_field("state","Idle")        
-####  detector_wait()
+###  detector_wait()
   daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 

@@ -35,16 +35,16 @@ def flipLoopShapeCoords(filename): # not used
   xrec_out_file.close() 
 
 
-def autoRasterLoop(sampleID):
+def autoRasterLoop(currentRequest):
+  sampleID = currentRequest["sample_id"]
   print "auto raster " + str(sampleID)
   loop_center_xrec()
-#  getXrecLoopShape(sampleID)
   time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
-  runRasterScan(sampleID,"LoopShape")
+  runRasterScan(currentRequest,"LoopShape")
   time.sleep(1.5) 
-  runRasterScan(sampleID,"Fine")
+  runRasterScan(currentRequest,"Fine")
   time.sleep(1) 
-  runRasterScan(sampleID,"Line")  
+  runRasterScan(currentRequest,"Line")  
   time.sleep(1) 
 
 
@@ -172,7 +172,11 @@ def generateGridMap(rasterRequest):
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print "done parsing dials output"
   print dialsResultObj
-  rasterResultObj = {"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
+  if (rasterRequest["request_obj"].has_key("parentReqID")):
+    parentReqID = rasterRequest["request_obj"]["parentReqID"]
+  else:
+    parentReqID = -1
+  rasterResultObj = {"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
 #  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
   rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
@@ -231,21 +235,22 @@ def snakeRaster(rasterReqID,grain=""):
   set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
 
-def runRasterScan(sampleID,rasterType=""): #this actualkl defines and runs
+def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
+  sampleID = currentRequest["sample_id"]
   if (rasterType=="Fine"):
     set_field("xrecRasterFlag",100)    
-    rasterReqID = defineRectRaster(sampleID,50,50,10) 
+    rasterReqID = defineRectRaster(currentRequest,50,50,10) 
     snakeRaster(rasterReqID)
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
     mvr("Omega",90)
 #    rasterReqID = defineColumnRaster(sampleID,10,150,10)
 #    singleColumnRaster(rasterReqID)
-    rasterReqID = defineRectRaster(sampleID,10,150,10) 
+    rasterReqID = defineRectRaster(currentRequest,10,150,10) 
     snakeRaster(rasterReqID)
     set_field("xrecRasterFlag",100)    
   else:
-    rasterReqID = getXrecLoopShape(sampleID)
+    rasterReqID = getXrecLoopShape(currentRequest)
     print "snake raster " + str(rasterReqID)
     time.sleep(1) #I think I really need this, not sure why
     snakeRaster(rasterReqID)
@@ -318,7 +323,8 @@ def screenYPixels2microns(pixels):
 #  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
-def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
+def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
+  sampleID = currentRequest["sample_id"]
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
   stepsize = float(stepsizeMicrons_s)
@@ -347,13 +353,15 @@ def defineRectRaster(sampleID,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe p
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
+  reqObj["parentReqID"] = currentRequest["request_id"]
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   time.sleep(1)
   return newRasterRequest["request_id"]
 
 
-def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
+def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
+  sampleID = currentRequest["sample_id"]
   newRowDef = {}
   beamWidth = stepsizeMicrons
   beamHeight = stepsizeMicrons
@@ -391,13 +399,15 @@ def definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,point_x,point_y,
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
+  reqObj["parentReqID"] = currentRequest["request_id"]
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["request_id"])  
   return newRasterRequest["request_id"]
 #  daq_lib.refreshGuiTree() # not sure
 
 
-def getXrecLoopShape(sampleID):
+def getXrecLoopShape(currentRequest):
+  sampleID = currentRequest["sample_id"]
   beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   for i in xrange(4):
     if (daq_lib.abort_flag == 1):
@@ -431,7 +441,7 @@ def getXrecLoopShape(sampleID):
   center_x = int(polyBoundingRect.center().x())
   center_y = int(polyBoundingRect.center().y())
   stepsizeMicrons = 30.0 #for now.
-  rasterReqID = definePolyRaster(sampleID,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
+  rasterReqID = definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
   return rasterReqID
 
 def vectorScan(vecRequest): #bogus for now until we figure out what we want

@@ -5,7 +5,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtGui
 
 class Console(QtGui.QPlainTextEdit):
-    def __init__(self, prompt='Command> ', startup_message='', parent=None):
+    def __init__(self, prompt='Command> ', startup_message='Command> ', parent=None):
         QtGui.QPlainTextEdit.__init__(self, parent)
         self.prompt = prompt
         self.parent = parent

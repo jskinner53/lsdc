@@ -6,10 +6,9 @@ from string import *
 import CaChannel
 from CaChannel import *
 ###2/3/12from pygrace import *
-import daq_utils
-import daq_lib
-import daq_macros
+###import daq_lib
 #import plot_lib2
+import daq_utils
 import math
 from element_info import *
 import beamline_support
@@ -39,30 +38,6 @@ def init_counters():
   beamline_support.init_counters()
   return
 
-def feedback(motor_code,step_size,counter_number,iterations): #we never use this, looks like a search
-  global CNT
-        
-  stepsize = float(step_size)
-  counter = int(counter_number)
-  numloops = int(iterations)
-  countdwell(.1)
-  ri() 
-  count_old = CNT[counter]
-  for i in xrange(numloops):
-    mvr(motor_code,stepsize)
-    if (daq_lib.abort_flag):
-      return
-    time.sleep(.5)
-    ri() 
-    count = CNT[counter]
-    if (count < count_old):
-      stepsize = (-1)*stepsize;
-      if (i==numloops-1):
-        mvr(motor_code,stepsize)
-        if (daq_lib.abort_flag):
-          return
-    count_old = count
-  countdwell(1)
 
 
 def countdwell(time_to_count):
@@ -72,6 +47,7 @@ def ri():
   global CNT
   local_count = []
 
+  
 #  CNT = beamline_support.get_counts(beamline_support.get_count_time())
   local_count = beamline_support.get_counts(beamline_support.get_count_time())  #index0=timer,1=chan2,...
   for i in xrange(1,number_of_counter_readouts+1):
@@ -222,30 +198,11 @@ def set_mono_scan_points(numpoints):
   beamline_support.set_scanend(mono_mot_code,half_scan_width)
   
   
-def move_gap(kev):
-  if (get_epics_pv("MguMENB","VAL") != 1):
-    daq_lib.destroy_gui_message()    
-    daq_lib.gui_message("Gap not enabled. Will continue.&")
-  set_epics_pv("MguE","E",float(kev)*1000.0)      
-    
 
 
 #not sure if special mono handling at nsls2
 def move_mono(energy):  # for now, not sure if this should go in macros
   mono_mot_code = beamline_support.get_motor_code(beamline_support.motor_code_from_descriptor("monochromator"))
-  if (daq_utils.beamline == "x25a"):
-###    return
-    max_needed = 0    
-    if (get_epics_pv("crue","VAL") != 1):
-      daq_lib.destroy_gui_message()    
-      daq_lib.gui_message("Gap not enabled. Will continue.&")
-    if (abs(float(get_mono_energy())-float(energy)) > 100):      
-#    if (abs(float(daq_lib.get_field("mono_energy_current"))-float(energy)) > 100):
-      max_needed=1      
-    if (max_needed):
-      max_needed = 0
-      daq_lib.gui_message("The wavelength change requires a beamlign realign. Please push the Realign button.&")      
-#      daq_macros.realign()
   if (abs(float(get_mono_energy())-float(energy)) > .1):
     mva(mono_mot_code,float(energy))
 
@@ -411,7 +368,7 @@ def spectrum_analysis():
 def bl_stop_motors():
   print "stopping motors"  
   stop_motors()
-  daq_lib.abort_flag = 1
+##  daq_lib.abort_flag = 1
   print "done stopping motors"
 
 def stop_motors():
@@ -446,15 +403,6 @@ def wait_for_motors():
 def sp(motcode,posn):
   beamline_support.sp(motcode,posn)
   return
-
-
-def copy_datafile_to_global(filename,motcode):
-
-  date_s = time.ctime(time.time())
-  date_s = replace(date_s,' ','_')
-  global_data_file_name = scanfile_root + "/" + daq_lib.beamline + "/" + daq_lib.beamline + "_" + motcode + "_" + date_s + ".txt"
-  comm_s = "cp %s %s" % (beamline_support.nowfile(),global_data_file_name)
-  os.system(comm_s)
 
 
 #nsls2 - a lot of these 
@@ -523,16 +471,6 @@ def po(data_file):
   os.system(command_string)
 
 
-def calibrate_mono(energy_ev):
-  if (daq_lib.beamline == "x25a"):
-    new_angle = 57.29578*math.asin(12398.5/(2*3.1356*float(energy_ev)))
-    beamline_support.sp("mono",new_angle)
-  if (daq_lib.beamline == "x12c"):
-    new_angle_radians = math.asin(12398.5/(2.0*3.1356*float(energy_ev)))
-    theta_offset_radians = get_epics_pv("theta_offset","VAL")
-    mono_mm = 300.0 * math.tan(new_angle_radians-theta_offset_radians)
-    print "new mono mm = " + str(mono_mm) + " \n"
-    beamline_support.sp("mono",mono_mm)  
 
 def set_attenuators(att_value):
     mva("filter",int(att_value))

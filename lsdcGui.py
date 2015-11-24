@@ -23,7 +23,7 @@ from PyMca.QtBlissGraph import QtBlissGraph
 from PyMca.McaAdvancedFit import McaAdvancedFit
 import numpy as np
 import thread
-import lsdcOlog
+##import lsdcOlog
 import StringIO
 
 
@@ -804,18 +804,21 @@ class rasterGroup(QtGui.QGraphicsItemGroup):
 
 
 class controlMain(QtGui.QMainWindow):
-    global program_starting
-    program_starting = 1
 #1/13/15 - are these necessary?, 4/1 - still no idea
     Signal = QtCore.pyqtSignal()
     refreshTreeSignal = QtCore.pyqtSignal()
     serverMessageSignal = QtCore.pyqtSignal()
+    serverPopupMessageSignal = QtCore.pyqtSignal()
     programStateSignal = QtCore.pyqtSignal()
 
     
     def __init__(self):
         super(controlMain, self).__init__()
         self.SelectedItemData = -999 #attempt to know what row is selected
+        self.popUpMessageInit = 1 # I hate these next two, but I don't want to catch old messages. Fix later, maybe.
+        self.textWindowMessageInit = 1
+        self.popupMessage = QtGui.QErrorMessage(self)
+        self.popupMessage.setModal(False)
         self.groupName = "skinner"        
         self.vectorStart = None
         self.vectorEnd = None
@@ -1209,7 +1212,9 @@ class controlMain(QtGui.QMainWindow):
         self.pixmap_item.mousePressEvent = self.pixelSelect
         pen = QtGui.QPen(QtCore.Qt.red)
         brush = QtGui.QBrush(QtCore.Qt.red)
+        scalePen = QtGui.QPen(brush,3.0)
         self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, pen,brush)      
+#####zzzzz        self.imageScale = self.scene.addLine(30,daq_utils.screenPixY-30,70, daq_utils.screenPixY-30, scalePen)      
         self.click_positions = []
         self.vectorStartFlag = 0
 #        self.vectorPointsList = []
@@ -2783,6 +2788,10 @@ class controlMain(QtGui.QMainWindow):
       serverMessageVar = char_value
       self.emit(QtCore.SIGNAL("serverMessageSignal"),serverMessageVar)
 
+    def serverPopupMessageCB(self,value=None, char_value=None, **kw):
+      serverMessageVar = char_value
+      self.emit(QtCore.SIGNAL("serverPopupMessageSignal"),serverMessageVar)
+
       
     def programStateCB(self, value=None, char_value=None, **kw):
       programStateVar = value
@@ -2839,6 +2848,9 @@ class controlMain(QtGui.QMainWindow):
       self.message_string_pv = PV(daq_utils.beamline + "_comm:message_string") 
       self.connect(self, QtCore.SIGNAL("serverMessageSignal"),self.printServerMessage)
       self.message_string_pv.add_callback(self.serverMessageCB)  
+      self.popup_message_string_pv = PV(daq_utils.beamline + "_comm:gui_popup_message_string") 
+      self.connect(self, QtCore.SIGNAL("serverPopupMessageSignal"),self.popupServerMessage)
+      self.popup_message_string_pv.add_callback(self.serverPopupMessageCB)  
       self.program_state_pv = PV(daq_utils.beamline + "_comm:program_state") 
       self.connect(self, QtCore.SIGNAL("programStateSignal"),self.colorProgramState)
       self.program_state_pv.add_callback(self.programStateCB)  
@@ -2862,13 +2874,24 @@ class controlMain(QtGui.QMainWindow):
       self.camZoom_pv.add_callback(self.processZoomLevelChangeCB)
         
 
-    def printServerMessage(self,message_s):
-      global program_starting
+    def popupServerMessage(self,message_s):
 
-      if (program_starting):
-        program_starting = 0
+      if (self.popUpMessageInit):
+        self.popUpMessageInit = 0
         return        
-#      message_s = beamline_support.pvGet(self.message_string_pv)
+#      message = QtGui.QErrorMessage(self)
+#      message.setModal(False)
+      self.popupMessage.done(1)
+      if (message_s == "killMessage"):
+        return
+      else:
+        self.popupMessage.showMessage(message_s)
+
+
+    def printServerMessage(self,message_s):
+      if (self.textWindowMessageInit):
+        self.textWindowMessageInit = 0
+        return        
       print message_s
       self.text_output.showMessage(message_s)
       self.text_output.scrollContentsBy(0,1000)

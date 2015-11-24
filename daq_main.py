@@ -38,6 +38,7 @@ def pybass_init():
 #  init_diffractometer()
   det_lib.init_detector()  
   daq_lib.message_string_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:message_string")    
+  daq_lib.gui_popup_message_string_pv = beamline_support.pvCreate(daq_utils.beamline + "_comm:gui_popup_message_string")    
   if (1):
 #  if (daq_lib.has_beamline): # for now
     try:
@@ -48,7 +49,7 @@ def pybass_init():
       print "init done mots"
       init_diffractometer()
 #      init_counters() #for now
-      newfile("scandata")
+#      newfile("scandata")
     except CaChannelException, status:
       print ca.message(status)
       gui_message("EPICS motor Initialization Error. Exit and try again. If problem persists, EPICS may need to be restarted.")

@@ -8,6 +8,7 @@ import db_lib
 from db_lib import *
 import requests
 import dectris.albula
+import xmltodict
 
 #global det_radius
 #det_radius = 0
@@ -259,8 +260,18 @@ def take_crystal_pictureCURL(filename,czoom=0):
     comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)
   os.system(comm_s)
 
+def runDials(imgPath,reqID=None):
+  comm_s = "dials.find_spots_client " + imgPath
+  print comm_s
+  dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+  print "done parsing dials output"
+  print dialsResultObj
+  currentRequestID = db_lib.beamlineInfo(beamline, 'currentRequestID')["requestID"]
+  dialsResult = db_lib.addResultforRequest("dials",currentRequestID, dialsResultObj)
 
-def take_crystal_picture(filename=None,czoom=0,reqID=None):
+
+
+def take_crystal_picture(filename=None,czoom=0,reqID=None,omega=-999):
   zoom = int(czoom)
   if not (has_xtalview):
     return
@@ -280,6 +291,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None):
     xtalpicJpegDataResult = {}
     imgRef = db_lib.addFile(data)
     xtalpicJpegDataResult["data"] = imgRef
+    xtalpicJpegDataResult["omegaPos"] = omega 
     db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult)
 
 
