@@ -1143,6 +1143,11 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
 
     # else it's a create
     except IndexError:
+        # edge case for 1st create in fresh database
+        # in which case this as actually a query
+        if info_dict is None:
+            return {}
+
         BeamlineInfo(beamline_id=beamline_id, info_name=info_name, info=info_dict).save()
 
 
