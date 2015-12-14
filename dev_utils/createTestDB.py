@@ -79,6 +79,7 @@ def createTestDB():
         createType("standard","","request")        
         createType("vector","","request")        
         createType("characterize","","request")        
+        createType("ednaCol","","request")        
         createType("screen","","request")        
         createType("snapshot","","request")        
         createType("snapshotResult","","result")        

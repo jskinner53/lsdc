@@ -2,6 +2,7 @@
 import time
 import string
 import os
+import thread
 import beamline_support
 from beamline_support import *
 
@@ -12,7 +13,7 @@ stateVars = {"collimator":0.0,"aperature":0.0,"lamp":0,"beamStop":0.0}
 
 stateDefinitions = [{"stateName":"Maintenance","stateDef":{},"safeTransitions":[{"stateName":"SampleExchange","transitionProc":"transProcM2SE"}]}, \
 {"stateName":"BeamLocation","stateDef":{"collimator":{"hi":0.0,"low":0.0},"aperature":{"hi":0.0,"low":0.0},"lamp":{"hi":0.0,"low":0.0},"beamStop":{"hi":0.0,"low":0.0}}, "safeTransitions":[{"stateName":"SampleExchange","transitionProc":"transProcBL2SE"},{"stateName":"Maintenance","transitionProc":"transProcBL2M"}]}, \
-{"stateName":"DataCollection","stateDef":{"collimator":{"hi":0.0,"low":0.0},"aperature":{"hi":0.0,"low":0.0},"lamp":{"hi":0.0,"low":0.0},"beamStop":{"hi":10.0,"low":10.0}},"safeTransitions":[{"stateName":"SampleAlignment","transitionProc":"transProcDC2SA"},{"stateName":"Maintenance","transitionProc":"transProcDC2SM"}]}, \
+{"stateName":"DataCollection","stateDef":{"collimator":{"hi":0.0,"low":0.0},"aperature":{"hi":0.0,"low":0.0},"lamp":{"hi":0.0,"low":0.0},"beamStop":{"hi":10.0,"low":10.0}},"safeTransitions":[{"stateName":"SampleAlignment","transitionProc":"transProcDC2SA"},{"stateName":"Maintenance","transitionProc":"transProcDC2SM"},{"stateName":"SampleExchange","transitionProc":"transProcDC2SE"}]}, \
 {"stateName":"SampleAlignment","stateDef":{"collimator":{"hi":0.0,"low":0.0},"aperature":{"hi":20.0,"low":20.0},"lamp":{"hi":0.0,"low":0.0},"beamStop":{"hi":0.0,"low":0.0}},"safeTransitions":[{"stateName":"SampleExchange","transitionProc":"transProcSA2SE"},{"stateName":"DataCollection","transitionProc":"transProcSA2DC"},{"stateName":"Maintenance","transitionProc":"transProcSA2SM"}]}, \
 {"stateName":"SampleExchange","stateDef":{"collimator":{"hi":0.0,"low":0.0},"aperature":{"hi":0.0,"low":0.0},"lamp":{"hi":0.0,"low":0.0},"beamStop":{"hi":11.0,"low":20.0}},"safeTransitions":[{"stateName":"SampleAlignment","transitionProc":"transProcSE2SA"},{"stateName":"BeamLocation","transitionProc":"transProcSE2BL"},{"stateName":"Maintenance","transitionProc":"transProcSE2M"}]}]
 
@@ -49,8 +50,11 @@ def getCurrentState():
     
 
 def gotoState(stateName):
-  print "trying to go to " + stateName
   machineState = getCurrentState()
+  machineStateName = machineState["stateName"]
+  if (machineStateName == stateName):
+    return 1
+  print "trying to go to " + stateName + " from " + machineStateName
   for i in xrange(len(machineState["safeTransitions"])):
     if (machineState["safeTransitions"][i]["stateName"] == stateName):
       print "OK to transition"
@@ -73,6 +77,24 @@ def transProcSA2SE():
   print "transition Sample Alignment to Sample Exchange"
   pvPut(var_channel_list["beamStop"],11)
   pvPut(var_channel_list["aperature"],0)
+
+def transProcSA2DC():
+  print "transition Sample Alignment to Data Collection"
+  pvPut(var_channel_list["beamStop"],10)
+  pvPut(var_channel_list["aperature"],0)
+
+
+def transProcDC2SA():
+  print "transition Data Collection to Sample Alignment"
+  pvPut(var_channel_list["beamStop"],0)
+  pvPut(var_channel_list["aperature"],20)
+
+
+def transProcDC2SE():
+  print "transition Data Collection to Sample Exchange"
+  pvPut(var_channel_list["beamStop"],11)
+  pvPut(var_channel_list["aperature"],0)
+
 
 
 
@@ -101,71 +123,13 @@ def var_list_item_changeCb(epics_args, user_args):
   print stateVars
 
         
-
-def comm_cb(epics_args, user_args):
-  global command_list,is_first
-  
-#  print waveform_to_string(epics_args['pv_value'])
-  if (is_first == 0):
-    command_list.append(waveform_to_string(epics_args['pv_value']))
-  else:
-    is_first = 0
-  
-
-def  process_input(s):
-  input_tokens = string.split(s)
-  if (len(input_tokens)>0):
-    first_token = input_tokens[0]
-    if (first_token == "q"): 
-      sys.exit()
-    else:
-      if (len(input_tokens)>0):
-        command_string = "%s(" % input_tokens[0]
-        for i in xrange(1,len(input_tokens)):
-          command_string = command_string + "\"" + input_tokens[i] + "\""
-          if (i != (len(input_tokens)-1)):
-            command_string = command_string + ","
-        command_string = command_string + ")"
-      try:
-        print command_string
-#        from my_macros import *
-        exec command_string
-      except NameError:
-        error_string = "Unknown command: " + command_string
-        print error_string
-      except SyntaxError:
-        print "Syntax error"
-      except KeyError:
-        print "Key error"
-      except TypeError:
-        print "Type error"
+def stateEvalThread(frequency):
+  while (1):
+    time.sleep(frequency)
+    getCurrentState()    
 
 
-
-def main():
-
+def initStateControl():
   init_var_channels()
-  comm_pv = pvCreate(beamline + "_comm:stateCommand_s")
-  add_callback(comm_pv,comm_cb,0)
-  while 1:
-    if (len(command_list) > 0):
-      print "command list len " + str(len(command_list))
-      process_input(command_list.pop(0))
-      print "Command> "
-    time.sleep(.1)
-    getCurrentState()
-
-main()
-
-
-
-if __name__ == '__main__':
-  main()
-
-
-
-
-
-
-
+  thread.start_new_thread(stateEvalThread,(.5,))     
 

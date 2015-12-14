@@ -1013,7 +1013,7 @@ class controlMain(QtGui.QMainWindow):
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
-        protoOptionList = ["standard","screen","raster","vector","characterize"]
+        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol"] # these should probably come from db
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1767,7 +1767,7 @@ class controlMain(QtGui.QMainWindow):
         self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
       elif (protocol == "vector"):
         self.vectorParamsFrame.show()
-      elif (protocol == "characterize"):
+      elif (protocol == "characterize" or protocol == "ednaCol"):
         self.characterizeParamsFrame.show()
       elif (protocol == "standard"):
         self.processingOptionsFrame.show()
@@ -2489,7 +2489,7 @@ class controlMain(QtGui.QMainWindow):
              reqObj["fastDP"] = (self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
              reqObj["fastEP"] =self.fastEPCheckBox.isChecked()
              reqObj["xia2"] =self.xia2CheckBox.isChecked()
-             if (reqObj["protocol"] == "characterize"):
+             if (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
@@ -2531,7 +2531,7 @@ class controlMain(QtGui.QMainWindow):
         if (rasterDef != None):
           reqObj["rasterDef"] = rasterDef
           reqObj["gridStep"] = float(self.rasterStepEdit.text())
-        if (reqObj["protocol"] == "characterize"):
+        if (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
           characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
           reqObj["characterizationParams"] = characterizationParams
         if (reqObj["protocol"] == "vector"):
@@ -2663,7 +2663,10 @@ class controlMain(QtGui.QMainWindow):
       self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))
       self.dataPathGB.setBasePath_ledit(str(reqObj["basePath"]))
       self.dataPathGB.setDataPath_ledit(str(reqObj["directory"]))
-      prefix_long = str(reqObj["directory"])+"/"+str(reqObj["file_prefix"])
+      if (str(reqObj["protocol"]) == "characterize" or str(reqObj["protocol"]) == "ednaCol"): #for now, to get albuladisp to work correctly, maybe this will all suck with eiger h5 format
+        prefix_long = str(reqObj["directory"])+"/ref-"+str(reqObj["file_prefix"])
+      else:
+        prefix_long = str(reqObj["directory"])+"/"+str(reqObj["file_prefix"])
       fnumstart=reqObj["file_number_start"]
       firstFilename = daq_utils.create_filename(prefix_long,fnumstart)
       if (selectedSampleRequest.has_key("priority")):
@@ -2675,7 +2678,7 @@ class controlMain(QtGui.QMainWindow):
       if (str(reqObj["protocol"])== "raster"):
         if (not self.rasterIsDrawn(selectedSampleRequest)):
           self.drawPolyRaster(selectedSampleRequest)
-      elif (str(reqObj["protocol"])== "characterize"):
+      elif (str(reqObj["protocol"])== "characterize" or str(reqObj["protocol"])== "ednaCol"):
         characterizationParams = reqObj["characterizationParams"]
         self.characterizeCompletenessEdit.setText(str(characterizationParams["aimed_completeness"]))
         self.characterizeISIGEdit.setText(str(characterizationParams["aimed_ISig"]))

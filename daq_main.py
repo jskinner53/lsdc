@@ -16,6 +16,7 @@ import det_lib
 import beamline_support
 import beamline_lib
 from beamline_lib import *
+import stateModule
 
 sitefilename = ""
 global command_list,immediate_command_list,z
@@ -171,6 +172,8 @@ def process_input(command_string):
     print "Key error"
   except TypeError:
     print "Type error"
+  except AttributeError:
+    print "Attribute Error"
   except KeyboardInterrupt:
     abort_data_collection()
     print "Interrupt caught by daq server\n"
@@ -200,6 +203,7 @@ def run_server():
 
 def main():
   pybass_init()
+  stateModule.initStateControl()
   run_server()
 
 main()

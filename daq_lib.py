@@ -13,7 +13,7 @@ import daq_utils
 import beamline_lib
 import beamline_support
 import db_lib
-
+import stateModule
 
 var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'xbeam':157.00,'ybeam':157.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':int(db_lib.beamlineInfo('john', 'mountedSample')["sampleID"]),'pause_button_state':'Pause','grid_w':210,'grid_h':150,'grid_i':10,'grid_on':0,'vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':0,'xrecRasterFlag':0}
 
@@ -261,7 +261,11 @@ def runDCQueue(): #maybe don't run rasters from here???
       mountSample(sampleID)
     db_lib.updatePriority(currentRequest["request_id"],99999)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
-    colStatus = collectData(currentRequest)
+    if (stateModule.gotoState("SampleAlignment")):
+      colStatus = collectData(currentRequest)
+    else:
+      print "State violation DC"
+      break
 
 
 def stopDCQueue():
@@ -307,6 +311,9 @@ def collectData(currentRequest):
     attenuation = reqObj["attenuation"]
     img_width = reqObj["img_width"]
     file_prefix = str(reqObj["file_prefix"])
+    if (not stateModule.gotoState("DataCollection")):
+      print "State violation"
+      return
     if (reqObj["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
@@ -319,7 +326,7 @@ def collectData(currentRequest):
         file_number_start = reqObj["file_number_start"]
         beamline_lib.mva("Omega",sweep_start)
         imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-    elif (reqObj["protocol"] == "characterize"):
+    elif (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
       characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
       if (index_success):
@@ -340,9 +347,20 @@ def collectData(currentRequest):
         newReqObj["exposure_time"] = stratExptime
         newReqObj["detDist"] = stratDetDist
         newReqObj["directory"] = data_directory_name
+        newReqObj["pos_x"] = beamline_lib.get_epics_motor_pos("X")
+        newReqObj["pos_y"] = beamline_lib.get_epics_motor_pos("Y")
+        newReqObj["pos_z"] = beamline_lib.get_epics_motor_pos("Z")
+        newReqObj["fastDP"] = reqObj["fastDP"] # this is where you might want a "new from old" request to carry over stuff like this.
+        newReqObj["fastEP"] = reqObj["fastEP"]
+        newReqObj["xia2"] = reqObj["xia2"]
         runNum = db_lib.incrementSampleRequestCount(sampleID)
         reqObj["runNum"] = runNum
         newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=0)
+        if (reqObj["protocol"] == "ednaCol"):
+          db_lib.updatePriority(currentRequest["request_id"],-1)
+          refreshGuiTree()
+          collectData(newStratRequest)
+          return
 
     else: #standard
       sweep_start = reqObj["sweep_start"]

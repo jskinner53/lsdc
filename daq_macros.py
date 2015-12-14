@@ -109,6 +109,8 @@ def loop_center_xrec():
 
 def fakeDC(directory,filePrefix,numstart,numimages):
 #  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
+  if (numimages > 360):
+    return
   testImgFileList = glob.glob("/h/pxuser/skinner/testdata/B1GGTApo_9_*.cbf")
   testImgFileList.sort()
   prefix_long = directory+"/"+filePrefix
@@ -185,6 +187,8 @@ def generateGridMap(rasterRequest):
 def snakeRaster(rasterReqID,grain=""):
   rasterRequest = db_lib.getRequest(rasterReqID)
   reqObj = rasterRequest["request_obj"]
+  exptimePerCell = reqObj["exposure_time"]
+  img_width_per_cell = reqObj["img_width"]
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
@@ -212,7 +216,15 @@ def snakeRaster(rasterReqID,grain=""):
         xRelativeMove = -((numsteps-1)*stepsize)
       else:
         xRelativeMove = ((numsteps-1)*stepsize)
-      mvr("Z",xRelativeMove) #I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass
+      rowExptime = numsteps*exptimePerCell
+      z_speed = xRelativeMove/rowExptime #I know nothing about units yet
+#     need to set speed and do a data collection - aka collect_det_seq
+###      set_epics_pv_nowait("Z","RLV",xRelativeMove)   
+# not sure what to do about range degrees here, I'm afraid img_width_per_cell* numsteps might be too much. set to 1 for now
+###      range_degrees = 1.0
+###      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
+      mvr("Z",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
+#I also need to be thinking about speed, I need a nowait z move here followed by a collect_detector_sequence of some sort that arms but then uses triggering from the zebra box.
   else: #column raster for 90-degree 
     numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
     startY = rasterDef["rowDefs"][0]["start"]["y"]+(stepsize/2.0) #- these are the simple relative moves
@@ -496,7 +508,8 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   #skinner roi - maybe I can measure and use that for dna_start so that first image is face on.
     dna_start = daq_lib.get_field("datum_omega")
     colstart = float(dna_start) + (i*(abs(overlap)+float(dna_range)))
-    dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
+    dna_prefix = "ref-"+prefix
+#12/15 not sure why dna_run_num in prefix    dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
     filename = daq_utils.create_filename(dna_prefix_long,image_number)
