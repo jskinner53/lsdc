@@ -1148,6 +1148,7 @@ def beamlineInfo(beamline_id, info_name, info_dict=None):
         if info_dict is None:
             return {}
 
+        # normal create
         BeamlineInfo(beamline_id=beamline_id, info_name=info_name, info=info_dict).save()
 
 
