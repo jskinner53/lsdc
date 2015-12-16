@@ -1,21 +1,35 @@
 import time
 import string
-#import beamline_support
 import os
 from math import *
-import metadatastore.commands as mdsc
-import db_lib
-from db_lib import *
 import requests
+
+import functools
+
 import dectris.albula
 import xmltodict
+
+import metadatastore.commands as mdsc
+
+#import beamline_support
+import db_lib
+# need to change refs to daq_utils.[these_funcs] to db_lib.[these_funcs] and then nuke this line
+from db_lib import (setBeamlineConfigParams, getBeamlineConfigParam, getAllBeamlineConfigParams)
 
 #global det_radius
 #det_radius = 0
 global beamline
 beamline = "john"
 global searchParams
-searchParams = {"config_params.beamline_id":beamline}
+#searchParams = {"config_params.beamline_id":beamline}
+searchParams = {'info_name': 'config_params', 'beamline_id': beamline}
+
+
+# needed for moving beamlineconfig stuff to db_lib while retaining the existing signatures
+setBeamlineConfigParams = functools.partial(setBeamlineConfigParams, searchParams=searchParams)
+getBeamlineConfigParam = functools.partial(getBeamlineConfigParam, searchParams=searchParams)
+getAllBeamlineConfigParams = functools.partial(getAllBeamlineConfigParams, searchParams=searchParams)
+
 
 global albulaFrame, albulaSubFrame
 albulaFrame = None
@@ -40,9 +54,9 @@ def albulaDisp(filename):
   try:
     albulaSubFrame.loadFile(filename)
   except dectris.albula.DNoObject:
-   albulaFrame = dectris.albula.openMainFrame()
-   albulaSubFrame = albulaFrame.openSubFrame()
-   albulaSubFrame.loadFile(filename)
+    albulaFrame = dectris.albula.openMainFrame()
+    albulaSubFrame = albulaFrame.openSubFrame()
+    albulaSubFrame.loadFile(filename)
 
 
 def init_environment():
@@ -51,8 +65,8 @@ def init_environment():
 #  var_list["state"] = "Idle"
 
 
-  configIter= mdsc.find_beamline_configs(**searchParams)
-  beamlineConfig = configIter.next()["config_params"]
+# beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+  beamlineConfig = getAllBeamlineConfigParams()
 
   lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
   lowMagFOVy = float(beamlineConfig["lowMagFOVy"])
@@ -120,32 +134,8 @@ def init_environment():
 #    print s
 #  beamline_support.pvPut(message_string_pv,s)
 
-def setBeamlineConfigParams(paramDict):
-  configIter= mdsc.find_beamline_configs(**searchParams)
-  beamlineConfig = configIter.next()["config_params"]
-  configIter= mdsc.find_beamline_configs(**searchParams)
-  beamlineConfig = configIter.next()["config_params"]
-  for paramName in paramDict.keys():
-    beamlineConfig[paramName] = paramDict[paramName]
-  mdsc.insert_beamline_config(beamlineConfig, time.time())
 
-#def setBeamlineConfigParam(paramName,val):
-#  configIter= mdsc.find_beamline_configs(**searchParams)
-#  beamlineConfig = configIter.next()["config_params"]
-#  beamlineConfig[paramName] = val
-#  mdsc.insert_beamline_config(beamlineConfig, time.time())
-
-def getBeamlineConfigParam(paramName):
-  configIter= mdsc.find_beamline_configs(**searchParams)
-  beamlineConfig = configIter.next()["config_params"]
-  return beamlineConfig[paramName] 
-
-def getAllBeamlineConfigParams():
-  configIter= mdsc.find_beamline_configs(**searchParams)
-  beamlineConfig = configIter.next()["config_params"]
-#  for key in beamlineConfig.keys():
-#     print key + " " + str(beamlineConfig[key])
-  return beamlineConfig
+# beamlineconfig stuff moved to db_lib
 
 
 def getCurrentFOVx(camera,zoom): #cam 0 = lowMag, 
@@ -200,8 +190,9 @@ def createDefaultRequest(sample_id):
     Doesn't really create a request, just returns a dictionary
     with the default parameters that can be passed to addRequesttoSample().
     """
-    configIter= mdsc.find_beamline_configs(**searchParams)
-    beamlineConfig = configIter.next()["config_params"]
+#   beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+    beamlineConfig = getAllBeamlineConfigParams()
+
     screenPhist = float(beamlineConfig["screen_default_phist"])
     screenPhiend = float(beamlineConfig["screen_default_phi_end"])
     screenWidth = float(beamlineConfig["screen_default_width"])
@@ -213,9 +204,9 @@ def createDefaultRequest(sample_id):
     screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
     screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
     screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
-    sampleName = str(getSampleNamebyID(sample_id))
+    sampleName = str(db_lib.getSampleNamebyID(sample_id))
     basePath = os.getcwd()
-    runNum = getSampleRequestCount(sample_id)
+    runNum = db_lib.getSampleRequestCount(sample_id)
     request = {"sample_id": sample_id}
     requestObj = {
                "sample_id": sample_id,
