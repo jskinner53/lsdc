@@ -65,7 +65,8 @@ def init_environment():
 #  var_list["state"] = "Idle"
 
 
-  beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+# beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+  beamlineConfig = getAllBeamlineConfigParams()
 
   lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
   lowMagFOVy = float(beamlineConfig["lowMagFOVy"])
@@ -189,7 +190,8 @@ def createDefaultRequest(sample_id):
     Doesn't really create a request, just returns a dictionary
     with the default parameters that can be passed to addRequesttoSample().
     """
-    beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+#   beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
+    beamlineConfig = getAllBeamlineConfigParams()
 
     screenPhist = float(beamlineConfig["screen_default_phist"])
     screenPhiend = float(beamlineConfig["screen_default_phi_end"])
