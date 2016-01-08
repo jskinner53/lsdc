@@ -1,0 +1,1 @@
+/home/skinner/projects/bnlpx_config/det_pv_listEiger.txt
