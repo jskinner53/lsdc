@@ -33,7 +33,7 @@ def detector_set_fileprefix(fileprefix):
 #  print "set detector file name pattern " + fileNamePattern
 #  epics_det.det_set_fileprefix(fileprefix)
 
-def detector_set_filenumber(filenumber):
+def detector_set_filenumber(filenumber): #I think this does nothing with the eiger
   print "set detector file number " + str(filenumber)
   epics_det.det_set_filenum(filenumber)
 
