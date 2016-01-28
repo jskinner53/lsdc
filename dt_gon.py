@@ -22,8 +22,11 @@ def dt_init():
     if not (gon_offline):
 #      dt_input = pvCreate(beamline+":-Asyn.AOUT")
 #      dt_output = pvCreate(beamline+":-Asyn.TINP")
-      dt_input = pvCreate(daq_utils.gonioPvPrefix+"OmegaAsyn.AOUT")
-      dt_output = pvCreate(daq_utils.gonioPvPrefix+"OmegaAsyn.TINP")
+#      dt_input = pvCreate(daq_utils.gonioPvPrefix+"OmegaAsyn.AOUT")
+#      dt_output = pvCreate(daq_utils.gonioPvPrefix+"OmegaAsyn.TINP")
+#NOTE HARDCODING FOR NOW 1/16
+      dt_input = pvCreate("XF:17IDC-CT:FMX{MC:13}Asyn.AOUT")
+      dt_output = pvCreate("XF:17IDC-CT:FMX{MC:13}Asyn.TINP")
 
 
 def dt_set_osc_width(w_degrees):

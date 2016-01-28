@@ -23,6 +23,8 @@ var_channel_list = {}
 global beamline, beamlineStateChannel
 beamlineStateChannel = None
 beamline = "john"
+global beamlineComm #this is the comm_ioc
+beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 
 global command_list,is_first
 command_list = []
@@ -106,10 +108,10 @@ def transProcBL2SE():
 def init_var_channels():
   global var_channel_list,beamlineStateChannel
 
-  beamlineStateChannel = beamline_support.pvCreate(beamline + "_comm:beamlineState")
+  beamlineStateChannel = beamline_support.pvCreate(beamlineComm + "beamlineState")
   beamline_support.pvPut(beamlineStateChannel,0)
   for varname in stateVars.keys():
-    var_channel_list[varname] = beamline_support.pvCreate(beamline + "_comm:" + varname)
+    var_channel_list[varname] = beamline_support.pvCreate(beamlineComm  + varname)
 #    beamline_support.pvPut(var_channel_list[varname],stateVars[varname])
     add_callback(var_channel_list[varname],var_list_item_changeCb,varname)    
 

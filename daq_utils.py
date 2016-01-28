@@ -6,10 +6,10 @@ import requests
 
 import functools
 
-import dectris.albula
+##import dectris.albula
 import xmltodict
 
-import metadatastore.commands as mdsc
+#import metadatastore.commands as mdsc
 
 #import beamline_support
 import db_lib
@@ -20,7 +20,16 @@ from db_lib import (setBeamlineConfigParams, getBeamlineConfigParam, getAllBeaml
 #det_radius = 0
 global beamline
 beamline = "john"
+global beamlineComm #this is the comm_ioc
+beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 global searchParams
+global motor_dict,counter_dict,scan_list,soft_motor_list
+motor_dict = {}
+counter_dict = {}
+scan_list = []
+soft_motor_list = []
+
+
 #searchParams = {"config_params.beamline_id":beamline}
 searchParams = {'info_name': 'config_params', 'beamline_id': beamline}
 
@@ -395,6 +404,65 @@ def create_filename(prefix,number):
   else:
     filename = tmp_filename
   return filename
+
+
+def readPVDesc():
+  global motor_dict,soft_motor_list,scan_list,counter_dict
+  
+  envname = "EPICS_BEAMLINE_INFO"
+  try:
+    dbfilename = os.environ[envname]
+  except KeyError:
+    print envname + " not defined. Defaulting to epx.db."
+    dbfilename = "epx.db"
+  if (os.path.exists(dbfilename) == 0):
+    error_msg = "EPICS BEAMLINE INFO %s does not exist.\n Program exiting." % dbfilename
+    print error_msg
+    sys.exit()
+  else:
+    dbfile = open(dbfilename,'r')
+    line = dbfile.readline()
+    line = dbfile.readline()
+    beamline_designation = line[:-1]
+    line = dbfile.readline()
+    i = 0
+    while(1):
+      line = dbfile.readline()
+      if (line == ""):
+        break
+      else:
+        line = line[:-1]
+        if (line == "#virtual motors"):
+          break
+        else:
+          motor_inf = string.split(line)
+          motor_dict[motor_inf[1]] = beamline_designation +  motor_inf[0]
+    while(1):
+      line = dbfile.readline()
+      if (line == ""):
+        break
+      else:
+        line = line[:-1]
+        if (line == "#scanned motors"):
+          break
+        else:
+          motor_inf = string.split(line)
+          soft_motor_list.append(beamline_designation + motor_inf[0])
+          motor_dict[motor_inf[1]] = beamline_designation + motor_inf[0]          
+    while(1):
+      line = dbfile.readline()
+      if (line == ""):
+        break
+      else:
+        line = line[:-1]
+        if (line == "#counters"):
+          break
+        else:
+          scan_list.append(beamline_designation + line + "scanParms")
+    line = dbfile.readline()
+    counter_inf = string.split(line)    
+    counter_dict[counter_inf[1]] = beamline_designation + counter_inf[0]    
+
 
 
 

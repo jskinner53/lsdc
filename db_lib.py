@@ -47,8 +47,10 @@ def db_connect():
     # try to guess the db to use based on hostname and stuff
     
     # defaults
-    db_host = '127.0.0.1'
-    db_name = 'tmp_mongo_junk_from_db_lib'
+#    db_host = '127.0.0.1'
+    db_host = '10.17.0.3'
+#    db_name = 'tmp_mongo_junk_from_db_lib'
+    db_name = 'john_mongo'
     
     host = socket.gethostname()
     

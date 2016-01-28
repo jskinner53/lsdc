@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/opt/conda_envs/lsdc_dev/bin/python
 import daq_utils
 import time
 import os

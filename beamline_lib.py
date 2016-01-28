@@ -156,11 +156,6 @@ def read_db():
 def init_mots():
   global alldone,scanfile_root
 
-  try: 
-    varname = "SCANFILE_ROOT"
-    scanfile_root = os.environ[varname]
-  except KeyError:
-    print "No ENV VAR %s\n" % varname
   beamline_support.init_motors()
 #  beamline_support.init_scanparms()
 #  alldone = CaChannel()
@@ -506,6 +501,25 @@ def set_scanstepsize(motcode,stepsize):
   beamline_support.set_scanstepsize(motcode,stepsize)
 
             
+
+def mvrDescriptor(*args): #convenience to get around nasty PV names
+  newArgsList = []
+  for i in range(0,len(args),2):
+    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
+    newArgsList.append(float(args[i+1]))
+  newArgs = tuple(newArgsList)
+  mvr(*newArgs)
+#  mvr(beamline_support.pvNameSuffix_from_descriptor(motorDescriptor),float(rmov))  
+
+
+def mvaDescriptor(*args): #convenience to get around nasty PV names
+  newArgsList = []
+  for i in range(0,len(args),2):
+    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
+    newArgsList.append(float(args[i+1]))
+  newArgs = tuple(newArgsList)
+  mva(*newArgs)
+  
 
   
   

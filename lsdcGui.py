@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/opt/conda_envs/lsdc_dev/bin/python
 import sys
 import os
 import string
@@ -840,7 +840,9 @@ class controlMain(QtGui.QMainWindow):
 
 
     def initVideo2(self,frequency):
-      self.captureZoom=cv2.VideoCapture("http://lob1-h:8080/CZOOM.MJPG.mjpg")
+#      self.captureZoom=cv2.VideoCapture("http://lob1-h:8080/CZOOM.MJPG.mjpg")
+      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/CZOOM.MJPG.mjpg")
+      
             
 
     def createSampleTab(self):
@@ -1191,15 +1193,16 @@ class controlMain(QtGui.QMainWindow):
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
           thread.start_new_thread(self.initVideo2,(.25,))
-          self.captureFull=cv2.VideoCapture("http://lob1-h:8080/C1.MJPG.mjpg")
+#          self.captureFull=cv2.VideoCapture("http://lob1-h:8080/C1.MJPG.mjpg")
+          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1.MJPG.mjpg")
         else:
           self.captureFull = None
           self.captureZoom = None
-        time.sleep(1)
+        time.sleep(3)
         self.capture = self.captureFull
         self.nocapture = self.captureZoom
         if (daq_utils.has_xtalview):
-          self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway is use milliseconds (confirmed)
+          self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
         self.centeringMarksList = []
         self.rasterList = []
         self.rasterDefList = []
@@ -1223,11 +1226,11 @@ class controlMain(QtGui.QMainWindow):
         omegaLabel = QtGui.QLabel("Omega")
         omegaRBLabel = QtGui.QLabel("Readback:")
 #        self.sampleOmegaRBVLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.RBV",self,0,"real") #type ignored for now, no validator yet
-        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.gonioPvPrefix+"Omega.VAL",self,0) #this works better for remote!
+        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,0) #this works better for remote!
 #        self.sampleOmegaRBVLedit = QtEpicsMotorLabel(daq_utils.gonioPvPrefix+"Omega",self,70) #type ignored for now, no validator yet
         omegaSPLabel = QtGui.QLabel("SetPoint:")
 #        self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.VAL",self,70,"real")
-        self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.VAL",self,70,2)
+        self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.motor_dict["omega"] + ".VAL",self,70,2)
         moveOmegaButton = QtGui.QPushButton("Move")
         moveOmegaButton.clicked.connect(self.moveOmegaCB)
         omegaTweakNegButton = QtGui.QPushButton("<")
@@ -1396,7 +1399,7 @@ class controlMain(QtGui.QMainWindow):
         self.lastFileLabel2.setFixedWidth(70)
         self.lastFileRBV2 = QtEpicsPVLabel("XF:AMXFMX:det1:FullFileName_RBV",self,0)
         fileHBoxLayout = QtGui.QHBoxLayout()
-        self.statusLabel = QtEpicsPVLabel(daq_utils.beamline+"_comm:program_state",self,300,highlight_on_change=False)
+        self.statusLabel = QtEpicsPVLabel(daq_utils.beamlineComm+"program_state",self,300,highlight_on_change=False)
         fileHBoxLayout.addWidget(self.statusLabel.getEntry())
         fileHBoxLayout.addWidget(self.lastFileLabel2)
         fileHBoxLayout.addWidget(self.lastFileRBV2.getEntry())
@@ -1571,7 +1574,8 @@ class controlMain(QtGui.QMainWindow):
       yMotRBV = self.motPos["y"]
       deltaYY = startYY-yMotRBV
       omegaRad = math.radians(self.motPos["omega"])
-      newYX = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYX))))*math.sin(omegaRad))
+#      newYX = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYX))))*math.sin(omegaRad))      
+      newYX = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYX))))*math.sin(omegaRad)
       newYY = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.cos(omegaRad)
       newY = newYX + newYY
       return newY
@@ -1579,12 +1583,14 @@ class controlMain(QtGui.QMainWindow):
 
     def calculateNewYCoordPos(self,startYX,startYY):
       startY_pixels = 0
-      xMotRBV = self.motPos["x"]
-      deltaYX = startYX-xMotRBV
+      zMotRBV = self.motPos["z"]
+#      xMotRBV = self.motPos["x"]
+      deltaYX = startYX-zMotRBV
       yMotRBV = self.motPos["y"]
       deltaYY = startYY-yMotRBV
       omegaRad = math.radians(self.motPos["omega"])
-      newYY = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad))
+#      newYY = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad))
+      newYY = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad)
       newYX = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYX))))*math.cos(omegaRad)
       newY = newYX + newYY
       return newY
@@ -1604,61 +1610,61 @@ class controlMain(QtGui.QMainWindow):
       self.motPos[motID] = posRBV
       if (len(self.centeringMarksList)>0):
         for i in xrange(len(self.centeringMarksList)):
-          if (motID == "z"):
-            startX = self.centeringMarksList[i]["sampCoords"]["z"]
+          if (motID == "x"):
+            startX = self.centeringMarksList[i]["sampCoords"]["x"]
             startX_pixels = 0
             delta = startX-posRBV
-            newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
+            newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
             self.centeringMarksList[i]["graphicsItem"].setPos(newX,self.centeringMarksList[i]["graphicsItem"].y())
-          if (motID == "y" or motID == "x" or motID == "omega"):
+          if (motID == "y" or motID == "z" or motID == "omega"):
             startYY = self.centeringMarksList[i]["sampCoords"]["y"]
-            startYX = self.centeringMarksList[i]["sampCoords"]["x"]
+            startYX = self.centeringMarksList[i]["sampCoords"]["z"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)
       if (len(self.rasterList)>0):
         for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
-            if (motID == "z"):
-              startX = self.rasterList[i]["coords"]["z"]
+            if (motID == "x"):
+              startX = self.rasterList[i]["coords"]["x"]
               startX_pixels = 0
               delta = startX-posRBV
-              newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
+              newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
               self.rasterList[i]["graphicsItem"].setPos(newX,self.rasterList[i]["graphicsItem"].y())
-            if (motID == "y" or motID == "x"):
+            if (motID == "y" or motID == "z"):
               startYY = self.rasterList[i]["coords"]["y"]
-              startYX = self.rasterList[i]["coords"]["x"]
+              startYX = self.rasterList[i]["coords"]["z"]
               newY = self.calculateNewYCoordPos(startYX,startYY)
               self.rasterList[i]["graphicsItem"].setPos(self.rasterList[i]["graphicsItem"].x(),newY)
       if (self.vectorStart != None):
         if (motID == "omega"):
           startYY = self.vectorStart["coords"]["y"]
-          startYX = self.vectorStart["coords"]["x"]
+          startYX = self.vectorStart["coords"]["z"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
           self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
           if (self.vectorEnd != None):
-            startYX = self.vectorEnd["coords"]["x"]
+            startYX = self.vectorEnd["coords"]["z"]
             startYY = self.vectorEnd["coords"]["y"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
-        if (motID == "z"):
-          startX = self.vectorStart["coords"]["z"]
+        if (motID == "x"):
+          startX = self.vectorStart["coords"]["x"]
           startX_pixels = 0
           delta = startX-posRBV
           newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
           self.vectorStart["graphicsitem"].setPos(newX,self.vectorStart["graphicsitem"].y())
           if (self.vectorEnd != None):
-            startX = self.vectorEnd["coords"]["z"]
+            startX = self.vectorEnd["coords"]["x"]
             startX_pixels = 0
             delta = startX-posRBV
             newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
             self.vectorEnd["graphicsitem"].setPos(newX,self.vectorEnd["graphicsitem"].y())
-        if (motID == "y" or motID == "x"):
-          startYX = self.vectorStart["coords"]["x"]
+        if (motID == "y" or motID == "z"):
+          startYX = self.vectorStart["coords"]["z"]
           startYY = self.vectorStart["coords"]["y"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
           self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
           if (self.vectorEnd != None):
-            startYX = self.vectorEnd["coords"]["x"]
+            startYX = self.vectorEnd["coords"]["z"]
             startYY = self.vectorEnd["coords"]["y"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
@@ -1884,26 +1890,26 @@ class controlMain(QtGui.QMainWindow):
         self.dewarTree.refreshTreePriorityView()
 
     def moveOmegaCB(self):
-      comm_s = "mva(\"Omega\"," + str(self.sampleOmegaMoveLedit.getEntry().text()) + ")"
+      comm_s = "mvaDescriptor(\"omega\"," + str(self.sampleOmegaMoveLedit.getEntry().text()) + ")"
       self.send_to_server(comm_s)
 
 
     def omegaTweakNegCB(self):
       tv = float(self.omegaTweakVal_ledit.text())
-      comm_s = "mvr(\"Omega\",-" + str(tv) + ")"
+      comm_s = "mvrDescriptor(\"omega\",-" + str(tv) + ")"
       self.send_to_server(comm_s)
 
     def omegaTweakPosCB(self):
       tv = float(self.omegaTweakVal_ledit.text())
-      comm_s = "mvr(\"Omega\"," + str(tv) + ")"
+      comm_s = "mvrDescriptor(\"omega\"," + str(tv) + ")"
       self.send_to_server(comm_s)
 
 
     def omega90CB(self):
-      self.send_to_server("mvr(\"Omega\",90)")
+      self.send_to_server("mvrDescriptor(\"omega\",90)")
 
     def omegaMinus90CB(self):
-      self.send_to_server("mvr(\"Omega\",-90)")
+      self.send_to_server("mvrDescriptor(\"omega\",-90)")
 
     def autoCenterLoopCB(self):
       print "auto center loop"
@@ -1959,7 +1965,7 @@ class controlMain(QtGui.QMainWindow):
       print "3-click center loop"
       self.threeClickCount = 1
       self.click3Button.setStyleSheet("background-color: yellow")
-      self.send_to_server("mva(\"Omega\",0)")
+      self.send_to_server("mvaDescriptor(\"omega\",0)")
       
 
     def fillPolyRaster(self,rasterReq): #at this point I should have a drawn polyRaster
@@ -2804,8 +2810,8 @@ class controlMain(QtGui.QMainWindow):
     def initUI(self):               
         self.tabs= QtGui.QTabWidget()
         self.text_output = Console(parent=self)
-        self.comm_pv = PV(daq_utils.beamline + "_comm:command_s")
-        self.immediate_comm_pv = PV(daq_utils.beamline + "_comm:immediate_command_s")
+        self.comm_pv = PV(daq_utils.beamlineComm + "command_s")
+        self.immediate_comm_pv = PV(daq_utils.beamlineComm + "immediate_command_s")
 #        self.progressDialog = QtGui.QProgressDialog(QtCore.QString("Creating Requests"),QtCore.QString(),0,100)
         self.progressDialog = QtGui.QProgressDialog()
         self.progressDialog.setCancelButtonText(QtCore.QString())
@@ -2835,44 +2841,45 @@ class controlMain(QtGui.QMainWindow):
       QtGui.QApplication.closeAllWindows()
 
     def initCallbacks(self):
-      self.treeChanged_pv = PV(daq_utils.beamline + "_comm:live_q_change_flag")
+      self.treeChanged_pv = PV(daq_utils.beamlineComm + "live_q_change_flag")
       self.connect(self, QtCore.SIGNAL("refreshTreeSignal"),self.dewarTree.refreshTree)
       self.treeChanged_pv.add_callback(self.treeChangedCB)  
-      self.mountedPin_pv = PV(daq_utils.beamline + "_comm:mounted_pin")
+      self.mountedPin_pv = PV(daq_utils.beamlineComm + "mounted_pin")
       self.connect(self, QtCore.SIGNAL("mountedPinSignal"),self.processMountedPin)
       self.mountedPin_pv.add_callback(self.mountedPinChangedCB)  
-      self.choochResultFlag_pv = PV(daq_utils.beamline + "_comm:choochResultFlag")
+      self.choochResultFlag_pv = PV(daq_utils.beamlineComm + "choochResultFlag")
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
       self.choochResultFlag_pv.add_callback(self.processChoochResultsCB)  
-      self.xrecRasterFlag_pv = PV(daq_utils.beamline + "_comm:xrecRasterFlag")
+      self.xrecRasterFlag_pv = PV(daq_utils.beamlineComm + "xrecRasterFlag")
       self.xrecRasterFlag_pv.put(0)
       self.connect(self, QtCore.SIGNAL("xrecRasterSignal"),self.displayXrecRaster)
       self.xrecRasterFlag_pv.add_callback(self.processXrecRasterCB)  
-      self.message_string_pv = PV(daq_utils.beamline + "_comm:message_string") 
+      self.message_string_pv = PV(daq_utils.beamlineComm + "message_string") 
       self.connect(self, QtCore.SIGNAL("serverMessageSignal"),self.printServerMessage)
       self.message_string_pv.add_callback(self.serverMessageCB)  
-      self.popup_message_string_pv = PV(daq_utils.beamline + "_comm:gui_popup_message_string") 
+      self.popup_message_string_pv = PV(daq_utils.beamlineComm + "gui_popup_message_string") 
       self.connect(self, QtCore.SIGNAL("serverPopupMessageSignal"),self.popupServerMessage)
       self.popup_message_string_pv.add_callback(self.serverPopupMessageCB)  
-      self.program_state_pv = PV(daq_utils.beamline + "_comm:program_state") 
+      self.program_state_pv = PV(daq_utils.beamlineComm + "program_state") 
       self.connect(self, QtCore.SIGNAL("programStateSignal"),self.colorProgramState)
       self.program_state_pv.add_callback(self.programStateCB)  
-      self.sampx_pv = PV(daq_utils.gonioPvPrefix+"X.VAL")
+      self.sampx_pv = PV(daq_utils.motor_dict["sampleX"]+".VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampx_pv.add_callback(self.processSampMoveCB,motID="x")
-      self.sampy_pv = PV(daq_utils.gonioPvPrefix+"Y.VAL")
+      self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampy_pv.add_callback(self.processSampMoveCB,motID="y")
-      self.sampz_pv = PV(daq_utils.gonioPvPrefix+"Z.VAL")
+      self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampz_pv.add_callback(self.processSampMoveCB,motID="z")
 
-      self.omega_pv = PV(daq_utils.gonioPvPrefix+"Omega.VAL")
-      self.omegaRBV_pv = PV(daq_utils.gonioPvPrefix+"Omega.RBV")
+      self.omega_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")
+      self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".RBV")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
-      self.camZoom_pv = PV("FAMX-cam1:MJPGZOOM:NDArrayPort")
+      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
+#      self.camZoom_pv = PV("FAMX-cam1:MJPGZOOM:NDArrayPort")
       self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
       self.camZoom_pv.add_callback(self.processZoomLevelChangeCB)
         
@@ -2921,7 +2928,8 @@ class controlMain(QtGui.QMainWindow):
 
 
 def main():
-    daq_utils.init_environment()    
+    daq_utils.init_environment()
+    daq_utils.readPVDesc()
     app = QtGui.QApplication(sys.argv)
     ex = controlMain()
     sys.exit(app.exec_())

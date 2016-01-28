@@ -15,7 +15,7 @@ from random import randint
 import glob
 import xml.etree.ElementTree as ET
 import xmltodict
-from XSDataMXv1 import XSDataResultCharacterisation
+##from XSDataMXv1 import XSDataResultCharacterisation
 
 def hi_macro():
   print "hello from macros\n"
@@ -57,7 +57,7 @@ def loop_center_xrec():
   for i in xrange(0,360,40):
     if (daq_lib.abort_flag == 1):
       return 0
-    mva("Omega",i)
+    mvaDescriptor("omega",i)
     pic_prefix = "findloop_" + str(i)
 #    time.sleep(0.1)
     daq_utils.take_crystal_picture(filename=pic_prefix)
@@ -94,7 +94,7 @@ def loop_center_xrec():
   xrec_check_file.close()
   if (reliability < 70 or check_result == 0): #bail if xrec couldn't align loop
     return 0
-  mva("Omega",target_angle)
+  mvaDescriptor("omega",target_angle)
   x_center = daq_utils.lowMagPixX/2
   y_center = daq_utils.lowMagPixY/2
 #  set_epics_pv("image_X_center","A",x_center)
@@ -103,7 +103,7 @@ def loop_center_xrec():
   print "center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec)
   center_on_click(x_center,y_center-radius,source="macro")
   center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,source="macro")
-  mva("Omega",face_on)
+  mvaDescriptor("omega",face_on)
   #now try to get the loopshape starting from here
   return 1
 
@@ -192,7 +192,7 @@ def snakeRaster(rasterReqID,grain=""):
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
-  rasterStartX = float(rasterDef["x"])
+  rasterStartX = float(rasterDef["x"]) #these are real sample motor positions
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
@@ -205,17 +205,18 @@ def snakeRaster(rasterReqID,grain=""):
       else:
         startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
       startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-      xRelativeMove = startX
+      xRelativeMove = startX #this is the relative move, mm, from the center of the raster
       yyRelativeMove = startY*sin(omegaRad)
-      yxRelativeMove = startY*cos(omegaRad)
-      zMotAbsoluteMove = rasterStartZ-xRelativeMove
-      yMotAbsoluteMove = rasterStartY+yyRelativeMove
-      xMotAbsoluteMove = rasterStartX-yxRelativeMove
-      mva("X",xMotAbsoluteMove,"Y",yMotAbsoluteMove,"Z",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
+      yzRelativeMove = startY*cos(omegaRad)
+      xMotAbsoluteMove = rasterStartX+xRelativeMove #noe we convert relative to absolute moves, using the raster center that was saved in x,y,z
+      yMotAbsoluteMove = rasterStartY-yyRelativeMove
+      zMotAbsoluteMove = rasterStartZ-yzRelativeMove
+      mvaDescriptor("sampleX",xMotAbsoluteMove,"sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
+      time.sleep(2.0)
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-        xRelativeMove = -((numsteps-1)*stepsize)
-      else:
         xRelativeMove = ((numsteps-1)*stepsize)
+      else:
+        xRelativeMove = -((numsteps-1)*stepsize)
       rowExptime = numsteps*exptimePerCell
       z_speed = xRelativeMove/rowExptime #I know nothing about units yet
 #     need to set speed and do a data collection - aka collect_det_seq
@@ -223,7 +224,8 @@ def snakeRaster(rasterReqID,grain=""):
 # not sure what to do about range degrees here, I'm afraid img_width_per_cell* numsteps might be too much. set to 1 for now
 ###      range_degrees = 1.0
 ###      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-      mvr("Z",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
+      mvrDescriptor("sampleX",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
+      time.sleep(2.0)
 #I also need to be thinking about speed, I need a nowait z move here followed by a collect_detector_sequence of some sort that arms but then uses triggering from the zebra box.
   else: #column raster for 90-degree 
     numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
@@ -232,19 +234,20 @@ def snakeRaster(rasterReqID,grain=""):
     xRelativeMove = startX
     yyRelativeMove = -startY*sin(omegaRad)
     yxRelativeMove = startY*cos(omegaRad)
-    mvr("X",yxRelativeMove,"Y",yyRelativeMove,"Z",xRelativeMove) #this should get to the start
+    mvrDescriptor("sampleX",yxRelativeMove,"sampleY",yyRelativeMove,"sampleZ",xRelativeMove) #this should get to the start
     time.sleep(1)#cosmetic
     yRelativeMove = -((numsteps-1)*stepsize)
     yyRelativeMove = yRelativeMove*sin(omegaRad)
     yxRelativeMove = -yRelativeMove*cos(omegaRad)
-    mvr("X",yxRelativeMove,"Y",yyRelativeMove) #this should be the actual scan
-  rasterResult = generateGridMap(rasterRequest)
-  rasterRequest["request_obj"]["rasterDef"]["status"] = 2
-  print "2"
-  gotoMaxRaster(rasterResult)
-  print "3"
-  db_lib.updateRequest(rasterRequest)
-  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+    mvrDescriptor("sampleX",yxRelativeMove,"sampleY",yyRelativeMove) #this should be the actual scan
+
+#  rasterResult = generateGridMap(rasterRequest)
+#  rasterRequest["request_obj"]["rasterDef"]["status"] = 2
+#  print "2"
+#  gotoMaxRaster(rasterResult)
+#  print "3"
+#  db_lib.updateRequest(rasterRequest)
+#  set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
 
 def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
@@ -255,7 +258,7 @@ def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
     snakeRaster(rasterReqID)
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
-    mvr("Omega",90)
+    mvrDescriptor("omega",90)
 #    rasterReqID = defineColumnRaster(sampleID,10,150,10)
 #    singleColumnRaster(rasterReqID)
     rasterReqID = defineRectRaster(currentRequest,10,150,10) 
@@ -304,7 +307,7 @@ def gotoMaxRaster(rasterResult):
     y = hotCoords["y"]
     z = hotCoords["z"]
     print "goto " + str(x) + " " + str(y) + " " + str(z)
-    mva("X",x,"Y",y,"Z",z)
+    mvaDescriptor("sampleX",x,"sampleY",y,"sampleZ",z)
   
     
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
@@ -420,17 +423,17 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
 
 def getXrecLoopShape(currentRequest):
   sampleID = currentRequest["sample_id"]
-  beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
+  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   for i in xrange(4):
     if (daq_lib.abort_flag == 1):
       return 0
-    mvr("Omega",i*30)
+    mvrDescriptor("omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
 #    time.sleep(0.1)
     daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
-  mva("Omega",face_on)
+  mvaDescriptor("omega",face_on)
   os.system("cp /dev/shm/masks2_hull_0.txt loopPoints.txt")
   polyPoints = [] 
   rasterPoly = None     
@@ -513,7 +516,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
     filename = daq_utils.create_filename(dna_prefix_long,image_number)
-    beamline_lib.mva("Omega",float(colstart))
+    beamline_lib.mvaDescriptor("omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
@@ -704,3 +707,4 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 
 def demoMac():
   print "hi"
+

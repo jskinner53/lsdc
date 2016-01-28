@@ -33,7 +33,7 @@ def init_var_channels():
   global var_channel_list
 
   for varname in var_list.keys():
-    var_channel_list[varname] = beamline_support.pvCreate(daq_utils.beamline + "_comm:" + varname)
+    var_channel_list[varname] = beamline_support.pvCreate(daq_utils.beamlineComm + varname)
     beamline_support.pvPut(var_channel_list[varname],var_list[varname])
 
 
@@ -200,7 +200,7 @@ def relative_zero_to_cp():
 
 
 def refreshGuiTree():
-  beamline_support.set_any_epics_pv(daq_utils.beamline+"_comm:live_q_change_flag","VAL",1)
+  beamline_support.set_any_epics_pv(daq_utils.beamlineComm+"live_q_change_flag","VAL",1)
 
 def broadcast_output(s):
   time.sleep(0.01)
@@ -297,9 +297,9 @@ def collectData(currentRequest):
 #    return
   else: #standard, screening, or edna - these may require autoalign, checking first
     if (reqObj["pos_x"] != 0):
-      beamline_lib.mva("X",reqObj["pos_x"])
-      beamline_lib.mva("Y",reqObj["pos_y"])
-      beamline_lib.mva("Z",reqObj["pos_z"])
+      beamline_lib.mvaDescriptor("sampleX",reqObj["pos_x"])
+      beamline_lib.mvaDescriptor("sampleY",reqObj["pos_y"])
+      beamline_lib.mvaDescriptor("sampleZ",reqObj["pos_z"])
     else:
       print "autoRaster"
       daq_macros.autoRasterLoop(currentRequest)    
@@ -324,7 +324,7 @@ def collectData(currentRequest):
         file_prefix = str(reqObj["file_prefix"]+"_"+str(i*screenRange))
         data_directory_name = str(reqObj["directory"]) # for now
         file_number_start = reqObj["file_number_start"]
-        beamline_lib.mva("Omega",sweep_start)
+        beamline_lib.mvaDescriptor("omega",sweep_start)
         imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
     elif (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
       characterizationParams = reqObj["characterizationParams"]
@@ -368,7 +368,7 @@ def collectData(currentRequest):
       file_prefix = str(reqObj["file_prefix"])
       file_number_start = reqObj["file_number_start"]
       range_degrees = abs(sweep_end-sweep_start)
-      beamline_lib.mva("Omega",sweep_start)
+      beamline_lib.mvaDescriptor("omega",sweep_start)
       imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
       if (reqObj["fastDP"]):
         if (reqObj["fastEP"]):
@@ -459,17 +459,18 @@ def center_on_click(x,y,maglevel=0,source="screen",jog=0): #maglevel=0 means low
     beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.lowMagFOVx)
     beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.lowMagFOVy)
   else:
-    if (beamline_support.get_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL") == "ROI2"):
+    if (beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL") == "ROI2"):
       beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.highMagFOVx)
       beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.highMagFOVy)
     else:
       beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.highMagFOVx/2.0)
       beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.highMagFOVy/2.0)
-  omega_mod = beamline_lib.get_epics_motor_pos("Omega")%360.0
+  omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
+#  omega_mod = beamline_lib.get_epics_motor_pos("Omega")%360.0  
 #  daq_utils.broadcast_output("\ncenter on x = %s, y = %s, omega = %f, phi = %f\n" % (x,y,omega_mod,0))
   lib_gon_center_xtal(x,y,omega_mod,0)
   if (jog):
-    beamline_lib.mvr("Omega",float(jog))
+    beamline_lib.mvrDescriptor("omega",float(jog))
 
 
 
@@ -524,7 +525,7 @@ def vector_move(t_s,vecRequest): #I think t_s is a fraction of the total vector,
   new_x = x_vec_start + (x_vec*t)
   new_y = y_vec_start + (y_vec*t)
   new_z = z_vec_start + (z_vec*t)
-  beamline_lib.mva("X",new_x,"Y",new_y,"Z",new_z)
+  beamline_lib.mvaDescriptor("sampleX",new_x,"sampleY",new_y,"sampleZ",new_z)
 #  mva("Y",new_y)
 #  mva("Z",new_z)
 
