@@ -39,7 +39,6 @@ def init_counters():
   return
 
 
-
 def countdwell(time_to_count):
   beamline_support.set_count_time(time_to_count)
 

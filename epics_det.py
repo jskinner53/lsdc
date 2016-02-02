@@ -116,19 +116,22 @@ def det_setheader(phist,phiinc,dist,wave,theta,exptime,xbeam,ybeam,rot_ax,omega,
 
   #maybe phist not used, it picks it from axis
   set_det_pv("det_distance",dist)
-  set_det_pv("wave",wave)
-  set_det_pv("twotheta",theta)
   set_det_pv("x_beam",xbeam)
   set_det_pv("y_beam",ybeam)
-  set_det_pv("kappa",kappa)
-  set_det_pv("phi",phi)
-  set_det_pv("img_width",phiinc)
-  if (det_type != "pixel_array"):
-    set_det_pv("exptime",exptime)  
-    set_det_pv("axis",rot_ax)
-    set_det_pv("omega",omega)    
-  else:
-    set_det_pv("start_angle",phist)
+  if (det_id=="PILATUS-6"):
+    set_det_pv("img_width",phiinc)
+    set_det_pv("start_angle",phist)  
+    set_det_pv("wave",wave)
+    set_det_pv("twotheta",theta)
+    set_det_pv("kappa",kappa)
+    set_det_pv("phi",phi)
+
+#  if (det_type != "pixel_array"):
+#    set_det_pv("exptime",exptime)  
+#    set_det_pv("axis",rot_ax)
+#    set_det_pv("omega",omega)    
+#  else:
+
     
 def det_set_fileprefix(prefix):
   if (det_id=="PILATUS-6"):
@@ -137,7 +140,7 @@ def det_set_fileprefix(prefix):
     set_det_pv("data_filename_val",prefix+"_$id")    
 
 def det_set_filepath(filepath):
-  set_det_pv("data_filepath_val",filepath)  
+  set_det_pv("data_filepath_val",filepath+"\0")  
   
 def det_set_filetemplate(filetemplate):
   set_det_pv("data_file_template_val",filetemplate)  

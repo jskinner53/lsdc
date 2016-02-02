@@ -23,6 +23,7 @@ def lib_init_diffractometer():
 
 #  beamline = beamline_support.beamline_designation
   head_alldone = beamline_support.pvCreate(beamline_support.beamline_designation+"gonioDone")
+  beamline_support.initControlPVs()
   dt_gon.dt_init()
 
 

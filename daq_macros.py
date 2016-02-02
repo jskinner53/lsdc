@@ -184,6 +184,16 @@ def generateGridMap(rasterRequest):
   return rasterResult
 
 
+def rasterWait():
+  time.sleep(0.2)
+  while (beamline_support.getPvValFromDescriptor("RasterActive")):
+    time.sleep(0.2)
+
+def vectorWait():
+  time.sleep(0.2)
+  while (beamline_support.getPvValFromDescriptor("VectorActive")):
+    time.sleep(0.2)
+
 def snakeRaster(rasterReqID,grain=""):
   rasterRequest = db_lib.getRequest(rasterReqID)
   reqObj = rasterRequest["request_obj"]
@@ -196,6 +206,11 @@ def snakeRaster(rasterReqID,grain=""):
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
+#  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0  
+  beamline_support.setPvValFromDescriptor("rasterStepX",stepsize)
+  beamline_support.setPvValFromDescriptor("rasterStartOmega",omega)
+  beamline_support.setPvValFromDescriptor("rasterStepOmega",img_width_per_cell)  
+  beamline_support.setPvValFromDescriptor("rasterCellExptime",exptimePerCell)  
   if (rasterDef["rasterType"] == "normal"):
     for i in xrange(len(rasterDef["rowDefs"])):
       rowCellCount = 0
@@ -212,10 +227,12 @@ def snakeRaster(rasterReqID,grain=""):
       yMotAbsoluteMove = rasterStartY-yyRelativeMove
       zMotAbsoluteMove = rasterStartZ-yzRelativeMove
       mvaDescriptor("sampleX",xMotAbsoluteMove,"sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
-      time.sleep(2.0)
+#      mvaDescriptor("sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
+        beamline_support.setPvValFromDescriptor("rasterDirection",0)
         xRelativeMove = ((numsteps-1)*stepsize)
       else:
+        beamline_support.setPvValFromDescriptor("rasterDirection",1)        
         xRelativeMove = -((numsteps-1)*stepsize)
       rowExptime = numsteps*exptimePerCell
       z_speed = xRelativeMove/rowExptime #I know nothing about units yet
@@ -224,8 +241,12 @@ def snakeRaster(rasterReqID,grain=""):
 # not sure what to do about range degrees here, I'm afraid img_width_per_cell* numsteps might be too much. set to 1 for now
 ###      range_degrees = 1.0
 ###      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-      mvrDescriptor("sampleX",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
-      time.sleep(2.0)
+      beamline_support.setPvValFromDescriptor("rasterNumCells",numsteps-1)
+      beamline_support.setPvValFromDescriptor("rasterStartX",xMotAbsoluteMove)
+      beamline_support.setPvValFromDescriptor("rasterGo",1)
+      rasterWait()
+      time.sleep(2.0) #temporary!!!!!!!!!!
+##      mvrDescriptor("sampleX",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
 #I also need to be thinking about speed, I need a nowait z move here followed by a collect_detector_sequence of some sort that arms but then uses triggering from the zebra box.
   else: #column raster for 90-degree 
     numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
@@ -459,17 +480,32 @@ def getXrecLoopShape(currentRequest):
   rasterReqID = definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
   return rasterReqID
 
-def vectorScan(vecRequest): #bogus for now until we figure out what we want
+def vectorScan(vecRequest): 
   reqObj = vecRequest["request_obj"]
   sweep_start_angle = reqObj["sweep_start"]
   sweep_end_angle = reqObj["sweep_end"]
   imgWidth = reqObj["img_width"]
+  expTime = reqObj["exposure_time"]
   numImages = int((sweep_end_angle - sweep_start_angle) / imgWidth)
-  numSteps = int(numImages/reqObj["vectorParams"]["fpp"])
-  print "numsteps " + str(numSteps)
-  for i in xrange(numSteps+1):
-    vector_move(float(i)*(100.0/float(numSteps))/100.0,vecRequest)
-#    time.sleep(.1)
+#  numSteps = int(numImages/reqObj["vectorParams"]["fpp"]) #not needed anymore?
+  x_vec_start=reqObj["vectorParams"]["vecStart"]["x"]
+  y_vec_start=reqObj["vectorParams"]["vecStart"]["y"]
+  z_vec_start=reqObj["vectorParams"]["vecStart"]["z"]
+  x_vec_end=reqObj["vectorParams"]["vecEnd"]["x"]
+  y_vec_end=reqObj["vectorParams"]["vecEnd"]["y"]
+  z_vec_end=reqObj["vectorParams"]["vecEnd"]["z"]
+  beamline_support.setPvValFromDescriptor("vectorStartOmega",sweep_start_angle)
+  beamline_support.setPvValFromDescriptor("vectorStepOmega",imgWidth)
+  beamline_support.setPvValFromDescriptor("vectorStartX",x_vec_start)
+  beamline_support.setPvValFromDescriptor("vectorStartY",y_vec_start)  
+  beamline_support.setPvValFromDescriptor("vectorStartZ",z_vec_start)  
+  beamline_support.setPvValFromDescriptor("vectorEndX",x_vec_end)
+  beamline_support.setPvValFromDescriptor("vectorEndY",y_vec_end)  
+  beamline_support.setPvValFromDescriptor("vectorEndZ",z_vec_end)  
+  beamline_support.setPvValFromDescriptor("vectorframeExptime",expTime)
+  beamline_support.setPvValFromDescriptor("vectorNumFrames",numImages)
+#  beamline_support.setPvValFromDescriptor("vectorGo",1)
+#  vectorWait()
 
 
 def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,charRequest):

@@ -98,9 +98,8 @@ def detector_set_filekind(flag):
 #    adsc_setfilekind(5)
 
 
-def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_name,file_number,z_target=0): #will need some environ info to diff eiger/pilatus
+def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_name,wave,xbeam,ybeam,detDist): #will need some environ info to diff eiger/pilatus
   global image_started,allow_overwrite,abort_flag
-
 
   print "data directory = " + data_directory_name
 
@@ -116,8 +115,9 @@ def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_
 #      return 0
 #    else:
 #      allow_overwrite = 1
-  detector_dead_time = .00001 #put this in config.
 #  detector_dead_time = .0024 #pilatus
+
+  detector_dead_time = .00001 #put this in config.
   exposure_time = exposure_period - detector_dead_time
   file_prefix_minus_directory = str(fileprefix)
   try:
@@ -129,19 +129,22 @@ def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_
   detector_set_numimages(number_of_images)
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
-  detector_set_filenumber(file_number)
-  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),get_field("xbeam"),get_field("ybeam"),get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))
-  print "collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
-  detector_start()
-  image_started = range_seconds
-  time.sleep(1.0) #4/15 - why so long?
+#  detector_set_filenumber(file_number)
+
+  detector_set_fileheader(0.0,0.0,detDist,wave,0.0,0.0,xbeam,ybeam,"omega",0.0,0.0,0.0) #only a few for eiger
+  
+#  print "collect eiger %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
+  detector_start() #but you need wired or manual trigger
+#  image_started = range_seconds
+#  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
-  set_field("state","Expose")
+#  set_field("state","Expose")
 ##########  set_epics_pv_nowait("xtz","VAL",z_target)   #this is for grid!!!!!!!!
-  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  image_started = 0        
-  set_field("state","Idle")        
-###  detector_wait()
-  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
-  return number_of_images
+#  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
+#  image_started = 0        
+#  detector_wait()
+#  set_field("state","Idle")          
+###  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+#  return number_of_images
+  return
 

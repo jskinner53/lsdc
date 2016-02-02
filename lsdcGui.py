@@ -1143,7 +1143,7 @@ class controlMain(QtGui.QMainWindow):
         self.dataPathGB = DataLocInfo(self)
         hBoxDisplayOptionLayout= QtGui.QHBoxLayout()        
         self.albulaDispCheckBox = QCheckBox("Display Data (Albula)")
-        self.albulaDispCheckBox.setChecked(True)
+        self.albulaDispCheckBox.setChecked(False)
 #        self.albulaDispCheckBox.stateChanged.connect(self.albulaCheckCB)
         hBoxDisplayOptionLayout.addWidget(self.albulaDispCheckBox)
         vBoxMainColLayout.addWidget(colParamsGB)
@@ -1198,7 +1198,7 @@ class controlMain(QtGui.QMainWindow):
         else:
           self.captureFull = None
           self.captureZoom = None
-        time.sleep(3)
+        time.sleep(5)
         self.capture = self.captureFull
         self.nocapture = self.captureZoom
         if (daq_utils.has_xtalview):
@@ -1650,13 +1650,15 @@ class controlMain(QtGui.QMainWindow):
           startX = self.vectorStart["coords"]["x"]
           startX_pixels = 0
           delta = startX-posRBV
-          newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
+          newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
+#                    newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
           self.vectorStart["graphicsitem"].setPos(newX,self.vectorStart["graphicsitem"].y())
           if (self.vectorEnd != None):
             startX = self.vectorEnd["coords"]["x"]
             startX_pixels = 0
             delta = startX-posRBV
-            newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
+            newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
+#                        newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
             self.vectorEnd["graphicsitem"].setPos(newX,self.vectorEnd["graphicsitem"].y())
         if (motID == "y" or motID == "z"):
           startYX = self.vectorStart["coords"]["z"]
