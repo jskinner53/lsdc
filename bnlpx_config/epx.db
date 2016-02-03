@@ -1,1 +1,39 @@
-/home/skinner/projects/bnlpx_config/epx.db
+#beamline_designation
+XF:17IDC-ES:FMX
+#real motors
+{Gon:1-Ax:O}Mtr omega
+{Sht:1-Ax:X}Mtr sampleX
+{Gon:1-Ax:PY}Mtr sampleY
+{Gon:1-Ax:PZ}Mtr sampleZ
+#virtual motors
+#control PVs
+{Gon:1-Raster}StartX rasterStartX
+{Gon:1-Raster}StepX rasterStepX
+{Gon:1-Raster}StartO rasterStartOmega
+{Gon:1-Raster}StepO rasterStepOmega
+{Gon:1-Raster}CellExposure rasterCellExptime
+{Gon:1-Raster}NumSamples rasterNumCells
+{Gon:1-Raster}Direction rasterDirection
+{Gon:1-Raster}Rastering_RBV RasterActive
+{Gon:1-Raster}Run.PROC rasterGo
+{Gon:1-Vector}StartX vectorStartX
+{Gon:1-Vector}StartY vectorStartY
+{Gon:1-Vector}StartZ vectorStartZ
+{Gon:1-Vector}EndX vectorEndX
+{Gon:1-Vector}EndY vectorEndY
+{Gon:1-Vector}EndZ vectorEndZ
+{Gon:1-Vector}StartO vectorStartOmega
+{Gon:1-Vector}StepO vectorStepOmega
+{Gon:1-Vector}CellExposure vectorframeExptime
+{Gon:1-Vector}NumSamples vectorNumFrames
+{Gon:1-Vector}Running_RBV VectorActive
+{Gon:1-Vector}Run.PROC vectorGo
+#scanned motors
+#counters
+scaler1 main_counter
+
+
+
+
+
+

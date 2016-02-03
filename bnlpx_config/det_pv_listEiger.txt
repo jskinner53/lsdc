@@ -1,1 +1,29 @@
-/home/skinner/projects/bnlpx_config/det_pv_listEiger.txt
+#beamline_designation
+XF:17IDC-ES:FMX{Det:Eig16M}cam1
+#detector channels
+file_number SequenceId
+file_number_rbv SequenceId
+data_filepath_val FilePath
+data_filename_val FWNamePattern
+start Acquire
+data_filepath_rbv FilePath_RBV
+data_filename_rbv FWNamePattern_RBV
+data_file_template_val FileTemplate
+data_file_template_rbv FileTemplate_RBV
+exptime AcquireTime
+image_period AcquirePeriod
+det_trigger_mode TriggerMode
+det_state DetectorState_RBV
+numimages NumImages
+filenum_auto_increment AutoIncrement
+wave Wavelength
+det_distance DetDist
+numexposures NumExposures
+det_status_message StatusMessage_RBV
+datafile_name FullFileName_RBV
+images_per_file_val FWNImagesPerFile
+images_per_file_rbv FWNImagesPerFile_RBV
+numTriggers NumTriggers
+numTriggers_rbv NumTriggers_RBV
+x_beam BeamX
+y_beam BeamY

@@ -485,7 +485,7 @@ def vectorScan(vecRequest):
   sweep_start_angle = reqObj["sweep_start"]
   sweep_end_angle = reqObj["sweep_end"]
   imgWidth = reqObj["img_width"]
-  expTime = reqObj["exposure_time"]
+  expTime = reqObj["exposure_time"] *1000
   numImages = int((sweep_end_angle - sweep_start_angle) / imgWidth)
 #  numSteps = int(numImages/reqObj["vectorParams"]["fpp"]) #not needed anymore?
   x_vec_start=reqObj["vectorParams"]["vecStart"]["x"]
@@ -504,8 +504,8 @@ def vectorScan(vecRequest):
   beamline_support.setPvValFromDescriptor("vectorEndZ",z_vec_end)  
   beamline_support.setPvValFromDescriptor("vectorframeExptime",expTime)
   beamline_support.setPvValFromDescriptor("vectorNumFrames",numImages)
-#  beamline_support.setPvValFromDescriptor("vectorGo",1)
-#  vectorWait()
+  beamline_support.setPvValFromDescriptor("vectorGo",1)
+  vectorWait()
 
 
 def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,charRequest):

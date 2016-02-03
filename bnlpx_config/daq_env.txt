@@ -1,1 +1,63 @@
-/home/skinner/projects/bnlpx_config/daq_env.txt
+export HAS_DB=1
+export HAS_BEAMLINE=0
+export HAS_ROBOT=1
+export HAS_CLICK_TO_CENTER=1
+export HAS_DNA=1
+export CAMERA_OFFSET=75.0
+export IMGSRV_HOST=x25-h.nsls.bnl.gov
+export IMGSRV_PORT=14007
+export BEAMLINE_ID=john
+export GON_TYPE=delta_tau
+export DET_TYPE=pixel_array
+export DETECTOR_ID=EIGER-16
+export DET_PV_LIST=$CONFIGDIR/det_pv_listEiger.txt
+
+export MONO_MOTOR_CODE=mon
+
+export BEAMSTOP_X_PVNAME=beamStopX
+export BEAMSTOP_Y_PVNAME=beamStopY
+
+export epx_dbname=$CONFIGDIR/epx.db
+export EPICS_BEAMLINE_INFO=$CONFIGDIR/epx.db
+#export epx_monitor_dbname $CONFIGDIR/epx_monitor.db
+
+export HAS_XTALVIEW=1
+export XTAL_URL=http://lob1-h:8080/C1.MJPG.jpg
+export XTAL_ZOOM_URL=http://lob1-h:8080/CZOOM.MJPG.jpg
+
+export XTAL_URL_SMALL=http://lob1-h:8080/CZOOM.MJPG.jpg
+
+export XTALVIEW_HAS_PASSWORD=0
+export XTALVIEW_USER=None
+export XTALVIEW_PASS=None
+
+export CBASS_SITE_FILE=$CONFIGDIR/cbass.site
+#export BEAM_MONITOR_FLAG $CONFIGDIR/monitor_beam.flag
+#export COLLECTION_ACTIVE_FLAG $CONFIGDIR/collection_active.flag
+export DETECTOR_OFFLINE=0
+export GON_OFFLINE=0
+
+export SCREEN_DEFAULT_PHIST=1
+export SCREEN_DEFAULT_PHI_END=2
+export SCREEN_DEFAULT_WIDTH=.2
+export SCREEN_DEFAULT_RESO=2.0
+export SCREEN_DEFAULT_DIST=808.2
+export SCREEN_DEFAULT_TIME=.2
+export SCREEN_DEFAULT_WAVE=1.0
+export SCREEN_DEFAULT_NUMSTART=1
+#export SCREEN_DEFAULT_ALIGN_LOOP=1
+#export SCREEN_DEFAULT_PAUSE_COLLECT=1
+export SCREEN_DEFAULT_REPEAT_90=0
+export SCREEN_DEFAULT_PAUSE_DONE=0
+
+# Your protocol choices (case-sensitive): ('Screen','Custom','dnaScrn','dnaCol','dnaStrat','dnaStratCol')
+export SCREEN_DEFAULT_PROTOCOL=Screen
+
+
+#if ($HAS_DNA) then
+#  export PYTHONPATH=${PYTHONPATH}:${EDNA_HOME}/libraries/20090518-PyAALib-JyAALib-111/modules:${EDNA_HOME}/mxv1/src:${EDNA_HOME}/kernel/src:${CONFIGDIR}:/usr/lib/python2.4/site-packages/PIL
+#fi
+
+#echo $PYTHONPATH
+
+
