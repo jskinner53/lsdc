@@ -254,7 +254,7 @@ def take_crystal_pictureCURL(filename,czoom=0):
     if (zoom==0):
       comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url)
     else:
-#      beamline_support.set_any_epics_pv("FAMX-cam1:MJPGZOOM:NDArrayPort","VAL","ROI1")
+      beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1")
       comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url_small)
   else:
     comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)

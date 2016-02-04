@@ -504,7 +504,7 @@ def set_vector_fpp(fpp,numframes): #not used 7/22/15
   set_field("vector_step",vec_step_microns)
 
 
-def vector_move(t_s,vecRequest): #I think t_s is a fraction of the total vector, so "1" would do the whole thing
+def vector_moveOBSOLETE(t_s,vecRequest): #I think t_s is a fraction of the total vector, so "1" would do the whole thing
   global x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec, x_vec_start, y_vec_start, z_vec_start
 
 #  print "vec t = " + str(t_s)

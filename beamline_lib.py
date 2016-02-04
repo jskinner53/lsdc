@@ -521,7 +521,9 @@ def mvaDescriptor(*args): #convenience to get around nasty PV names
   
 
   
-  
+def motorPosFromDescriptor(descriptor):
+  return get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor(descriptor))
+
 
 
 

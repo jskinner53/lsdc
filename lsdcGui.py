@@ -654,6 +654,8 @@ class DewarTree(QtGui.QTreeView):
                 if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
                   self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
                   self.parent.rasterList[i] = None
+          if (selectedSampleRequest["request_obj"]["protocol"] == "vector"):
+            self.parent.clearVectorCB()
       self.parent.progressDialog.close()
       self.parent.treeChanged_pv.put(1)
       
@@ -1290,8 +1292,8 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout = QtGui.QHBoxLayout()
         centerLoopButton = QtGui.QPushButton("Center\nLoop")
         centerLoopButton.clicked.connect(self.autoCenterLoopCB)
-        rasterLoopButton = QtGui.QPushButton("Raster\nLoop")
-        rasterLoopButton.clicked.connect(self.autoRasterLoopCB)
+##        rasterLoopButton = QtGui.QPushButton("Raster\nLoop")
+##        rasterLoopButton.clicked.connect(self.autoRasterLoopCB)
         loopShapeButton = QtGui.QPushButton("Draw\nRaster")
         loopShapeButton.clicked.connect(self.drawInteractiveRasterCB)
         runRastersButton = QtGui.QPushButton("Run\nRaster")
@@ -1306,7 +1308,7 @@ class controlMain(QtGui.QMainWindow):
         selectAllCenteringButton = QtGui.QPushButton("Select All\nCenterings")
         selectAllCenteringButton.clicked.connect(self.selectAllCenterCB)
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
-        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
+#        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
         hBoxSampleAlignLayout.addWidget(loopShapeButton)
 ###        hBoxSampleAlignLayout.addWidget(runRastersButton) #maybe not a good idea to have multiple ways to run a raster. Force the collect button.
         hBoxSampleAlignLayout.addWidget(clearGraphicsButton)
@@ -2865,13 +2867,16 @@ class controlMain(QtGui.QMainWindow):
       self.program_state_pv = PV(daq_utils.beamlineComm + "program_state") 
       self.connect(self, QtCore.SIGNAL("programStateSignal"),self.colorProgramState)
       self.program_state_pv.add_callback(self.programStateCB)  
-      self.sampx_pv = PV(daq_utils.motor_dict["sampleX"]+".VAL")
+#      self.sampx_pv = PV(daq_utils.motor_dict["sampleX"]+".VAL")
+      self.sampx_pv = PV(daq_utils.motor_dict["sampleX"]+".RBV")      
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampx_pv.add_callback(self.processSampMoveCB,motID="x")
-      self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".VAL")
+      self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".RBV")
+#      self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampy_pv.add_callback(self.processSampMoveCB,motID="y")
-      self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".VAL")
+      self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".RBV")
+#      self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".VAL")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampz_pv.add_callback(self.processSampMoveCB,motID="z")
 
