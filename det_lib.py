@@ -139,7 +139,6 @@ def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
 #  set_field("state","Expose")
-##########  set_epics_pv_nowait("xtz","VAL",z_target)   #this is for grid!!!!!!!!
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
 #  image_started = 0        
 #  detector_wait()

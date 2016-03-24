@@ -1,10 +1,11 @@
 #!/opt/conda_envs/lsdc_dev/bin/python
+#####!/usr/bin/python
 import sys
 import os
 import string
 import math
 from epics import PV
-import daq_utils
+
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4.QtCore import * 
@@ -16,6 +17,8 @@ from QtEpicsPVLabel import *
 from QtEpicsPVEntry import *
 import cv2
 from cv2 import *
+import daq_utils
+import albulaUtils
 from testSimpleConsole import *
 import functools
 from QPeriodicTable import QPeriodicTable
@@ -25,6 +28,7 @@ import numpy as np
 import thread
 ##import lsdcOlog
 import StringIO
+
 
 
 class snapCommentDialog(QDialog):
@@ -743,7 +747,7 @@ class rasterCell(QtGui.QGraphicsRectItem):
           d_min = self.data(2).toDouble()[0]
           intensity = self.data(3).toInt()[0]
           if (self.topParent.albulaDispCheckBox.isChecked()):
-            daq_utils.albulaDisp(str(self.data(1).toString()))
+            albulaUtils.albulaDisp(str(self.data(1).toString()))
           if not (self.topParent.rasterExploreDialog.isVisible()):
             self.topParent.rasterExploreDialog.show()
           self.topParent.rasterExploreDialog.setSpotCount(spotcount)
@@ -842,8 +846,9 @@ class controlMain(QtGui.QMainWindow):
 
 
     def initVideo2(self,frequency):
-#      self.captureZoom=cv2.VideoCapture("http://lob1-h:8080/CZOOM.MJPG.mjpg")
-      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/CZOOM.MJPG.mjpg")
+#      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C1.MJPG.mjpg")
+      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C3.MJPG.mjpg")
+      
       
             
 
@@ -1195,22 +1200,23 @@ class controlMain(QtGui.QMainWindow):
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
           thread.start_new_thread(self.initVideo2,(.25,))
-#          self.captureFull=cv2.VideoCapture("http://lob1-h:8080/C1.MJPG.mjpg")
-          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1.MJPG.mjpg")
+#          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1ZOOM.MJPG.mjpg")          
+          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg")          
         else:
           self.captureFull = None
           self.captureZoom = None
         time.sleep(5)
         self.capture = self.captureFull
-        self.nocapture = self.captureZoom
+#        self.nocapture = self.captureZoom
         if (daq_utils.has_xtalview):
-          self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
+          self.timerId = self.startTimer(40) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
         self.centeringMarksList = []
         self.rasterList = []
         self.rasterDefList = []
         self.polyPointItems = []
         self.rasterPoly = None
-        self.scene = QtGui.QGraphicsScene(0,0,646,482,self)
+        self.scene = QtGui.QGraphicsScene(0,0,564,450,self)
+#        self.scene = QtGui.QGraphicsScene(0,0,646,482,self)        
         self.scene.keyPressEvent = self.sceneKey
         self.view = QtGui.QGraphicsView(self.scene)
         self.pixmap_item = QtGui.QGraphicsPixmapItem(None, self.scene)      
@@ -1427,11 +1433,13 @@ class controlMain(QtGui.QMainWindow):
           cellSize = 30
           self.rasterStepEdit.setText(str(cellSize))
           self.beamWidth_ledit.setText(str(cellSize))
+          self.beamHeight_ledit.setText(str(cellSize))          
       elif (identifier == "Fine"):
         if (self.rasterGrainFineRadio.isChecked()):
           cellSize = 10
           self.rasterStepEdit.setText(str(cellSize))
           self.beamWidth_ledit.setText(str(cellSize))
+          self.beamHeight_ledit.setText(str(cellSize))                    
       else:
         pass
 
@@ -1489,15 +1497,16 @@ class controlMain(QtGui.QMainWindow):
       fov = {}
       if (self.lowMagLevelRadio.isChecked()):
         self.capture = self.captureFull
-        self.nocapture = self.captureZoom
+#        self.nocapture = self.captureZoom
         self.digiZoomCheckBox.setEnabled(False)
         fov["x"] = daq_utils.lowMagFOVx
         fov["y"] = daq_utils.lowMagFOVy
       else:
         self.capture = self.captureZoom
-        self.nocapture = self.captureFull
+#        self.nocapture = self.captureFull
         self.digiZoomCheckBox.setEnabled(True)
-        if (self.camZoom_pv.get() == "ROI2"):
+##        if (self.camZoom_pv.get() == "ROI2"):
+        if (0):            
           fov["x"] = daq_utils.highMagFOVx/2.0
           fov["y"] = daq_utils.highMagFOVy/2.0
         else:
@@ -1514,8 +1523,10 @@ class controlMain(QtGui.QMainWindow):
 
     def saveVidSnapshotCB(self,comment="",reqID=None):
 #      totalRect = QtCore.QRectF(self.view.frameRect())
-      width = 646
-      height = 482
+      width = 564
+      height = 450
+#      width = 646
+#      height = 482
       targetrect = QRectF(0, 0, width, height)
       sourcerect = QRectF(0, 0, width, height)
 #    view.render(painter, targetrect, sourcerect)
@@ -1583,12 +1594,26 @@ class controlMain(QtGui.QMainWindow):
       return newY
 
 
-    def calculateNewYCoordPos(self,startYX,startYY):
+    def calculateNewYCoordPosOld2(self,startYX,startYY):
       startY_pixels = 0
       zMotRBV = self.motPos["z"]
 #      xMotRBV = self.motPos["x"]
       deltaYX = startYX-zMotRBV
       yMotRBV = self.motPos["y"]
+      deltaYY = startYY-yMotRBV
+      omegaRad = math.radians(self.motPos["omega"])
+#      newYY = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad))
+      newYY = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad)
+      newYX = (float(startY_pixels-(self.screenYmicrons2pixels(deltaYX))))*math.cos(omegaRad)
+      newY = newYX + newYY
+      return newY
+
+    def calculateNewYCoordPos(self,startYX,startYY):
+      startY_pixels = 0
+      zMotRBV = self.motPos["y"]
+#      xMotRBV = self.motPos["x"]
+      deltaYX = startYX-zMotRBV
+      yMotRBV = self.motPos["z"]
       deltaYY = startYY-yMotRBV
       omegaRad = math.radians(self.motPos["omega"])
 #      newYY = 0-((float(startY_pixels-(self.screenYmicrons2pixels(deltaYY))))*math.sin(omegaRad))
@@ -1619,8 +1644,8 @@ class controlMain(QtGui.QMainWindow):
             newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
             self.centeringMarksList[i]["graphicsItem"].setPos(newX,self.centeringMarksList[i]["graphicsItem"].y())
           if (motID == "y" or motID == "z" or motID == "omega"):
-            startYY = self.centeringMarksList[i]["sampCoords"]["y"]
-            startYX = self.centeringMarksList[i]["sampCoords"]["z"]
+            startYY = self.centeringMarksList[i]["sampCoords"]["z"]
+            startYX = self.centeringMarksList[i]["sampCoords"]["y"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)
       if (len(self.rasterList)>0):
@@ -1633,19 +1658,19 @@ class controlMain(QtGui.QMainWindow):
               newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
               self.rasterList[i]["graphicsItem"].setPos(newX,self.rasterList[i]["graphicsItem"].y())
             if (motID == "y" or motID == "z"):
-              startYY = self.rasterList[i]["coords"]["y"]
-              startYX = self.rasterList[i]["coords"]["z"]
+              startYY = self.rasterList[i]["coords"]["z"]
+              startYX = self.rasterList[i]["coords"]["y"]
               newY = self.calculateNewYCoordPos(startYX,startYY)
               self.rasterList[i]["graphicsItem"].setPos(self.rasterList[i]["graphicsItem"].x(),newY)
       if (self.vectorStart != None):
         if (motID == "omega"):
-          startYY = self.vectorStart["coords"]["y"]
-          startYX = self.vectorStart["coords"]["z"]
+          startYY = self.vectorStart["coords"]["z"]
+          startYX = self.vectorStart["coords"]["y"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
           self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
           if (self.vectorEnd != None):
-            startYX = self.vectorEnd["coords"]["z"]
-            startYY = self.vectorEnd["coords"]["y"]
+            startYX = self.vectorEnd["coords"]["y"]
+            startYY = self.vectorEnd["coords"]["z"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
         if (motID == "x"):
@@ -1663,13 +1688,13 @@ class controlMain(QtGui.QMainWindow):
 #                        newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
             self.vectorEnd["graphicsitem"].setPos(newX,self.vectorEnd["graphicsitem"].y())
         if (motID == "y" or motID == "z"):
-          startYX = self.vectorStart["coords"]["z"]
-          startYY = self.vectorStart["coords"]["y"]
+          startYX = self.vectorStart["coords"]["y"]
+          startYY = self.vectorStart["coords"]["z"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
           self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
           if (self.vectorEnd != None):
-            startYX = self.vectorEnd["coords"]["z"]
-            startYY = self.vectorEnd["coords"]["y"]
+            startYX = self.vectorEnd["coords"]["y"]
+            startYY = self.vectorEnd["coords"]["z"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
             self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
         if (self.vectorEnd != None):
@@ -1706,7 +1731,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def processChoochResult(self,choochResultFlag):
-      eScanOutFile = open("/h/skinner/proto_data4/choochData1.spec","r")
+      eScanOutFile = open("/nfs/skinner/temp/choochData1.spec","r")
       graph_x = []
       graph_y = []
       for outLine in eScanOutFile.readlines():
@@ -1718,7 +1743,7 @@ class controlMain(QtGui.QMainWindow):
       self.EScanGraph.newcurve("whatever", graph_x, graph_y)
       self.EScanGraph.replot()
 
-      choochOutFile = open("/h/skinner/proto_data4/choochData1.efs","r")
+      choochOutFile = open("/nfs/skinner/temp/choochData1.efs","r")
       chooch_graph_x = []
       chooch_graph_y1 = []
       chooch_graph_y2 = []
@@ -1938,7 +1963,7 @@ class controlMain(QtGui.QMainWindow):
       points = []
       polyPoints = []      
       if (self.click_positions != []): #use the user clicks
-        if (len(self.click_positions) == 2):
+        if (len(self.click_positions) == 2): #draws a single row or column
           polyPoints.append(self.click_positions[0])
           point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[1].y())
           polyPoints.append(point)
@@ -1960,9 +1985,11 @@ class controlMain(QtGui.QMainWindow):
       raster_h = int(self.polyBoundingRect.height())
       center_x = int(self.polyBoundingRect.center().x())
       center_y = int(self.polyBoundingRect.center().y())
-      stepsize = self.screenXmicrons2pixels(float(self.rasterStepEdit.text()))
+      stepsizeXPix = self.screenXmicrons2pixels(float(self.rasterStepEdit.text()))
+      stepsizeYPix = self.screenYmicrons2pixels(float(self.rasterStepEdit.text()))      
+#      print "stepsize = " + str(stepsize)
       self.click_positions = []
-      self.definePolyRaster(raster_w,raster_h,stepsize,center_x,center_y)
+      self.definePolyRaster(raster_w,raster_h,stepsizeXPix,stepsizeYPix,center_x,center_y)
 
       
     def center3LoopCB(self):
@@ -1995,14 +2022,14 @@ class controlMain(QtGui.QMainWindow):
       cellIndex=0
       rowStartIndex = 0
       rasterEvalOption = str(self.rasterEvalComboBox.currentText())
-      for i in xrange(len(rasterDef["rowDefs"])):
+      for i in xrange(len(rasterDef["rowDefs"])): #this is building up "my_array" with the rasterEvalOption result, and numpy can then be run against the array. 2/16, I think cellResultsArray not needed
         rowStartIndex = spotLineCounter
         numsteps = rasterDef["rowDefs"][i]["numsteps"]
         for j in xrange(numsteps):
           cellResult = cellResults[spotLineCounter]
           spotcount = cellResult["spot_count"]
           filename =  cellResult["image"]
-          if (i%2 == 0): 
+          if (i%2 == 0): #this is trying to figure out row direction
             cellIndex = spotLineCounter
           else:
             cellIndex = rowStartIndex + ((numsteps-1)-j)          
@@ -2012,7 +2039,8 @@ class controlMain(QtGui.QMainWindow):
             my_array[cellIndex] = cellResult["total_intensity"]
           else:
             my_array[cellIndex] = float(cellResult["d_min"])
-          cellResults_array[cellIndex] = cellResult #instead of just grabbing filename, get everything,
+          cellResults_array[cellIndex] = cellResult #instead of just grabbing filename, get everything. Not sure why I'm building my own list of results. How is this different from cellResults?
+#I don't think cellResults_array is different from cellResults, could maybe test that below by subtituting one for the other. It may be a remnant of trying to store less than the whole result set.          
           spotLineCounter+=1
 #  plt.text(int_w+.6,int_h+.5, str(spotcount), size=10,ha="right", va="top", color='r')
       floor = np.amin(my_array)
@@ -2041,22 +2069,62 @@ class controlMain(QtGui.QMainWindow):
               color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
             else:
               color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
-          self.currentRasterCellList[cellCounter*2].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
-          self.currentRasterCellList[cellCounter*2].setData(0,spotcount)
-          self.currentRasterCellList[cellCounter*2].setData(1,cellFilename)
-          self.currentRasterCellList[cellCounter*2].setData(2,d_min)
-          self.currentRasterCellList[cellCounter*2].setData(3,total_intensity)
+          self.currentRasterCellList[cellCounter].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
+          self.currentRasterCellList[cellCounter].setData(0,spotcount)
+          self.currentRasterCellList[cellCounter].setData(1,cellFilename)
+          self.currentRasterCellList[cellCounter].setData(2,d_min)
+          self.currentRasterCellList[cellCounter].setData(3,total_intensity)
           cellCounter+=1
       self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]),reqID=rasterReq["request_id"])
 
 
 
-    def reFillPolyRaster(self):
+    def reFillPolyRaster(self):      
+      rasterEvalOption = str(self.rasterEvalComboBox.currentText())
+      for i in xrange(len(self.rasterList)):
+        if (self.rasterList[i] != None):
+          currentRasterGroup = self.rasterList[i]["graphicsItem"]
+          currentRasterCellList = currentRasterGroup.childItems()          
+          my_array = np.zeros(len(currentRasterCellList))
+          for i in range (0,len(currentRasterCellList)): #first loop is to get floor and ceiling
+            cellIndex = i
+            if (rasterEvalOption == "Spot Count"):
+              spotcount = currentRasterCellList[i].data(0).toInt()[0]
+              my_array[cellIndex] = spotcount 
+            elif (rasterEvalOption == "Intensity"):
+              total_intensity  = currentRasterCellList[i].data(3).toInt()[0]
+              my_array[cellIndex] = total_intensity
+            else:
+              d_min = currentRasterCellList[i].data(2).toDouble()[0]
+              my_array[cellIndex] = d_min
+          floor = np.amin(my_array)
+          ceiling = np.amax(my_array)
+          for i in range (0,len(currentRasterCellList)):
+            if (rasterEvalOption == "Spot Count"):
+              spotcount = currentRasterCellList[i].data(0).toInt()[0]
+              param = spotcount 
+            elif (rasterEvalOption == "Intensity"):
+              total_intensity  = currentRasterCellList[i].data(3).toInt()[0]
+              param = total_intensity
+            else:
+              d_min = currentRasterCellList[i].data(2).toDouble()[0]
+              param = d_min
+            if (ceiling == 0):
+              color_id = 255
+            if (rasterEvalOption == "Resolution"):
+              color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
+            else:
+              color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
+            currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
+
+      
+
+    def reFillPolyRasterObsolete(self):
 
       rasterEvalOption = str(self.rasterEvalComboBox.currentText())
-      my_array = np.zeros(len(self.currentRasterCellList)/2)
-      for i in range (0,len(self.currentRasterCellList),2): #first loop is to get floor and ceiling
-        cellIndex = i/2
+      my_array = np.zeros(len(self.currentRasterCellList))
+      for i in range (0,len(self.currentRasterCellList)): #first loop is to get floor and ceiling
+        cellIndex = i
         if (rasterEvalOption == "Spot Count"):
           spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
           my_array[cellIndex] = spotcount 
@@ -2068,7 +2136,7 @@ class controlMain(QtGui.QMainWindow):
           my_array[cellIndex] = d_min
       floor = np.amin(my_array)
       ceiling = np.amax(my_array)
-      for i in range (0,len(self.currentRasterCellList),2):
+      for i in range (0,len(self.currentRasterCellList)):
         if (rasterEvalOption == "Spot Count"):
           spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
           param = spotcount 
@@ -2087,7 +2155,7 @@ class controlMain(QtGui.QMainWindow):
         self.currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
 
       
-
+        
     def saveCenterCB(self):
       pen = QtGui.QPen(QtCore.Qt.magenta)
       brush = QtGui.QBrush(QtCore.Qt.magenta)
@@ -2201,7 +2269,7 @@ class controlMain(QtGui.QMainWindow):
       return int(round(microns*(daq_utils.screenPixY/fovY)))
 
 
-    def definePolyRaster(self,raster_w,raster_h,stepsize,point_x,point_y): #all come in as pixels
+    def definePolyRasterObsolete(self,raster_w,raster_h,stepsize,point_x,point_y): #all come in as pixels
 #raster status - 0=nothing done, 1=run, 2=displayed
       beamWidth = float(self.beamWidth_ledit.text())
       beamHeight = float(self.beamHeight_ledit.text())
@@ -2232,6 +2300,60 @@ class controlMain(QtGui.QMainWindow):
       return #short circuit
 
 
+    def definePolyRaster(self,raster_w,raster_h,stepsizeXPix,stepsizeYPix,point_x,point_y): #all come in as pixels, raster_w and raster_h are bounding box of drawn graphic
+#raster status - 0=nothing done, 1=run, 2=displayed
+      beamWidth = float(self.beamWidth_ledit.text())
+      beamHeight = float(self.beamHeight_ledit.text())
+      rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":float(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here      
+      numsteps_h = int(raster_w/stepsizeXPix) #raster_w = width,goes to numsteps horizonatl
+      numsteps_v = int(raster_h/stepsizeYPix)
+      if (numsteps_h%2 == 0): # make odd numbers of rows and columns
+        numsteps_h = numsteps_h + 1
+      if (numsteps_v%2 == 0):
+        numsteps_v = numsteps_v + 1
+      point_offset_x = -(numsteps_h*stepsizeXPix)/2
+      point_offset_y = -(numsteps_v*stepsizeYPix)/2
+      print "in define poly"
+      if (numsteps_v > numsteps_h): #vertical raster
+        for i in xrange(numsteps_h):
+          rowCellCount = 0
+          for j in xrange(numsteps_v):
+            newCellX = point_x+(i*stepsizeXPix)+point_offset_x
+            newCellY = point_y+(j*stepsizeYPix)+point_offset_y
+            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
+              if (rowCellCount == 0): #start of a new row
+                rowStartX = newCellX
+                rowStartY = newCellY
+              rowCellCount = rowCellCount+1
+          if (rowCellCount != 0): #test for no points in this row of the bounding rect are in the poly?
+            vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+            vectorEndX = vectorStartX 
+            vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+            vectorEndY = vectorStartY + (rowCellCount*stepsizeYPix)
+            newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
+            rasterDef["rowDefs"].append(newRowDef)
+      else: #horizontal raster
+        for i in xrange(numsteps_v):
+          rowCellCount = 0
+          for j in xrange(numsteps_h):
+            newCellX = point_x+(j*stepsizeXPix)+point_offset_x
+            newCellY = point_y+(i*stepsizeYPix)+point_offset_y
+            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
+              if (rowCellCount == 0): #start of a new row
+                rowStartX = newCellX
+                rowStartY = newCellY
+              rowCellCount = rowCellCount+1
+          if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
+            vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+            vectorEndX = vectorStartX + (rowCellCount*stepsizeXPix)
+            vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+            vectorEndY = vectorStartY
+            newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
+            rasterDef["rowDefs"].append(newRowDef)
+      self.addSampleRequestCB(rasterDef)
+      return #short circuit
+
+
     def rasterIsDrawn(self,rasterReq):
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
@@ -2241,36 +2363,45 @@ class controlMain(QtGui.QMainWindow):
           
 
 
-    def drawPolyRaster(self,rasterReq): #rasterDef in microns,offset from center, need to convert to pixels to draw
+    def drawPolyRaster(self,rasterReq): #rasterDef in microns,offset from center, need to convert to pixels to draw, mainly this is for displaying autoRasters
       try:
         rasterDef = rasterReq["request_obj"]["rasterDef"]
       except KeyError:
         return
       beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
-      stepsize = self.screenXmicrons2pixels(rasterDef["stepsize"])
-      penBeam = QtGui.QPen(QtCore.Qt.green)
-      if (stepsize>20):      
-        penBeam = QtGui.QPen(QtCore.Qt.green)
-      else:
-        penBeam = QtGui.QPen(QtCore.Qt.red)
+      stepsizeX = self.screenXmicrons2pixels(rasterDef["stepsize"])
+      stepsizeY = self.screenYmicrons2pixels(rasterDef["stepsize"])      
       pen = QtGui.QPen(QtCore.Qt.green)
-      pen.setStyle(QtCore.Qt.NoPen)
+      if (rasterDef["stepsize"]>20):      
+        pen = QtGui.QPen(QtCore.Qt.green)
+      else:
+        pen = QtGui.QPen(QtCore.Qt.red)
+#      pen = QtGui.QPen(QtCore.Qt.green)
+##      pen.setStyle(QtCore.Qt.NoPen) #I think this is why we don't see the square!
       newRasterCellList = []
+      if (rasterDef["rowDefs"][0]["start"]["y"] == rasterDef["rowDefs"][0]["end"]["y"]): #this is a horizontal raster
+        rasterDir = "horizontal"
+      else:
+        rasterDir = "vertical"          
       for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
-          newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsize)+daq_utils.screenPixCenterX
-          newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+daq_utils.screenPixCenterY
+          if (rasterDir == "horizontal"):
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+daq_utils.screenPixCenterX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+daq_utils.screenPixCenterY
+          else:
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+daq_utils.screenPixCenterX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+daq_utils.screenPixCenterY
 #          print str(newCellX) + "  " + str(newCellY)
           if (rowCellCount == 0): #start of a new row
             rowStartX = newCellX
             rowStartY = newCellY
-          newCell = rasterCell(newCellX,newCellY,stepsize, stepsize, self,self.scene)
+          newCell = rasterCell(newCellX,newCellY,stepsizeX, stepsizeY, self,self.scene)
           newRasterCellList.append(newCell)
-          newCellBeam = QtGui.QGraphicsEllipseItem(newCellX+((stepsize-beamSize)/2.0),newCellY+((stepsize-beamSize)/2.0),beamSize, beamSize, None,self.scene)
-          newRasterCellList.append(newCellBeam)
+##          newCellBeam = QtGui.QGraphicsEllipseItem(newCellX+((stepsize-beamSize)/2.0),newCellY+((stepsize-beamSize)/2.0),beamSize, beamSize, None,self.scene)
+##          newRasterCellList.append(newCellBeam)
           newCell.setPen(pen)
-          newCellBeam.setPen(penBeam)
+#          newCellBeam.setPen(penBeam)
           rowCellCount = rowCellCount+1 #really just for test of new row
       newItemGroup = rasterGroup(self)
       self.scene.addItem(newItemGroup)
@@ -2294,7 +2425,7 @@ class controlMain(QtGui.QMainWindow):
 
     def timerEvent(self, event):
       retval,self.readframe = self.capture.read()
-      crapretval = self.nocapture.grab() #this is a very unfortunate fix for a memory leak.
+#      crapretval = self.nocapture.grab() #this is a very unfortunate fix for a memory leak.
       if self.readframe is None:
 ###        print 'Cam not found'
         return #maybe stop the timer also???
@@ -2304,9 +2435,11 @@ class controlMain(QtGui.QMainWindow):
 #      print "got qimage" 
       frameWidth = qimage.width()
       frameHeight = qimage.height()
+#      print frameWidth
+#      print frameHeight
       pixmap_orig = QtGui.QPixmap.fromImage(qimage)
-      if (frameWidth>1000): #for now, this can be more specific later if needed, but I really never want to scale here!!
-        pixmap = pixmap_orig.scaled(frameWidth/2,qimage.height()/2)
+      if (frameWidth>1000): #for now, this can be more specific later if needed, but I really never want to scale here!! 3/16 - we eliminated the need for gui scaling.
+        pixmap = pixmap_orig.scaled(frameWidth/3,qimage.height()/3)
         self.pixmap_item.setPixmap(pixmap)
       else:
 #      print "got pixmap"
@@ -2838,7 +2971,7 @@ class controlMain(QtGui.QMainWindow):
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(exitAction)
         self.setGeometry(300, 300, 300, 970)
-        self.setWindowTitle('Main window')    
+        self.setWindowTitle('LSDC')    
         self.show()
 
     def closeAll(self):
@@ -2883,12 +3016,12 @@ class controlMain(QtGui.QMainWindow):
       self.omega_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")
       self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".RBV")
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
-      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
+      self.omegaRBV_pv.add_callback(self.processSampMoveCB,motID="omega")
+#      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")      
 
-      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
-#      self.camZoom_pv = PV("FAMX-cam1:MJPGZOOM:NDArrayPort")
-      self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
-      self.camZoom_pv.add_callback(self.processZoomLevelChangeCB)
+##      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
+##      self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
+##      self.camZoom_pv.add_callback(self.processZoomLevelChangeCB)
         
 
     def popupServerMessage(self,message_s):

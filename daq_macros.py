@@ -13,7 +13,7 @@ from PyQt4 import QtCore
 import time
 from random import randint
 import glob
-import xml.etree.ElementTree as ET
+##import xml.etree.ElementTree as ET
 import xmltodict
 ##from XSDataMXv1 import XSDataResultCharacterisation
 
@@ -108,6 +108,7 @@ def loop_center_xrec():
   return 1
 
 def fakeDC(directory,filePrefix,numstart,numimages):
+  return #SHORT CIRCUIT
 #  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
   if (numimages > 360):
     return
@@ -134,7 +135,6 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
-#  testImgFileList = glob.glob("/home/pxuser/Test-JJ/DataSets/Eiger1M-Tryps-cbf/*.cbf")
   testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
   testImgCount = 0
   rasterCellMap = {}
@@ -169,7 +169,8 @@ def generateGridMap(rasterRequest):
       testImgCount+=1
       rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotCellAbsoluteMove}
       rasterCellMap[dataFileName[:-4]] = rasterCellCoords 
-  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
+#  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
+  comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
   print comm_s
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print "done parsing dials output"
@@ -190,15 +191,28 @@ def rasterWait():
     time.sleep(0.2)
 
 def vectorWait():
-  time.sleep(0.2)
+  time.sleep(0.15)
   while (beamline_support.getPvValFromDescriptor("VectorActive")):
-    time.sleep(0.2)
+    time.sleep(0.05)
+
 
 def snakeRaster(rasterReqID,grain=""):
   rasterRequest = db_lib.getRequest(rasterReqID)
   reqObj = rasterRequest["request_obj"]
+  
+# 2/17/16 - a few things for integrating dials/spotfinding into this routine
+#  filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
+  data_directory_name = reqObj["directory"]
+  filePrefix = reqObj["file_prefix"]
   exptimePerCell = reqObj["exposure_time"]
   img_width_per_cell = reqObj["img_width"]
+#really should read these two from hardware  
+  wave = reqObj["wavelength"]
+  detDist = 100.0
+  
+  xbeam = daq_utils.xbeam
+  ybeam = daq_utils.ybeam  
+  
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
@@ -206,67 +220,76 @@ def snakeRaster(rasterReqID,grain=""):
   rasterStartY = float(rasterDef["y"])
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
-#  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0  
-  beamline_support.setPvValFromDescriptor("rasterStepX",stepsize)
-  beamline_support.setPvValFromDescriptor("rasterStartOmega",omega)
-  beamline_support.setPvValFromDescriptor("rasterStepOmega",img_width_per_cell)  
-  beamline_support.setPvValFromDescriptor("rasterCellExptime",exptimePerCell)  
-  if (rasterDef["rasterType"] == "normal"):
-    for i in xrange(len(rasterDef["rowDefs"])):
-      rowCellCount = 0
-      numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
-      if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-        startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
-      else:
-        startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
-      startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-      xRelativeMove = startX #this is the relative move, mm, from the center of the raster
-      yyRelativeMove = startY*sin(omegaRad)
-      yzRelativeMove = startY*cos(omegaRad)
-      xMotAbsoluteMove = rasterStartX+xRelativeMove #noe we convert relative to absolute moves, using the raster center that was saved in x,y,z
-      yMotAbsoluteMove = rasterStartY-yyRelativeMove
-      zMotAbsoluteMove = rasterStartZ-yzRelativeMove
-      mvaDescriptor("sampleX",xMotAbsoluteMove,"sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
-#      mvaDescriptor("sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #why not just do relative move here, b/c the relative move is an offset from center
-      if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-        beamline_support.setPvValFromDescriptor("rasterDirection",0)
-        xRelativeMove = ((numsteps-1)*stepsize)
-      else:
-        beamline_support.setPvValFromDescriptor("rasterDirection",1)        
-        xRelativeMove = -((numsteps-1)*stepsize)
-      rowExptime = numsteps*exptimePerCell
-      z_speed = xRelativeMove/rowExptime #I know nothing about units yet
-#     need to set speed and do a data collection - aka collect_det_seq
-###      set_epics_pv_nowait("Z","RLV",xRelativeMove)   
-# not sure what to do about range degrees here, I'm afraid img_width_per_cell* numsteps might be too much. set to 1 for now
-###      range_degrees = 1.0
-###      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start)
-      beamline_support.setPvValFromDescriptor("rasterNumCells",numsteps-1)
-      beamline_support.setPvValFromDescriptor("rasterStartX",xMotAbsoluteMove)
-      beamline_support.setPvValFromDescriptor("rasterGo",1)
-      rasterWait()
-##      time.sleep(2.0) #temporary!!!!!!!!!!
-##      mvrDescriptor("sampleX",xRelativeMove) #!!!!!!! I guess this is where I need to arm and collect., see collect_pixel_array_detector_seq_for_grid in cbass, collect_detector_seq in daq_lib
-#I also need to be thinking about speed, I need a nowait z move here followed by a collect_detector_sequence of some sort that arms but then uses triggering from the zebra box.
-  else: #column raster for 90-degree 
-    numsteps = int(rasterDef["rowDefs"][0]["numsteps"])
-    startY = rasterDef["rowDefs"][0]["start"]["y"]+(stepsize/2.0) #- these are the simple relative moves
-    startX = rasterDef["rowDefs"][0]["start"]["x"]+(stepsize/2.0)
+#  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
+
+# 2/17/16 - a few things for integrating dials/spotfinding into this routine, this is just to fake the data
+#  testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
+#  testImgCount = 0
+#  for i in xrange(len(rasterDef["rowDefs"])):
+#    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])    
+#    for j in xrange(numsteps):
+#      dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
+#      os.system("mkdir -p " + reqObj["directory"])
+#      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
+#      os.system(comm_s)
+#      testImgCount+=1
+
+  for i in xrange(len(rasterDef["rowDefs"])):    
+    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
+#    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
+#    endX = rasterDef["rowDefs"][i]["end"]["x"]-(stepsize/2.0)    
+
+    startX = rasterDef["rowDefs"][i]["start"]["x"]
+    endX = rasterDef["rowDefs"][i]["end"]["x"]
+    
+    startY = rasterDef["rowDefs"][i]["start"]["y"]
+    endY = rasterDef["rowDefs"][i]["end"]["y"]
+
+    deltaX = abs(endX-startX)
+    deltaY = abs(endY-startY)
+    if (deltaX>deltaY): #horizontal raster
+      startX = startX + (stepsize/2.0)
+      endX = endX - (stepsize/2.0)
+      startY = startY + (stepsize/2.0)
+      endY = startY
+    else: #vertical raster
+      startY = startY + (stepsize/2.0)
+      endY = endY - (stepsize/2.0)
+      startX = startX + (stepsize/2.0)
+      endX = startX
+      
     xRelativeMove = startX
-    yyRelativeMove = startY*sin(omegaRad)
-    yzRelativeMove = startY*cos(omegaRad)
+
+    yzRelativeMove = startY*sin(omegaRad)
+    yyRelativeMove = startY*cos(omegaRad)
+
     xMotAbsoluteMove = rasterStartX+xRelativeMove #note we convert relative to absolute moves, using the raster center that was saved in x,y,z
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     zMotAbsoluteMove = rasterStartZ-yzRelativeMove
-##    mvaDescriptor("sampleX",xMotAbsoluteMove,"sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove) #this should get to the start, but let vector code do it.
-##    mvrDescriptor("sampleX",yzRelativeMove,"sampleY",yyRelativeMove,"sampleZ",xRelativeMove) #this should get to the start
-##    time.sleep(1)#cosmetic
-    yRelativeMove = -((numsteps-1)*stepsize)
-    yyRelativeMove = yRelativeMove*sin(omegaRad)
-    yzRelativeMove = -yRelativeMove*cos(omegaRad)
-    xEnd = xMotAbsoluteMove
-    yEnd = yMotAbsoluteMove + yyRelativeMove
-    zend = zMotAbsoluteMove + yzRelativeMove
+##      time.sleep(1)#cosmetic
+#      yRelativeMove = -((numsteps-1)*stepsize)
+    xRelativeMove = endX-startX
+    yRelativeMove = endY-startY
+##    yRelativeMove = -(endY-startY)    
+    
+    yyRelativeMove = yRelativeMove*cos(omegaRad)
+    yzRelativeMove = yRelativeMove*sin(omegaRad)
+      
+      
+    xEnd = xMotAbsoluteMove + xRelativeMove
+    yEnd = yMotAbsoluteMove - yyRelativeMove
+    zEnd = zMotAbsoluteMove - yzRelativeMove
+
+    if (i%2 != 0): #this is to scan opposite direction for snaking
+      xEndSave = xEnd
+      yEndSave = yEnd
+      zEndSave = zEnd
+      xEnd = xMotAbsoluteMove
+      yEnd = yMotAbsoluteMove
+      zEnd = zMotAbsoluteMove
+      xMotAbsoluteMove = xEndSave
+      yMotAbsoluteMove = yEndSave
+      zMotAbsoluteMove = zEndSave            
     beamline_support.setPvValFromDescriptor("vectorStartOmega",omega)
     beamline_support.setPvValFromDescriptor("vectorStepOmega",img_width_per_cell)
     beamline_support.setPvValFromDescriptor("vectorStartX",xMotAbsoluteMove)
@@ -274,21 +297,28 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorStartZ",zMotAbsoluteMove)  
     beamline_support.setPvValFromDescriptor("vectorEndX",xEnd)
     beamline_support.setPvValFromDescriptor("vectorEndY",yEnd)  
-    beamline_support.setPvValFromDescriptor("vectorEndZ",zend)  
+    beamline_support.setPvValFromDescriptor("vectorEndZ",zEnd)  
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
     beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
+    if (daq_utils.detector_id == "EIGER-16" and 0):
+      detectorArmEiger(numsteps-1,exptimePerCell,filePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
     vectorWait()
-    
-##    mvrDescriptor("sampleX",yxRelativeMove,"sampleY",yyRelativeMove) #this should be the actual scan
 
-#  rasterResult = generateGridMap(rasterRequest)
-#  rasterRequest["request_obj"]["rasterDef"]["status"] = 2
+# 2/17/16 - a few things for integrating dials/spotfinding into this routine    
+#    rasterFilePattern = filePrefix+"_"+str(i)+"*.cbf"
+
+# add the threading dials stuff here, and the thread routine elsewhere.
+
+
+  rasterResult = generateGridMap(rasterRequest)
+  rasterRequest["request_obj"]["rasterDef"]["status"] = 2
 #  print "2"
 #  gotoMaxRaster(rasterResult)
 #  print "3"
-#  db_lib.updateRequest(rasterRequest)
-#  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+  db_lib.updateRequest(rasterRequest)
+  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+
 
 
 def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
@@ -300,8 +330,8 @@ def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag",100)    
     mvrDescriptor("omega",90)
-#    rasterReqID = defineRectRaster(currentRequest,10,150,10)
-    rasterReqID = defineVectorRaster(currentRequest,10,150,10)     
+    rasterReqID = defineRectRaster(currentRequest,10,150,10)
+#    rasterReqID = defineVectorRaster(currentRequest,10,150,10)     
     snakeRaster(rasterReqID)
     set_field("xrecRasterFlag",100)    
   else:
@@ -353,8 +383,8 @@ def gotoMaxRaster(rasterResult):
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
 def getCurrentFOV(): 
   fov = {"x":0.0,"y":0.0}
-  fov["x"] = daq_utils.highMagFOVx/2.0
-  fov["y"] = daq_utils.highMagFOVy/2.0
+  fov["x"] = daq_utils.highMagFOVx
+  fov["y"] = daq_utils.highMagFOVy
   return fov
 
 
@@ -363,6 +393,11 @@ def screenXmicrons2pixels(microns):
   fovX = fov["x"]
 #  return int(round(microns*(daq_utils.highMagPixX/fovX)))
   return int(round(microns*(daq_utils.screenPixX/fovX)))
+
+def screenYmicrons2pixels(microns):
+  fov = getCurrentFOV()
+  fovY = fov["y"]
+  return int(round(microns*(daq_utils.screenPixY/fovY)))
 
 
 def screenXPixels2microns(pixels):
@@ -378,7 +413,7 @@ def screenYPixels2microns(pixels):
 #  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
-def defineVectorRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #an attempt to define a column raster for consumption by vector code
+def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns, make this a horz vector scan
   sampleID = currentRequest["sample_id"]
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
@@ -390,44 +425,28 @@ def defineVectorRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): 
   numsteps_v = int(raster_h/stepsize) #the numsteps is decided in code, so is already odd
   point_offset_x = -(numsteps_h*stepsize)/2.0
   point_offset_y = -(numsteps_v*stepsize)/2.0
-  newRowDef = {"start":{"x": point_offset_x,"y":point_offset_y},"numsteps":numsteps_v}
-  rasterDef["rowDefs"].append(newRowDef)
-  tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
-  reqObj = tempnewRasterRequest["request_obj"]
-  reqObj["protocol"] = "raster"
-  reqObj["directory"] = reqObj["directory"]+"/rasterImages/"
-  reqObj["file_prefix"] = reqObj["file_prefix"]+"_lineRaster"
-  rasterDef["rasterType"] = "column"
-  reqObj["rasterDef"] = rasterDef 
-  reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
-  runNum = db_lib.incrementSampleRequestCount(sampleID)
-  reqObj["runNum"] = runNum
-  reqObj["parentReqID"] = currentRequest["request_id"]
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
-  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
-  time.sleep(1)
-  return newRasterRequest["request_id"]
-  
+  if (numsteps_v > numsteps_h): #vertical raster
+    for i in xrange(numsteps_h):
+      vectorStartX = point_offset_x+(i*stepsize)
+      vectorEndX = vectorStartX
+      vectorStartY = point_offset_y
+      vectorEndY = vectorStartY + (numsteps_v*stepsize)
+      newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":numsteps_v}
+      rasterDef["rowDefs"].append(newRowDef)
+  else: #horizontal raster
+    for i in xrange(numsteps_v):
+      vectorStartX = point_offset_x
+      vectorEndX = vectorStartX + (numsteps_h*stepsize)
+      vectorStartY = point_offset_y+(i*stepsize)
+      vectorEndY = vectorStartY
+      newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":numsteps_h}
+      rasterDef["rowDefs"].append(newRowDef)
 
-def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns
-  sampleID = currentRequest["sample_id"]
-  raster_h = float(raster_h_s)
-  raster_w = float(raster_w_s)
-  stepsize = float(stepsizeMicrons_s)
-  beamWidth = stepsize
-  beamHeight = stepsize
-  rasterDef = {"beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":motorPosFromDescriptor("sampleX"),"y":motorPosFromDescriptor("sampleY"),"z":motorPosFromDescriptor("sampleZ"),"omega":motorPosFromDescriptor("omega"),"stepsize":stepsize,"rowDefs":[]} 
-  numsteps_h = int(raster_w/stepsize)
-  numsteps_v = int(raster_h/stepsize) #the numsteps is decided in code, so is already odd
-  point_offset_x = -(numsteps_h*stepsize)/2.0
-  point_offset_y = -(numsteps_v*stepsize)/2.0
-  for i in xrange(numsteps_v):
-    newRowDef = {"start":{"x": point_offset_x,"y":point_offset_y+(i*stepsize)},"numsteps":numsteps_h}
-    rasterDef["rowDefs"].append(newRowDef)
-##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)} This is gui code
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   reqObj = tempnewRasterRequest["request_obj"]
   reqObj["protocol"] = "raster"
+  reqObj["exposure_time"] = .05
+  reqObj["img_width"] = .05    
   reqObj["directory"] = reqObj["directory"]+"/rasterImages/"
   if (numsteps_h == 1): #column raster
     reqObj["file_prefix"] = reqObj["file_prefix"]+"_lineRaster"
@@ -452,33 +471,59 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
   beamWidth = stepsizeMicrons
   beamHeight = stepsizeMicrons
   rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":motorPosFromDescriptor("sampleX"),"y":motorPosFromDescriptor("sampleY"),"z":motorPosFromDescriptor("sampleZ"),"omega":motorPosFromDescriptor("omega"),"stepsize":stepsizeMicrons,"rowDefs":[]} #just storing step as microns, not using here
-  stepsize = screenXmicrons2pixels(stepsizeMicrons)   #note conversion to pixels
-  numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
-  numsteps_v = int(raster_h/stepsize)
+  stepsizeXPix = screenXmicrons2pixels(stepsizeMicrons)   #note conversion to pixels
+  stepsizeYPix = screenYmicrons2pixels(stepsizeMicrons)   #note conversion to pixels  
+  numsteps_h = int(raster_w/stepsizeXPix) #raster_w = width,goes to numsteps horizonatl
+  numsteps_v = int(raster_h/stepsizeYPix)
   if (numsteps_h%2 == 0):
     numsteps_h = numsteps_h + 1
   if (numsteps_v%2 == 0):
     numsteps_v = numsteps_v + 1
-  point_offset_x = -(numsteps_h*stepsize)/2
-  point_offset_y = -(numsteps_v*stepsize)/2
-  for i in xrange(numsteps_v):
-    rowCellCount = 0
-    for j in xrange(numsteps_h):
-      newCellX = point_x+(j*stepsize)+point_offset_x
-      newCellY = point_y+(i*stepsize)+point_offset_y
-      if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsize/2.0),newCellY+(stepsize/2.0)))):
-        if (rowCellCount == 0): #start of a new row
-          rowStartX = newCellX
-          rowStartY = newCellY
-        rowCellCount = rowCellCount+1
-    if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
-      newRowDef = {"start":{"x": screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}
-#      newRowDef = {"start":{"x": screenXPixels2microns(rowStartX-daq_utils.highMagPixX/2.0),"y":screenYPixels2microns(rowStartY-daq_utils.highMagPixY/2.0)},"numsteps":rowCellCount}
-      rasterDef["rowDefs"].append(newRowDef)
-##      rasterCoords = {"x":pvGet(self.sampx_pv),"y":pvGet(self.sampy_pv),"z":pvGet(self.sampz_pv)}
+  point_offset_x = -(numsteps_h*stepsizeXPix)/2
+  point_offset_y = -(numsteps_v*stepsizeYPix)/2
+  if (numsteps_v > numsteps_h): #vertical raster
+    for i in xrange(numsteps_h):
+      rowCellCount = 0
+      for j in xrange(numsteps_v):
+        newCellX = point_x+(i*stepsizeXPix)+point_offset_x
+        newCellY = point_y+(j*stepsizeYPix)+point_offset_y
+        if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
+          if (rowCellCount == 0): #start of a new row
+            rowStartX = newCellX
+            rowStartY = newCellY
+          rowCellCount = rowCellCount+1
+      if (rowCellCount != 0): #test for no points in this row of the bounding rect are in the poly?
+        vectorStartX = screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+        vectorEndX = vectorStartX 
+        vectorStartY = screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+        vectorEndY = vectorStartY + (rowCellCount*stepsizeMicrons)
+        newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
+        rasterDef["rowDefs"].append(newRowDef)
+  else: #horizontal raster
+  
+    for i in xrange(numsteps_v):
+      rowCellCount = 0
+      for j in xrange(numsteps_h):
+        newCellX = point_x+(j*stepsizeXPix)+point_offset_x
+        newCellY = point_y+(i*stepsizeYPix)+point_offset_y
+        if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))):
+          if (rowCellCount == 0): #start of a new row
+            rowStartX = newCellX
+            rowStartY = newCellY
+          rowCellCount = rowCellCount+1
+      if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
+        vectorStartX = screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+        vectorEndX = vectorStartX + (rowCellCount*stepsizeMicrons)
+        vectorStartY = screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+        vectorEndY = vectorStartY
+        newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
+  #      newRowDef = {"start":{"x": screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}      
+        rasterDef["rowDefs"].append(newRowDef)
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   reqObj = tempnewRasterRequest["request_obj"]
   reqObj["protocol"] = "raster"
+  reqObj["exposure_time"] = .05
+  reqObj["img_width"] = .05  
   reqObj["directory"] = reqObj["directory"]+"/rasterImages/"
   reqObj["file_prefix"] = reqObj["file_prefix"]+"_polyRaster"
   reqObj["rasterDef"] = rasterDef #should this be something like self.currentRasterDef?
@@ -494,7 +539,7 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
 
 def getXrecLoopShape(currentRequest):
   sampleID = currentRequest["sample_id"]
-  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
+#  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   for i in xrange(4):
     if (daq_lib.abort_flag == 1):
       return 0
@@ -790,7 +835,4 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   
   return 1
 
-
-def demoMac():
-  print "hi"
 

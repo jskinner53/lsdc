@@ -6,7 +6,7 @@ import requests
 
 import functools
 
-##import dectris.albula
+
 import xmltodict
 
 #import metadatastore.commands as mdsc
@@ -40,43 +40,17 @@ getBeamlineConfigParam = functools.partial(getBeamlineConfigParam, searchParams=
 getAllBeamlineConfigParams = functools.partial(getAllBeamlineConfigParams, searchParams=searchParams)
 
 
-global albulaFrame, albulaSubFrame
-albulaFrame = None
-albulaSubframeFrame = None
-
-def albulaClose(): #not used
-  global albulaFrame,albulaSubFrame
-  if (albulaSubFrame != None):
-     albulaSubFrame.close()
-
-  if (albulaFrame != None):
-     albulaFrame.close()
-  
-
-def albulaDisp(filename):
-  global albulaFrame,albulaSubFrame
-
-  if (albulaFrame == None or albulaSubFrame == None):
-     albulaFrame = dectris.albula.openMainFrame()
-     albulaFrame.disableClose()
-     albulaSubFrame = albulaFrame.openSubFrame()
-  try:
-    albulaSubFrame.loadFile(filename)
-  except dectris.albula.DNoObject:
-    albulaFrame = dectris.albula.openMainFrame()
-    albulaSubFrame = albulaFrame.openSubFrame()
-    albulaSubFrame.loadFile(filename)
-
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,xbeam,ybeam
 
 #  var_list["state"] = "Idle"
 
 
 # beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
   beamlineConfig = getAllBeamlineConfigParams()
-
+  xbeam = float(beamlineConfig["xbeam"])
+  ybeam = float(beamlineConfig["ybeam"])  
   lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
   lowMagFOVy = float(beamlineConfig["lowMagFOVy"])
   highMagFOVx = float(beamlineConfig["highMagFOVx"]) #digizoom will be this/2
@@ -147,7 +121,7 @@ def init_environment():
 # beamlineconfig stuff moved to db_lib
 
 
-def getCurrentFOVx(camera,zoom): #cam 0 = lowMag, 
+def ObsoletegetCurrentFOVx(camera,zoom): #cam 0 = lowMag, 
   if (camera==0):
     return daq_utils.lowMagFOVx
   else:
@@ -156,7 +130,7 @@ def getCurrentFOVx(camera,zoom): #cam 0 = lowMag,
     else:
       return daq_utils.highMagFOVx/2          
 
-def getCurrentFOVy(camera,zoom): #cam 0 = lowMag, 
+def ObsoletegetCurrentFOVy(camera,zoom): #cam 0 = lowMag, 
   if (camera==0):
     return daq_utils.lowMagFOVy
   else:

@@ -103,7 +103,7 @@ def get_counts(ctime,count_list):
 
 
 #these are deceiving the way the variable are named with mot, these are not necessarily motors
-def set_epics_pv(motcode,field_name,value): #sets a pv and makes sure motors are done moving.
+def set_epics_pvObsolete(motcode,field_name,value): #sets a pv and makes sure motors are done moving.
   
   mcode = "%s%s.%s" % (beamline_support.beamline_designation,motcode,field_name)
   try:
@@ -123,7 +123,7 @@ def set_epics_pv_nowait(motcode,field_name,value): #just sets a pv
   beamline_support.set_any_epics_pv(mcode,field_name,value)
 
 
-def get_epics_pv(motcode,field_name): #gets any epics pv with error handling
+def get_epics_pvObsolete(motcode,field_name): #gets any epics pv with error handling
   mcode = "%s%s" % (beamline_support.beamline_designation,motcode)
   try:
     return beamline_support.get_any_epics_pv(mcode,field_name)

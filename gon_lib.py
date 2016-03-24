@@ -80,7 +80,7 @@ def gon_osc(motname,angle_start,width,exptime):
   dt_gon.dt_set_osc_time(float(exptime))
   dt_gon.dt_osc() 
 #  end_osc = get_epics_motor_pos("omega")
-  end_osc = beamline_lib.get_epics_motor_pos("Omega")
+  end_osc = beamline_lib.motorPosFromDescriptor("omega")
   print "end_osc in gon_osc = " + str(end_osc) + "\n"
   return end_osc
 
