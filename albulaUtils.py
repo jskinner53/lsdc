@@ -1,4 +1,7 @@
-import dectris.albula
+try:
+  import dectris.albula
+except ImportError:
+  pass
 global albulaFrame, albulaSubFrame
 albulaFrame = None
 albulaSubframeFrame = None

@@ -1,4 +1,3 @@
-#!/usr/bin/python -Wignore
 import os
 import sys
 import time
@@ -24,11 +23,11 @@ def read_db():
   try:
     dbfilename = os.environ["DET_PV_LIST"]
   except KeyError:
-    print "det_pv_list not defined. Please set the environment variable det_pv_list to the name of the detector pv list file and try again."
+    print("det_pv_list not defined. Please set the environment variable det_pv_list to the name of the detector pv list file and try again.")
     sys.exit()
   if (os.path.exists(dbfilename) == 0):
     error_msg = "\ndet_pv_list: %s does not exist.\n Program exiting." % dbfilename
-    print error_msg
+    print(error_msg)
     sys.exit()
   else:
     dbfile = open(dbfilename,'r')
@@ -43,7 +42,7 @@ def read_db():
         break
       else:
         line = line[:-1]
-        det_pv_info = split(line)
+        det_pv_info = line.split()
         det_pv_list[det_pv_info[0]] = (beamline_designation + ':' + det_pv_info[1])
         i = i+1
 
@@ -51,7 +50,7 @@ def read_db():
 def det_init_pvs():
   global channel_list
 
-  for keyname in det_pv_list.keys():
+  for keyname in list(det_pv_list.keys()):
     channel_list[keyname] = pvCreate(det_pv_list[keyname])
 
 #  EpicsCA.connect_all()
@@ -92,7 +91,7 @@ def det_channels_init():
         set_det_pv('filenum_auto_inc_flag',0)
         det_set_file_template("img")        
   except KeyError:
-    print "No ENV VAR %s\n" % varname
+    print("No ENV VAR %s\n" % varname)
       
 
 def set_det_pv(pvcode,val):
@@ -140,7 +139,8 @@ def det_set_fileprefix(prefix):
     set_det_pv("data_filename_val",prefix+"_$id")    
 
 def det_set_filepath(filepath):
-  set_det_pv("data_filepath_val",filepath+"\0")  
+  set_det_pv("data_filepath_val",filepath)
+#  set_det_pv("data_filepath_val",filepath+"\0")    
   
 def det_set_filetemplate(filetemplate):
   set_det_pv("data_file_template_val",filetemplate)  
@@ -204,7 +204,7 @@ def det_wait():
   if (det_type == "pixel_array"):
     time.sleep(0.5)      
     while (get_det_pv("det_state") == "Acquire"):
-      time.sleep(1.0)
+      time.sleep(.5)
   
 def det_stop():
   if (offline):

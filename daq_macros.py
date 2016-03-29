@@ -5,7 +5,7 @@ import daq_lib
 from daq_lib import *
 import daq_utils
 import db_lib
-import string
+#import string
 import math
 import robot_lib
 from PyQt4 import QtGui
@@ -18,7 +18,7 @@ import xmltodict
 ##from XSDataMXv1 import XSDataResultCharacterisation
 
 def hi_macro():
-  print "hello from macros\n"
+  print("hello from macros\n")
   daq_lib.broadcast_output("broadcast hi")
 
     
@@ -26,10 +26,10 @@ def flipLoopShapeCoords(filename): # not used
   xrec_out_file = open(filename,"r")  
   correctedFilename = "loopFaceShape.txt"
   resultLine = xrec_out_file.readline()
-  tokens = string.split(resultLine)
+  tokens = resultLine.split()
   numpoints = int(tokens[0])
   points = []
-  for i in xrange(1,len(tokens)-1,2):
+  for i in range(1,len(tokens)-1,2):
     point = [tokens[i],tokens[i+1]]
     correctedPoint = [daq_utils.screenPixX-int(tokens[i]),daq_utils.screenPixY-int(tokens[i+1])]
   xrec_out_file.close() 
@@ -37,7 +37,7 @@ def flipLoopShapeCoords(filename): # not used
 
 def autoRasterLoop(currentRequest):
   sampleID = currentRequest["sample_id"]
-  print "auto raster " + str(sampleID)
+  print("auto raster " + str(sampleID))
   loop_center_xrec()
   time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
   runRasterScan(currentRequest,"LoopShape")
@@ -54,7 +54,7 @@ def loop_center_xrec():
 
   daq_lib.abort_flag = 0    
 
-  for i in xrange(0,360,40):
+  for i in range(0,360,40):
     if (daq_lib.abort_flag == 1):
       return 0
     mvaDescriptor("omega",i)
@@ -62,7 +62,7 @@ def loop_center_xrec():
     time.sleep(0.3) #for video lag. This sucks
     daq_utils.take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
-  print comm_s
+  print(comm_s)
   os.system(comm_s)
   xrec_out_file = open("xrec_result.txt","r")
   target_angle = 0.0
@@ -71,8 +71,8 @@ def loop_center_xrec():
   y_centre = 0
   reliability = 0
   for result_line in xrec_out_file.readlines():
-    print result_line
-    tokens = split(result_line)
+    print(result_line)
+    tokens = result_line.split()
     tag = tokens[0]
     val = tokens[1]
     if (tag == "TARGET_ANGLE"):
@@ -90,7 +90,7 @@ def loop_center_xrec():
   xrec_out_file.close()
   xrec_check_file = open("Xrec_check.txt","r")  
   check_result =  int(xrec_check_file.read(1))
-  print "result = " + str(check_result)
+  print("result = " + str(check_result))
   xrec_check_file.close()
   if (reliability < 70 or check_result == 0): #bail if xrec couldn't align loop
     return 0
@@ -99,10 +99,11 @@ def loop_center_xrec():
   y_center = daq_utils.lowMagPixY/2
 #  set_epics_pv("image_X_center","A",x_center)
 #  set_epics_pv("image_Y_center","A",y_center)
-  print "center on click " + str(x_center) + " " + str(y_center-radius)
-  print "center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec)
+  print("center on click " + str(x_center) + " " + str(y_center-radius))
+  print("center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec))
   center_on_click(x_center,y_center-radius,source="macro")
   center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,source="macro")
+#  center_on_click(y_centre_xrec,x_centre_xrec,source="macro")  
   mvaDescriptor("omega",face_on)
   #now try to get the loopshape starting from here
   return 1
@@ -121,7 +122,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
     expectedFilenameList.append(filename)
   for i in range (0,len(expectedFilenameList)):
     comm_s = "ln -sf " + testImgFileList[i] + " " + expectedFilenameList[i]
-    print comm_s
+    print(comm_s)
     os.system(comm_s)
 
 
@@ -138,7 +139,7 @@ def generateGridMap(rasterRequest):
   testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
   testImgCount = 0
   rasterCellMap = {}
-  for i in xrange(len(rasterDef["rowDefs"])):
+  for i in range(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
       startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
@@ -156,7 +157,7 @@ def generateGridMap(rasterRequest):
     yMotAbsoluteMove = rasterStartY+yyRelativeMove
     xMotAbsoluteMove = rasterStartX-yxRelativeMove
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    for j in xrange(numsteps):
+    for j in range(numsteps):
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
         zMotCellAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
       else:
@@ -171,11 +172,11 @@ def generateGridMap(rasterRequest):
       rasterCellMap[dataFileName[:-4]] = rasterCellCoords 
 #  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
   comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
-  print comm_s
+  print(comm_s)
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
-  print "done parsing dials output"
-  print dialsResultObj
-  if (rasterRequest["request_obj"].has_key("parentReqID")):
+  print("done parsing dials output")
+  print(dialsResultObj)
+  if ("parentReqID" in rasterRequest["request_obj"]):
     parentReqID = rasterRequest["request_obj"]["parentReqID"]
   else:
     parentReqID = -1
@@ -202,8 +203,10 @@ def snakeRaster(rasterReqID,grain=""):
   
 # 2/17/16 - a few things for integrating dials/spotfinding into this routine
 #  filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
-  data_directory_name = reqObj["directory"]
-  filePrefix = reqObj["file_prefix"]
+  data_directory_name = str(reqObj["directory"])
+  os.system("mkdir -p " + data_directory_name)
+  os.system("chmod -R 777 " + data_directory_name)  
+  filePrefix = str(reqObj["file_prefix"])
   exptimePerCell = reqObj["exposure_time"]
   img_width_per_cell = reqObj["img_width"]
 #really should read these two from hardware  
@@ -234,7 +237,7 @@ def snakeRaster(rasterReqID,grain=""):
 #      os.system(comm_s)
 #      testImgCount+=1
 
-  for i in xrange(len(rasterDef["rowDefs"])):    
+  for i in range(len(rasterDef["rowDefs"])):    
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
 #    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
 #    endX = rasterDef["rowDefs"][i]["end"]["x"]-(stepsize/2.0)    
@@ -300,10 +303,12 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorEndZ",zEnd)  
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
     beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
+    rasterFilePrefix = filePrefix + "_Raster_" + str(i+1)
     if (daq_utils.detector_id == "EIGER-16" and 0):
-      detectorArmEiger(numsteps-1,exptimePerCell,filePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
+      detectorArmEiger(numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
     vectorWait()
+##    detector_wait()
 
 # 2/17/16 - a few things for integrating dials/spotfinding into this routine    
 #    rasterFilePattern = filePrefix+"_"+str(i)+"*.cbf"
@@ -336,7 +341,7 @@ def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
     set_field("xrecRasterFlag",100)    
   else:
     rasterReqID = getXrecLoopShape(currentRequest)
-    print "snake raster " + str(rasterReqID)
+    print("snake raster " + str(rasterReqID))
     time.sleep(1) #I think I really need this, not sure why
     snakeRaster(rasterReqID)
 #    set_field("xrecRasterFlag",100)    
@@ -347,8 +352,8 @@ def gotoMaxRaster(rasterResult):
   floor = 100000000.0 #for resolution where small number means high score
   hotFile = ""
   scoreOption = ""
-  print "in gotomax"
-  print rasterResult
+  print("in gotomax")
+  print(rasterResult)
   cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
   rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
   if (rasterScoreFlag==0):
@@ -368,15 +373,15 @@ def gotoMaxRaster(rasterResult):
         ceiling = scoreVal
         hotFile = cellResults[i]["image"]
   if (hotFile != ""):
-    print ceiling
-    print floor
-    print hotFile
+    print(ceiling)
+    print(floor)
+    print(hotFile)
     rasterMap = rasterResult["result_obj"]["rasterCellMap"]
     hotCoords = rasterMap[hotFile[:-4]] 
     x = hotCoords["x"]
     y = hotCoords["y"]
     z = hotCoords["z"]
-    print "goto " + str(x) + " " + str(y) + " " + str(z)
+    print("goto " + str(x) + " " + str(y) + " " + str(z))
     mvaDescriptor("sampleX",x,"sampleY",y,"sampleZ",z)
   
     
@@ -413,7 +418,8 @@ def screenYPixels2microns(pixels):
 #  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
-def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns, make this a horz vector scan
+def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns, make this a horz vector scan, note this never deals with pixels.
+  
   sampleID = currentRequest["sample_id"]
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
@@ -426,7 +432,7 @@ def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #m
   point_offset_x = -(numsteps_h*stepsize)/2.0
   point_offset_y = -(numsteps_v*stepsize)/2.0
   if (numsteps_v > numsteps_h): #vertical raster
-    for i in xrange(numsteps_h):
+    for i in range(numsteps_h):
       vectorStartX = point_offset_x+(i*stepsize)
       vectorEndX = vectorStartX
       vectorStartY = point_offset_y
@@ -434,7 +440,7 @@ def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #m
       newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":numsteps_v}
       rasterDef["rowDefs"].append(newRowDef)
   else: #horizontal raster
-    for i in xrange(numsteps_v):
+    for i in range(numsteps_v):
       vectorStartX = point_offset_x
       vectorEndX = vectorStartX + (numsteps_h*stepsize)
       vectorStartY = point_offset_y+(i*stepsize)
@@ -482,9 +488,9 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
   point_offset_x = -(numsteps_h*stepsizeXPix)/2
   point_offset_y = -(numsteps_v*stepsizeYPix)/2
   if (numsteps_v > numsteps_h): #vertical raster
-    for i in xrange(numsteps_h):
+    for i in range(numsteps_h):
       rowCellCount = 0
-      for j in xrange(numsteps_v):
+      for j in range(numsteps_v):
         newCellX = point_x+(i*stepsizeXPix)+point_offset_x
         newCellY = point_y+(j*stepsizeYPix)+point_offset_y
         if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
@@ -501,9 +507,9 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
         rasterDef["rowDefs"].append(newRowDef)
   else: #horizontal raster
   
-    for i in xrange(numsteps_v):
+    for i in range(numsteps_v):
       rowCellCount = 0
-      for j in xrange(numsteps_h):
+      for j in range(numsteps_h):
         newCellX = point_x+(j*stepsizeXPix)+point_offset_x
         newCellY = point_y+(i*stepsizeYPix)+point_offset_y
         if (rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))):
@@ -540,12 +546,12 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
 def getXrecLoopShape(currentRequest):
   sampleID = currentRequest["sample_id"]
 #  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
-  for i in xrange(4):
+  for i in range(4):
     if (daq_lib.abort_flag == 1):
       return 0
     mvrDescriptor("omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
-#    time.sleep(0.1)
+#    time.sleep(0.3) # for vid lag, sucks
     daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
@@ -557,9 +563,9 @@ def getXrecLoopShape(currentRequest):
   xrec_out_file = open(filename,"r")  
   resultLine = xrec_out_file.readline()
   xrec_out_file.close() 
-  tokens = string.split(resultLine)
+  tokens = resultLine.split()
   numpoints = int(tokens[0])
-  for i in xrange(1,len(tokens)-1,2):
+  for i in range(1,len(tokens)-1,2):
     point = [tokens[i],tokens[i+1]]
     correctedPoint = [daq_utils.screenPixX-int(tokens[i]),daq_utils.screenPixY-int(tokens[i+1])] 
     polyPoint = QtCore.QPointF(float(correctedPoint[0]),float(correctedPoint[1]))
@@ -610,9 +616,9 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   
   characterizationParams = charRequest["request_obj"]["characterizationParams"]
   dna_res = float(characterizationParams["aimed_resolution"])
-  print "dna_res = " + str(dna_res)
+  print("dna_res = " + str(dna_res))
   dna_filename_list = []
-  print "number of images " + str(dna_number_of_images) + " overlap = " + str(overlap) + " dna_start " + str(dna_start) + " dna_range " + str(dna_range) + " prefix " + prefix + " start number " + str(start_image_number) + "\n"
+  print("number of images " + str(dna_number_of_images) + " overlap = " + str(overlap) + " dna_start " + str(dna_start) + " dna_range " + str(dna_range) + " prefix " + prefix + " start number " + str(start_image_number) + "\n")
   collect_and_characterize_success = 0
   dna_have_strategy_results = 0
   dna_have_index_results = 0  
@@ -629,14 +635,14 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   theta_radians = 0.0
   wave = 12398.5/beamline_lib.get_mono_energy() #for now
   dx = det_radius/(tan(2.0*(asin(wave/(2.0*dna_res)))-theta_radians))
-  print "distance = ",dx
+  print("distance = ",dx)
 #skinner - could move distance and wave and scan axis here, leave wave alone for now
-  print "skinner about to take reference images."
+  print("skinner about to take reference images.")
   for i in range(0,int(dna_number_of_images)):
-    print "skinner prefix7 = " + prefix[0:7] +  " " + str(start_image_number) + "\n"
+    print("skinner prefix7 = " + prefix[0:7] +  " " + str(start_image_number) + "\n")
     if (len(prefix)> 8):
       if ((prefix[0:7] == "postref") and (start_image_number == 1)):
-        print "skinner postref bail\n"
+        print("skinner postref bail\n")
         time.sleep(float(dna_number_of_images*float(dna_exptime)))        
         break
   #skinner roi - maybe I can measure and use that for dna_start so that first image is face on.
@@ -687,24 +693,24 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     time.sleep(1.0)
     if (timeout_check > 10):
       break
-  print "generating edna input\n"
+  print("generating edna input\n")
 #  edna_input_filename = edna_input_xml.xml_from_file_list(edna_energy_ev,xbeam_size,ybeam_size,1000000,aimed_completness,aimed_ISig,aimed_multiplicity,aimed_resolution,dna_filename_list)
 #####  flux = 10000000000 * beamline_lib.get_epics_pv("flux","VAL")
   flux = 600000000.0  #for now
   edna_input_filename = dna_directory + "/adsc1_in.xml"
   edna_input_xml_command = "/h/data/backed-up/pxsys/skinner/edna_header_code/makeAnEDNAXML-bnl.sh 1232 %s %s none %f %f 4000 0.01 0.01 0 xh1223_2_ %f %f %f > %s" % (dna_directory,dna_prefix,3,aimed_ISig,flux,xbeam_size,ybeam_size,edna_input_filename)
 #####  edna_input_xml_command = "ssh swill \"/h/data/backed-up/pxsys/skinner/edna_header_code/makeAnEDNAXML-bnl.sh 1232 %s %s none %f %f 4000 0.01 0.01 0 xh1223_2_ %f %f %f\" > %s" % (daq_lib.data_directory_name,dna_prefix,3,aimed_ISig,flux,xbeam_size,ybeam_size,edna_input_filename)
-  print edna_input_xml_command
+  print(edna_input_xml_command)
   comm_sss = "echo " + edna_input_xml_command + "> edna_comm.txt"
   os.system(comm_sss)
   os.system(edna_input_xml_command)
 
-  print "done generating edna input\n"
+  print("done generating edna input\n")
 #  command_string = "cd %s; /usr/local/crys/edna-mx/mxv1/bin/edna-mxv1-characterisation.py --verbose --data %s" % (dna_directory,edna_input_filename)
   command_string = "/usr/local/crys/edna-mx/mxv1/bin/edna-mxv1-characterisation.py --verbose --data %s" % (edna_input_filename)
 #  command_string = "/usr/local/crys/edna-mx/mxv1/bin/edna-mxv1-characterisation.py --verbose --data /img11/data1/pxuser/staff/skinner/edna_run/adsc1_in.xml"
 #old  command_string = "$EDNA_HOME/mxv1/bin/edna-mxv1-characterisation --data " + edna_input_filename
-  print command_string
+  print(command_string)
 #  for i in range (0,len(dna_filename_list)):
 #    command_string = command_string + " " + dna_filename_list[i]
   broadcast_output("\nProcessing with EDNA. Please stand by.\n")
@@ -720,11 +726,11 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   for outline in ednaLogLines: 
  # for outline in os.popen(command_string,'r',0).readlines():
 ####skinner6/11 seg faults?    broadcast_output(outline)    
-    if (string.find(outline,"EdnaDir")!= -1):
-      (param,dirname) = string.split(outline,'=')
+    if (outline.find("EdnaDir")!= -1):
+      (param,dirname) = outline.split('=')
       strXMLFileName = dirname[0:len(dirname)-1]+"/ControlInterfacev1_2/Characterisation/ControlCharacterisationv1_3_dataOutput.xml"
 #####      strXMLFileName = dirname[0:len(dirname)-1]+"/ControlInterfacev1_2/Characterisation/ControlCharacterisationv1_1_dataOutput.xml"
-    if (string.find(outline,"characterisation successful!")!= -1):
+    if (outline.find("characterisation successful!")!= -1):
       collect_and_characterize_success = 1
   if (not collect_and_characterize_success):
     dna_comment =  "Indexing Failure"
@@ -805,7 +811,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####  screeningoutputid = pxdb_lib.insert_dna_index_results(daq_lib.sweep_seq_id,daq_lib.get_field("xtal_id"),program,statusDescription,rejectedReflections,resolutionObtained,spotDeviationR,spotDeviationTheta,beamShiftX,beamShiftY,numSpotsFound,numSpotsUsed,numSpotsRejected,mosaicity,diffractionRings,spacegroup_name,pointGroup,bravaisLattice,rawOrientationMatrix_a_x,rawOrientationMatrix_a_y,rawOrientationMatrix_a_z,rawOrientationMatrix_b_x,rawOrientationMatrix_b_y,rawOrientationMatrix_b_z,rawOrientationMatrix_c_x,rawOrientationMatrix_c_y,rawOrientationMatrix_c_z,unitCell_a,unitCell_b,unitCell_c,unitCell_alpha,unitCell_beta,unitCell_gamma)
   dna_comment =  "spacegroup = " + str(spacegroup_name) + " mosaicity = " + str(mosaicity) + " resolutionHigh = " + str(resolutionObtained) + " cell_a = " + str(unitCell_a) + " cell_b = " + str(unitCell_b) + " cell_c = " + str(unitCell_c) + " cell_alpha = " + str(unitCell_alpha) + " cell_beta = " + str(unitCell_beta) + " cell_gamma = " + str(unitCell_gamma) + " status = " + str(statusDescription)
 #####  print "\n\n skinner " + dna_comment + "\n" +str(daq_lib.sweep_seq_id) + "\n"
-  print "\n\n skinner " + dna_comment + "\n" 
+  print("\n\n skinner " + dna_comment + "\n") 
 #####  pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_comment)
   if (dna_have_strategy_results):
 #####    pxdb_lib.insert_to_screening_strategy_table(screeningoutputid,dna_strategy_start,dna_strategy_end,dna_strategy_range,dna_strategy_exptime,resolutionObtained,program)
@@ -827,7 +833,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     for i in range (0,len(xsStrategyResolutionBins)-1):
       i_over_sigma_bin = xsStrategyResolutionBins[i].getIOverSigma().getValue()
       maxResolution_bin = xsStrategyResolutionBins[i].getMaxResolution().getValue()
-      print  str(maxResolution_bin) + " " + str(i_over_sigma_bin)
+      print(str(maxResolution_bin) + " " + str(i_over_sigma_bin))
       isig_plot_file.write(str(maxResolution_bin) + " " + str(i_over_sigma_bin)+"\n")
     isig_plot_file.close()
   if (dna_have_strategy_results):

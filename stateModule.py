@@ -2,9 +2,10 @@
 import time
 import string
 import os
-import thread
-import beamline_support
-from beamline_support import *
+import _thread
+from epics import PV
+#import beamline_support
+#from beamline_support import *
 
 
 #the following is a list of things the machine is interested in, and their default vals at startup. PVs channels are created for these
@@ -34,9 +35,9 @@ is_first = 1
 def getCurrentState():
   global beamlineStateChannel
 
-  for i in xrange(1,len(stateDefinitions)): #skipping maintenance for now
+  for i in range(1,len(stateDefinitions)): #skipping maintenance for now
     stateTest = 1
-    for key in stateDefinitions[i]["stateDef"].keys():
+    for key in list(stateDefinitions[i]["stateDef"].keys()):
       high = stateDefinitions[i]["stateDef"][key]["low"]
       low = stateDefinitions[i]["stateDef"][key]["hi"]
       if (stateVars[key] <= high and stateVars[key] >= low):
@@ -45,9 +46,9 @@ def getCurrentState():
         stateTest = 0
         break
     if (stateTest == 1):
-      beamline_support.pvPut(beamlineStateChannel,i)
+      beamlineStateChannel.put(i)
       return stateDefinitions[i]   # if I made it here, then I passed all of the tests for a state
-  beamline_support.pvPut(beamlineStateChannel,0)
+  beamlineStateChannel.put(0)
   return stateDefinitions[0] # if I made it here, then none of the states passed all tests, so it must be maintenance
     
 
@@ -56,73 +57,76 @@ def gotoState(stateName):
   machineStateName = machineState["stateName"]
   if (machineStateName == stateName):
     return 1
-  print "trying to go to " + stateName + " from " + machineStateName
-  for i in xrange(len(machineState["safeTransitions"])):
+  print("trying to go to " + stateName + " from " + machineStateName)
+  for i in range(len(machineState["safeTransitions"])):
     if (machineState["safeTransitions"][i]["stateName"] == stateName):
-      print "OK to transition"
-      print machineState["safeTransitions"][i]['transitionProc']
-      exec machineState["safeTransitions"][i]['transitionProc']+"()"  
+      print("OK to transition")
+      print(machineState["safeTransitions"][i]['transitionProc'])
+      exec(machineState["safeTransitions"][i]['transitionProc']+"()")  
       return 1
   return 0
 
 
 def transProcM2SE():
-  print "transition Maintenance to Sample Exchange"
+  print("transition Maintenance to Sample Exchange")
+  var_channel_list["beamStop"].put(0)
+  var_channel_list["aperature"].put(0)
 
 
 def transProcSE2SA():
-  print "transition Sample Exchange to Sample Alignment"
-  pvPut(var_channel_list["beamStop"],0)
-  pvPut(var_channel_list["aperature"],20)
+  print("transition Sample Exchange to Sample Alignment")
+  var_channel_list["beamStop"].put(0)
+  var_channel_list["aperature"].put(20)
 
 def transProcSA2SE():
-  print "transition Sample Alignment to Sample Exchange"
-  pvPut(var_channel_list["beamStop"],11)
-  pvPut(var_channel_list["aperature"],0)
+  print("transition Sample Alignment to Sample Exchange")
+  var_channel_list["beamStop"].put(11)
+  var_channel_list["aperature"].put(0)
 
 def transProcSA2DC():
-  print "transition Sample Alignment to Data Collection"
-  pvPut(var_channel_list["beamStop"],10)
-  pvPut(var_channel_list["aperature"],0)
+  print("transition Sample Alignment to Data Collection")
+  var_channel_list["beamStop"].put(10)
+  var_channel_list["aperature"].put(0)
 
 
 def transProcDC2SA():
-  print "transition Data Collection to Sample Alignment"
-  pvPut(var_channel_list["beamStop"],0)
-  pvPut(var_channel_list["aperature"],20)
+  print("transition Data Collection to Sample Alignment")
+  var_channel_list["beamStop"].put(0)
+  var_channel_list["aperature"].put(20)
 
 
 def transProcDC2SE():
-  print "transition Data Collection to Sample Exchange"
-  pvPut(var_channel_list["beamStop"],11)
-  pvPut(var_channel_list["aperature"],0)
-
-
+  print("transition Data Collection to Sample Exchange")
+  var_channel_list["beamStop"].put(11)
+  var_channel_list["aperature"].put(0)
 
 
 def transProcBL2SE():
-  print "transition Beam Location to Sample Exchange"
-  pvPut(var_channel_list["beamStop"],11)
+  print("transition Beam Location to Sample Exchange")
+  var_channel_list["beamStop"].put(11)
 
 
 def init_var_channels():
   global var_channel_list,beamlineStateChannel
 
-  beamlineStateChannel = beamline_support.pvCreate(beamlineComm + "beamlineState")
-  beamline_support.pvPut(beamlineStateChannel,0)
-  for varname in stateVars.keys():
-    var_channel_list[varname] = beamline_support.pvCreate(beamlineComm  + varname)
+  beamlineStateChannel = PV(beamlineComm + "beamlineState")
+  beamlineStateChannel.put(0)
+  for varname in list(stateVars.keys()):
+    var_channel_list[varname] = PV(beamlineComm  + varname)
 #    beamline_support.pvPut(var_channel_list[varname],stateVars[varname])
-    add_callback(var_channel_list[varname],var_list_item_changeCb,varname)    
+    var_channel_list[varname].add_callback(var_list_item_changeCb,varname=varname)    
 
 
-def var_list_item_changeCb(epics_args, user_args):
-  print "in callback " + str(epics_args['pv_value']) + " " + user_args[0]
-  if (ca.dbf_text(epics_args['type']) == "DBF_CHAR"):
-    stateVars[user_args[0]] = beamline_support.waveform_to_string(epics_args['pv_value'])
-  else:
-    stateVars[user_args[0]] = epics_args['pv_value']
-  print stateVars
+def var_list_item_changeCb(value=None, char_value=None, **kw):
+  print("in callback " + char_value + " " + kw["varname"])
+#  print("in callback " + str(epics_args['pv_value']) + " " + user_args[0])  
+
+  #  if (ca.dbf_text(epics_args['type']) == "DBF_CHAR"):
+#    stateVars[user_args[0]] = beamline_support.waveform_to_string(epics_args['pv_value'])
+#  else:
+
+  stateVars[kw["varname"]] = value
+  print(stateVars)
 
         
 def stateEvalThread(frequency):
@@ -133,5 +137,5 @@ def stateEvalThread(frequency):
 
 def initStateControl():
   init_var_channels()
-  thread.start_new_thread(stateEvalThread,(.5,))     
+  _thread.start_new_thread(stateEvalThread,(.5,))     
 

@@ -5,7 +5,7 @@ import string
 import math
 import daq_macros
 from math import *
-from string import *
+#from string import *
 from gon_lib import *
 from det_lib import *
 import robot_lib
@@ -32,7 +32,7 @@ abort_flag = 0
 def init_var_channels():
   global var_channel_list
 
-  for varname in var_list.keys():
+  for varname in list(var_list.keys()):
     var_channel_list[varname] = beamline_support.pvCreate(daq_utils.beamlineComm + varname)
     beamline_support.pvPut(var_channel_list[varname],var_list[varname])
 
@@ -175,7 +175,7 @@ def home_omega():
 def px_id(id):
   set_field("px_id",id)
   if (pxdb_lib.is_mailin(id)):
-    print "is mailin"
+    print("is mailin")
     if (archive_active == 1 and archive == ""):
       try:
         default_archive_location = os.environ["DEFAULT_ARCHIVE_LOCATION"]
@@ -183,7 +183,7 @@ def px_id(id):
       except KeyError:
         pass
   else:
-    print "is not mailin"
+    print("is not mailin")
 
 
 def xtal_id(id):
@@ -206,8 +206,8 @@ def refreshGuiTree():
 
 def broadcast_output(s):
   time.sleep(0.01)
-  if (string.find(s,'|') == -1):
-    print s
+  if (s.find('|') == -1):
+    print(s)
   beamline_support.pvPut(message_string_pv,s)
 
 
@@ -250,7 +250,7 @@ def unmountSample():
 def runDCQueue(): #maybe don't run rasters from here???
   global abort_flag
 
-  print "running queue in daq server"
+  print("running queue in daq server")
   while (1):
     if (abort_flag):
       abort_flag =  0 #careful about when to reset this
@@ -266,12 +266,12 @@ def runDCQueue(): #maybe don't run rasters from here???
     if (stateModule.gotoState("SampleAlignment")):
       colStatus = collectData(currentRequest)
     else:
-      print "State violation DC"
+      print("State violation DC")
       break
 
 
 def stopDCQueue():
-  print "stopping queue in daq server"
+  print("stopping queue in daq server")
   abort_data_collection()
 
 def logMxRequestParams(currentRequest):
@@ -289,7 +289,7 @@ def collectData(currentRequest):
   if not (os.path.isdir(data_directory_name)):
     comm_s = "mkdir -p " + data_directory_name
     os.system(comm_s)
-  print reqObj["protocol"]
+  print(reqObj["protocol"])
   prot = str(reqObj["protocol"])
   if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
@@ -303,7 +303,7 @@ def collectData(currentRequest):
       beamline_lib.mvaDescriptor("sampleY",reqObj["pos_y"])
       beamline_lib.mvaDescriptor("sampleZ",reqObj["pos_z"])
     else:
-      print "autoRaster"
+      print("autoRaster")
       daq_macros.autoRasterLoop(currentRequest)    
     exposure_period = reqObj["exposure_time"]
     wavelength = reqObj["wavelength"]
@@ -314,7 +314,7 @@ def collectData(currentRequest):
     img_width = reqObj["img_width"]
     file_prefix = str(reqObj["file_prefix"])
     if (not stateModule.gotoState("DataCollection")):
-      print "State violation"
+      print("State violation")
       return
     if (reqObj["protocol"] == "screen"):
       screenImages = 2
@@ -378,7 +378,7 @@ def collectData(currentRequest):
         else:
           fastEPFlag = 0
         comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
-        print comm_s
+        print(comm_s)
         os.system(comm_s)
       if (reqObj["xia2"]):
         comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
@@ -393,7 +393,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   global image_started,allow_overwrite,abort_flag
 
 
-  print "data directory = " + data_directory_name
+  print("data directory = " + data_directory_name)
   test_filename = "%s_%05d.cbf" % (fileprefix,int(file_number))
 #  if (os.path.exists(test_filename) and allow_overwrite == 0):
 #    gui_message("You are about to overwrite " + test_filename + " If this is OK, push Continue, else Abort.&")
@@ -414,7 +414,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
     file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
   except ValueError: 
     pass
-  print "collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
+  print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
   detector_set_period(exposure_period)
   detector_set_exposure_time(exposure_time)
   detector_set_numimages(number_of_images)
@@ -422,7 +422,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
   detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))
-  print "collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
+  print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
   detector_start()
   image_started = range_seconds
   time.sleep(1.0) #4/15 - why so long?
@@ -441,33 +441,33 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 def center_on_click(x,y,maglevel=0,source="screen",jog=0): #maglevel=0 means lowmag, high fov, #1 = himag with digizoom option, 
   #source=screen = from screen click, otherwise from macro with full pixel dimensions
   if (source == "screen"):
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","B",daq_utils.screenPixX) #these are video dimensions in the gui
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","B",daq_utils.screenPixY)
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_center","A",daq_utils.screenPixX/2)
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_center","A",daq_utils.screenPixY/2)
+    beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.screenPixX) #these are video dimensions in the gui
+    beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.screenPixY)
+    beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.screenPixX/2)
+    beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.screenPixY/2)    
   else:
     if (int(maglevel)==0):
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","B",daq_utils.lowMagPixX)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","B",daq_utils.lowMagPixY)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_center","A",daq_utils.lowMagPixX/2)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_center","A",daq_utils.lowMagPixY/2)
+      beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.lowMagPixX)
+      beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.lowMagPixY)
+      beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.lowMagPixX/2)
+      beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.lowMagPixY/2)
     else:
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","B",daq_utils.highMagPixX)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","B",daq_utils.highMagPixY)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_center","A",daq_utils.highMagPixX/2)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_center","A",daq_utils.highMagPixY/2)
+      beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.highMagPixX)
+      beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.highMagPixY)
+      beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.highMagPixX/2)
+      beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.highMagPixY/2)
 
   if (int(maglevel)==0):
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.lowMagFOVx)
-    beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.lowMagFOVy)
+    beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.lowMagFOVx)
+    beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.lowMagFOVy)
   else:
     if (1):
 #    if (beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL") == "ROI2"):      
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.highMagFOVx)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.highMagFOVy)
+      beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.highMagFOVx)
+      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.highMagFOVy)
     else:
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_X_scale","C",daq_utils.highMagFOVx/2.0)
-      beamline_support.set_any_epics_pv(daq_utils.gonioPvPrefix+"image_Y_scale","C",daq_utils.highMagFOVy/2.0)
+      beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.highMagFOVx/2.0)
+      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.highMagFOVy/2.0)
 #  omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
   omega_mod = beamline_lib.motorPosFromDescriptor("omega")%360.0
 #  omega_mod = beamline_lib.get_epics_motor_pos("Omega")%360.0  
@@ -494,7 +494,7 @@ def set_vector_endObsolete():
   z_vec = z_vec_end - z_vec_start
   trans_total = sqrt(x_vec**2 + y_vec**2 + z_vec**2)
   set_field("vector_translation",trans_total)  
-  print "translation total =  " + str(trans_total)
+  print("translation total =  " + str(trans_total))
 
   
 def set_vector_fppObsolete(fpp,numframes): #not used 7/22/15
@@ -504,7 +504,7 @@ def set_vector_fppObsolete(fpp,numframes): #not used 7/22/15
   trans_total = 1000.0* sqrt(x_vec**2 + y_vec**2 + z_vec**2)
 #  print "translation total =  " + str(trans_total)
   vec_step_microns = trans_total/(float(numframes)/float(fpp))
-  print "trans step in microns = " + str(vec_step_microns)
+  print("trans step in microns = " + str(vec_step_microns))
   set_field("vector_step",vec_step_microns)
 
 
@@ -518,7 +518,7 @@ def vector_moveOBSOLETE(t_s,vecRequest): #I think t_s is a fraction of the total
   trans_done = trans_total*t
   percent_done = t*100.0
   vec_s = "translation total = %f, translation done = %f, translation percent done = %f\n" % (trans_total,trans_done,percent_done)
-  print vec_s
+  print(vec_s)
 #  daq_utils.broadcast_output(vec_s)
   x_vec_start=reqObj["vectorParams"]["vecStart"]["x"]
   y_vec_start=reqObj["vectorParams"]["vecStart"]["y"]

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys, os
 import traceback
 from PyQt4 import QtCore
@@ -38,7 +37,7 @@ class Console(QtGui.QPlainTextEdit):
 
     def getCommand(self):
         doc = self.document()
-        curr_line = unicode(doc.findBlockByLineNumber(doc.lineCount() - 1).text())
+        curr_line = str(doc.findBlockByLineNumber(doc.lineCount() - 1).text())
         curr_line = curr_line.rstrip()
         curr_line = curr_line[len(self.prompt):]
         return curr_line
@@ -136,7 +135,7 @@ class Console(QtGui.QPlainTextEdit):
                     if result != None:
                         self.appendPlainText(repr(result))
                 except SyntaxError:
-                    exec command in self.namespace
+                    exec(command, self.namespace)
             except SystemExit:
                 self.close()
             except:

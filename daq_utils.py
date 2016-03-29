@@ -1,5 +1,5 @@
 import time
-import string
+#import string
 import os
 from math import *
 import requests
@@ -103,10 +103,10 @@ def init_environment():
   beamstop_y_pvname = beamlineConfig["beamstop_y_pvname"]
 
   varname = "HAS_XTALVIEW"
-  if os.environ.has_key(varname):
+  if varname in os.environ:
     has_xtalview = int(os.environ[varname])
   varname = "DETECTOR_OFFLINE"
-  if os.environ.has_key(varname):
+  if varname in os.environ:
     detectorOffline = int(os.environ[varname])
 
 
@@ -219,7 +219,7 @@ def createResult(typeName,resultObj):
   result["resultObj"] = resultObj
   return result
 
-def take_crystal_pictureCURL(filename,czoom=0):
+def take_crystal_pictureCURLObsolete(filename,czoom=0):
   zoom = int(czoom)
   if not (has_xtalview):
     return
@@ -236,10 +236,10 @@ def take_crystal_pictureCURL(filename,czoom=0):
 
 def runDials(imgPath,reqID=None):
   comm_s = "dials.find_spots_client " + imgPath
-  print comm_s
+  print(comm_s)
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
-  print "done parsing dials output"
-  print dialsResultObj
+  print("done parsing dials output")
+  print(dialsResultObj)
   currentRequestID = db_lib.beamlineInfo(beamline, 'currentRequestID')["requestID"]
   dialsResult = db_lib.addResultforRequest("dials",currentRequestID, dialsResultObj)
 
@@ -258,7 +258,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None,omega=-999):
     comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)
   data = r.content
   if (filename != None):
-    fd = open(filename+".jpg","w+")
+    fd = open(filename+".jpg","wb+")
     fd.write(data)
     fd.close()
   if (reqID != None):
@@ -276,7 +276,7 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
   img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getImage\?fileName="+ diffimageName+"\&sizeX=500\&sizeY=500\&gray=100\&zoom=1.0\&percentX=0.5\&percentY=0.5\&userName=me\&sessionId=E"
 #  comm_s = "lynx -source %s >%s" % (img_url,JPEGfilename) 
   comm_s = "lynx -source %s" % (img_url) 
-  print comm_s
+  print(comm_s)
   data = os.popen(comm_s).read()
   imageJpegData["data"] = data
 #  os.system(comm_s)
@@ -285,27 +285,27 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
   thumbData = os.popen(comm_s).read()
   imageJpegData["thumbData"] = thumbData
 #  comm_s = "lynx -source %s >%s" % (img_url,"thumb_"+JPEGfilename) 
-  print comm_s
+  print(comm_s)
 #  os.system(comm_s)
   img_url = "http://"+imgsrv_host+":"+imgsrv_port+"/getHeader\?fileName="+ diffimageName+"\&userName=me\&sessionId=E"
   comm_s = "lynx -source " + img_url
   for outputline in os.popen(comm_s).readlines():    
-    print outputline
-    tokens = string.split(outputline)      
+    print(outputline)
+    tokens = outputline.split()      
     if (tokens[0] == "OSC_START"):
-      print "Omega start = " + tokens[1]
+      print("Omega start = " + tokens[1])
       imageJpegHeader["oscStart"] = float(tokens[1])
     elif (tokens[0] == "OSC_RANGE"):
-      print "Omega range = " + tokens[1] 
+      print("Omega range = " + tokens[1]) 
       imageJpegHeader["oscRange"] = float(tokens[1])
     elif (tokens[0] == "EXPOSURE"):
-      print "Exposure Time = " + tokens[2]
+      print("Exposure Time = " + tokens[2])
       imageJpegHeader["exptime"] = float(tokens[2])
     elif (tokens[0] == "DISTANCE"):
-      print "Distance = " + str(float(tokens[1])/1000.0)
+      print("Distance = " + str(float(tokens[1])/1000.0))
       imageJpegHeader["detDist"] = float(tokens[1])
     elif (tokens[0] == "WAVELENGTH"):
-      print "Wavelength = " + tokens[1] 
+      print("Wavelength = " + tokens[1]) 
       imageJpegHeader["wave"] = float(tokens[1])
   if (reqID != None):
     resultObj = {}
@@ -340,23 +340,23 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
   lines = headerData.split("\n")
   for i in range (0,len(lines)):
     line = lines[i]
-    print line
+    print(line)
     tokens = line.split()
     if (len(tokens) > 1):
       if (tokens[0] == "OSC_START"):
-        print "Omega start = " + tokens[1]
+        print("Omega start = " + tokens[1])
         imageJpegHeader["oscStart"] = float(tokens[1])
       elif (tokens[0] == "OSC_RANGE"):
-        print "Omega range = " + tokens[1] 
+        print("Omega range = " + tokens[1]) 
         imageJpegHeader["oscRange"] = float(tokens[1])
       elif (tokens[0] == "EXPOSURE"):
-        print "Exposure Time = " + tokens[2]
+        print("Exposure Time = " + tokens[2])
         imageJpegHeader["exptime"] = float(tokens[2])
       elif (tokens[0] == "DISTANCE"):
-        print "Distance = " + str(float(tokens[1])/1000.0)
+        print("Distance = " + str(float(tokens[1])/1000.0))
         imageJpegHeader["detDist"] = float(tokens[1])
       elif (tokens[0] == "WAVELENGTH"):
-        print "Wavelength = " + tokens[1] 
+        print("Wavelength = " + tokens[1]) 
         imageJpegHeader["wave"] = float(tokens[1])
   imageJpegData["header"] = imageJpegHeader
   if (reqID != None): #this means I'll dump into mongo as a result
@@ -387,11 +387,11 @@ def readPVDesc():
   try:
     dbfilename = os.environ[envname]
   except KeyError:
-    print envname + " not defined. Defaulting to epx.db."
+    print(envname + " not defined. Defaulting to epx.db.")
     dbfilename = "epx.db"
   if (os.path.exists(dbfilename) == 0):
     error_msg = "EPICS BEAMLINE INFO %s does not exist.\n Program exiting." % dbfilename
-    print error_msg
+    print(error_msg)
     sys.exit()
   else:
     dbfile = open(dbfilename,'r')
@@ -409,7 +409,7 @@ def readPVDesc():
         if (line == "#virtual motors"):
           break
         else:
-          motor_inf = string.split(line)
+          motor_inf = line.split()
           motor_dict[motor_inf[1]] = beamline_designation +  motor_inf[0]
     while(1):
       line = dbfile.readline()
@@ -420,7 +420,7 @@ def readPVDesc():
         if (line == "#scanned motors"):
           break
         else:
-          motor_inf = string.split(line)
+          motor_inf = line.split()
           soft_motor_list.append(beamline_designation + motor_inf[0])
           motor_dict[motor_inf[1]] = beamline_designation + motor_inf[0]          
     while(1):
@@ -434,7 +434,7 @@ def readPVDesc():
         else:
           scan_list.append(beamline_designation + line + "scanParms")
     line = dbfile.readline()
-    counter_inf = string.split(line)    
+    counter_inf = line.split()    
     counter_dict[counter_inf[1]] = beamline_designation + counter_inf[0]    
 
 

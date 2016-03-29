@@ -1,10 +1,9 @@
-#!/usr/bin/python -Wignore
 import sys
 import os
 import time
 from string import *
-import CaChannel
-from CaChannel import *
+#import CaChannel
+#from CaChannel import *
 ###2/3/12from pygrace import *
 ###import daq_lib
 #import plot_lib2
@@ -12,8 +11,7 @@ import daq_utils
 import math
 from element_info import *
 import beamline_support
-#import table
-import epicsMotor
+#import epicsMotor
 
 global scan_detector_count,scan_list,scanfile_root
 global CNT
@@ -49,7 +47,7 @@ def ri():
   
 #  CNT = beamline_support.get_counts(beamline_support.get_count_time())
   local_count = beamline_support.get_counts(beamline_support.get_count_time())  #index0=timer,1=chan2,...
-  for i in xrange(1,number_of_counter_readouts+1):
+  for i in range(1,number_of_counter_readouts+1):
     CNT[i] = local_count[i-1]   
     update_s = "channel %d: %d" % (i,CNT[i])
     daq_utils.broadcast_output(update_s)
@@ -70,7 +68,7 @@ def read_intensity(time_to_count):
   
 #  CNT = beamline_support.get_counts(time_to_count)
   local_count = beamline_support.get_counts(time_to_count)  #index0=timer,1=chan2,...
-  for i in xrange(1,number_of_counter_readouts+1):
+  for i in range(1,number_of_counter_readouts+1):
     CNT[i] = local_count[i-1]       
     update_s = "channel %d: %d" % (i,CNT[i])
     daq_utils.broadcast_output(update_s)
@@ -92,28 +90,13 @@ def get_counts(ctime,count_list):
 
   oldcount = beamline_support.get_count_time()
   CNT = beamline_support.get_counts(ctime)    
-  for i in xrange(len(count_list)):    
+  for i in range(len(count_list)):    
     count_list[i] = CNT[i]
   countdwell(oldcount)
 
 
 
 #the difference between the motor functions and the regular pv functions is that we already have mot channels.
-
-
-
-#these are deceiving the way the variable are named with mot, these are not necessarily motors
-def set_epics_pvObsolete(motcode,field_name,value): #sets a pv and makes sure motors are done moving.
-  
-  mcode = "%s%s.%s" % (beamline_support.beamline_designation,motcode,field_name)
-  try:
-    motor_val_channel = beamline_support.pvCreate(mcode)
-    beamline_support.pvPut(motor_val_channel,value)
-    wait_for_motors()
-  except CaChannelException, status:
-    print ca.message(status)
-    print "\n\nHandled Epics Error in set pv " + mcode + "\n\n"
-  del motor_val_channel
 
 
 def set_epics_pv_nowait(motcode,field_name,value): #just sets a pv
@@ -123,26 +106,12 @@ def set_epics_pv_nowait(motcode,field_name,value): #just sets a pv
   beamline_support.set_any_epics_pv(mcode,field_name,value)
 
 
-def get_epics_pvObsolete(motcode,field_name): #gets any epics pv with error handling
-  mcode = "%s%s" % (beamline_support.beamline_designation,motcode)
-  try:
-    return beamline_support.get_any_epics_pv(mcode,field_name)
-  except CaChannelException, status:
-    print ca.message(status)
-    print "\n\nHandled Epics Error in get pv\n\n"
-    return -99
-
-
 def get_epics_motor_pos(motcode): #gets an epics motor pos with error handling
   try:
     current_pos = beamline_support.get_motor_pos(motcode)
     return current_pos
-  except CaChannelException, status:
-    print ca.message(status)
-    print "No data available for EPICS channel %s\n" % (mcode)
-    return -9999.9
   except KeyError:
-    print "No data available for EPICS channel %s\n" % (mcode)
+    print("No data available for EPICS channel %s\n" % (mcode))
     return -9999.9
 
 
@@ -290,20 +259,20 @@ def guess_element_for_chooch(midpoint_wave_param):
       else:
         tokens = split(line)
         if (int(tokens[0]) == (numpoints+2)/2):
-          print line
+          print(line)
           mono_cp_energy = float(tokens[1])
 #          specder.py_steps_to_energy(mono_cp_steps,mono_cp_energy_p)
           midpoint_wave = 12398.5/mono_cp_energy
-          print midpoint_wave
+          print(midpoint_wave)
           min_difference = 99.0
           scan_element = "unknown"
-          for keyname in element_info.keys():
+          for keyname in list(element_info.keys()):
             if (element_info[keyname][4] == 1 and element_info[keyname][5] == 1):  #it's active, and we test it
               difference = abs(element_info[keyname][3] - midpoint_wave)
               if (difference<min_difference):
                 min_difference = difference
                 scan_element = keyname
-          print "scan_element  = ",scan_element
+          print("scan_element  = ",scan_element)
           return scan_element
   except ValueError:
     return "Se"
@@ -329,10 +298,10 @@ def spectrum_analysis():
     comm_s = "chooch -e %s -o %s -p %s %s" % (scan_element,chooch_prefix+".efs",chooch_prefix+".ps",chooch_prefix+".raw")
   else:
     comm_s = "chooch -o %s -p %s %s" % (chooch_prefix+".efs",chooch_prefix+".ps",chooch_prefix+".raw")    
-  print comm_s
+  print(comm_s)
   daq_lib.gui_message("Running Chooch...&")
   for outputline in os.popen(comm_s).readlines():
-    print outputline
+    print(outputline)
     tokens = split(outputline)    
     if (len(tokens)>4):
       if (tokens[1] == "peak"):
@@ -360,10 +329,10 @@ def spectrum_analysis():
 
 
 def bl_stop_motors():
-  print "stopping motors"  
+  print("stopping motors")  
   stop_motors()
 ##  daq_lib.abort_flag = 1
-  print "done stopping motors"
+  print("done stopping motors")
 
 def stop_motors():
   beamline_support.stop_motors()
@@ -387,10 +356,6 @@ def wait_for_motors():
         pass      
     except KeyboardInterrupt:
       stop_motors()
-    except CaChannelException, status:
-      print ca.message(status)
-      print "\n\nHandled Epics Error\n\n"
-      continue
 #  daq_utils.broadcast_output("beamline_done|0|~\n")
 
 
@@ -421,22 +386,22 @@ def mvf(motcode,counter_num):
   return
       
 def mvr(*args):
-    if (args[0] == "Omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
+    if (args[0] == "omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
       return
     try:
       beamline_support.mvr(*args)
     except KeyboardInterrupt:
       bl_stop_motors()
-    except epicsMotor.epicsMotorException,status:
-      try:
-        ii = 0
-        status_string = ""
-        while(1):
-          status_string = status_string + str(status[ii])
-          ii = ii + 1
-      except IndexError:
-        print status_string
-        daq_lib.gui_message(status_string+"&")
+#    except epicsMotor.epicsMotorException as status:
+#      try:
+#        ii = 0
+#        status_string = ""
+#        while(1):
+#          status_string = status_string + str(status[ii])
+#          ii = ii + 1
+#      except IndexError:
+#        print(status_string)
+#        daq_lib.gui_message(status_string+"&")
       
 
     
@@ -448,16 +413,16 @@ def mva(*args):
       beamline_support.mva(*args)
     except KeyboardInterrupt:
       bl_stop_motors()
-    except epicsMotor.epicsMotorException,status:
-      try:
-        ii = 0
-        status_string = ""
-        while(1):
-          status_string = status_string + str(status[ii])
-          ii = ii + 1
-      except IndexError:
-        print status_string
-        daq_lib.gui_message(status_string+"&")
+#    except epicsMotor.epicsMotorException as status:
+#      try:
+#        ii = 0
+#        status_string = ""
+#        while(1):
+#          status_string = status_string + str(status[ii])
+#          ii = ii + 1
+#      except IndexError:
+#        print(status_string)
+#        daq_lib.gui_message(status_string+"&")
 
 
 def po(data_file):

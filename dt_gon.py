@@ -67,12 +67,12 @@ def dt_done():
     time.sleep(.1)
     while(1):
         answer = pvGet(dt_output)
-        print answer
+        print(answer)
         if (answer=='0\\r'):
           break
         time.sleep(.1)
         pvPut(dt_input, "p99")
-    print "dt_done"
+    print("dt_done")
 
 def dt_stop():
 #    pvPut(dt_input, "!S")

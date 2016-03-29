@@ -1,11 +1,11 @@
-#!/opt/conda_envs/lsdc_dev/bin/ipython -i
+#!/opt/conda_envs/lsdc_dev3/bin/ipython -i
 ###!/usr/bin/python -Wignore
 #from __future__ import (absolute_import, division, print_function,unicode_literals)
 import string
 import sys
 import os
 import time
-import thread
+import _thread
 import daq_macros
 from daq_macros import *
 import daq_lib
@@ -28,7 +28,7 @@ z = 25
 def execute_command(command_s):
 ###  from daq_macros import * #this is so macros can be reloaded on-the-fly
 #  refresh_screen(0,0)  
-  exec command_s
+  exec(command_s)
 
 
 def pybass_init():
@@ -42,18 +42,18 @@ def pybass_init():
   daq_lib.gui_popup_message_string_pv = beamline_support.pvCreate(daq_utils.beamlineComm + "gui_popup_message_string")    
   if (1):
 #  if (daq_lib.has_beamline): # for now
-    try:
-      read_db()
-      print "init mots"
+#    try:
+    read_db()
+    print("init mots")
 #      beamline_support.init_motors()
-      init_mots()    #for now
-      print "init done mots"
-      init_diffractometer()
+    init_mots()    #for now
+    print("init done mots")
+    init_diffractometer()
 #      init_counters() #for now
 #      newfile("scandata")
-    except CaChannelException, status:
-      print ca.message(status)
-      gui_message("EPICS motor Initialization Error. Exit and try again. If problem persists, EPICS may need to be restarted.")
+##    except CaChannelException as status:
+##      print(ca.message(status))
+##      gui_message("EPICS motor Initialization Error. Exit and try again. If problem persists, EPICS may need to be restarted.")
   try:
     sitefilename = os.environ["CBASS_SITE_FILE"]
   except KeyError:
@@ -78,21 +78,21 @@ def process_command_file(command_file_name):
       input_tokens = string.split(command)
       if (len(input_tokens)>0):
         command_string = "%s(" % input_tokens[0]
-        for i in xrange(1,len(input_tokens)):
+        for i in range(1,len(input_tokens)):
           command_string = command_string + "\"" + input_tokens[i] + "\""
           if (i != (len(input_tokens)-1)):
             command_string = command_string + ","
         command_string = command_string + ")"
       print(command_string)
       try:
-        exec command_string;    
+        exec(command_string);    
       except NameError:
         error_string = "Unknown command: " + command_string
-        print error_string
+        print(error_string)
       except SyntaxError:
-        print "Syntax error"
+        print("Syntax error")
       except KeyError:
-        print "Key error"
+        print("Key error")
 #  refresh_screen(1,0)
   command_file.close()
   
@@ -142,12 +142,12 @@ def print_status_thread(frequency):
       daq_lib.set_field("state_percent",percent_done)
 
 
-def comm_cb(epics_args, user_args):
-  command = beamline_support.waveform_to_string(epics_args['pv_value'])
+def comm_cb(value=None, char_value=None, **kw):
+  command = char_value
   command_list.append(command)
   
-def comm2_cb(epics_args, user_args):
-  command = beamline_support.waveform_to_string(epics_args['pv_value'])
+def comm2_cb(value=None, char_value=None, **kw):
+  command = char_value
   if not (command == "\n"):
     immediate_command_list.append(command)
   
@@ -165,32 +165,32 @@ def process_input(command_string):
     execute_command(command_string)
   except NameError:
     error_string = "Unknown command: " + command_string
-    print error_string
+    print(error_string)
   except SyntaxError:
-    print "Syntax error"
+    print("Syntax error")
   except KeyError:
-    print "Key error"
+    print("Key error")
   except TypeError:
-    print "Type error"
+    print("Type error")
   except AttributeError:
-    print "Attribute Error"
+    print("Attribute Error")
   except KeyboardInterrupt:
     abort_data_collection()
-    print "Interrupt caught by daq server\n"
+    print("Interrupt caught by daq server\n")
   if (command_string != "pause_data_collection()" and command_string != "continue_data_collection()" and command_string != "abort_data_collection()" and command_string != "unmount_after_abort()" and command_string != "no_unmount_after_abort()"):
     daq_lib.set_field("program_state","Program Ready")
 
 
 def run_server():
 #  thread.start_new_thread(print_status_thread,(.25,)) #really used to calculate percentage done of current collection
-  thread.start_new_thread(process_commands,(.05,))  
-  thread.start_new_thread(process_immediate_commands,(.25,))  
+  _thread.start_new_thread(process_commands,(.05,))  
+  _thread.start_new_thread(process_immediate_commands,(.25,))  
   comm_pv = beamline_support.pvCreate(daq_utils.beamlineComm + "command_s")
   beamline_support.pvPut(comm_pv,"\n")
   immediate_comm_pv = beamline_support.pvCreate(daq_utils.beamlineComm + "immediate_command_s")
   beamline_support.pvPut(immediate_comm_pv,"\n")  
-  beamline_support.add_callback(comm_pv,comm_cb,0)
-  beamline_support.add_callback(immediate_comm_pv,comm2_cb,0)  
+  comm_pv.add_callback(comm_cb)
+  immediate_comm_pv.add_callback(comm2_cb)  
 ##  daq_lib.refresh_screen(0,1)
 #  while 1:
 #    if (len(command_list) > 0):

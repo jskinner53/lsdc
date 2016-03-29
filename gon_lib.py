@@ -1,7 +1,7 @@
 import sys
 import os
 import time
-import string
+#import string
 #from beamline_lib import *
 import beamline_lib
 import beamline_support
@@ -33,10 +33,10 @@ def lib_still_osc_mode(mode): #1=still,0=rotate(normal) - nsls2 - not sure how t
 
 
 def lib_gon_center_xtal(x,y,angle_omega,angle_phi):
-  beamline_lib.set_epics_pv_nowait("image_X_target","A",float(x))
-  beamline_lib.set_epics_pv_nowait("image_Y_target","A",float(y))
-  beamline_lib.set_epics_pv_nowait("OmegaPos","A",angle_omega)  
-  beamline_lib.set_epics_pv_nowait("click_center","PROC",1)
+  beamline_support.setPvValFromDescriptor("C2C_TargetX",float(x))
+  beamline_support.setPvValFromDescriptor("C2C_TargetY",float(y))
+  beamline_support.setPvValFromDescriptor("C2C_Omega",angle_omega)  
+  beamline_support.setPvValFromDescriptor("C2C_Go",1)  
   wait_for_goniohead()
   
 def lib_open_shutter():
@@ -81,7 +81,7 @@ def gon_osc(motname,angle_start,width,exptime):
   dt_gon.dt_osc() 
 #  end_osc = get_epics_motor_pos("omega")
   end_osc = beamline_lib.motorPosFromDescriptor("omega")
-  print "end_osc in gon_osc = " + str(end_osc) + "\n"
+  print("end_osc in gon_osc = " + str(end_osc) + "\n")
   return end_osc
 
 
@@ -96,9 +96,9 @@ def wait_for_goniohead(): #why can't I just call wait_motors????
         pass      
     except KeyboardInterrupt:
       pass
-    except CaChannelException, status:
-      print ca.message(status)
-      print "\n\nHandled Epics Error in wait for motors-2\n\n"
+    except CaChannelException as status:
+      print(ca.message(status))
+      print("\n\nHandled Epics Error in wait for motors-2\n\n")
       continue
   
   

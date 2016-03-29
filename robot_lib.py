@@ -7,14 +7,14 @@ global method_pv,var_pv
 
 def mountRobotSample(puckPos,pinPos,sampID):
   if (stateModule.gotoState("SampleExchange")):
-    print "mounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID)
+    print("mounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID))
     return 1
   else:
     return 0
 
 def unmountRobotSample(puckPos,pinPos,sampID): #will somehow know where it came from
   if (stateModule.gotoState("SampleExchange")):
-    print "unmounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID)
+    print("unmounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID))
     return 1
   else:
     return 0
@@ -29,7 +29,7 @@ def testRobotComm(numTurns=0):
   if (numTurns>0):
     var_pv.execute("nCamDelay",numTurns)
   method_pv.execute("Test",50000)
-  print "executing robot task"
+  print("executing robot task")
   staubliEpicsLib.waitReady()
-  print "done executing robot task"
+  print("done executing robot task")
 

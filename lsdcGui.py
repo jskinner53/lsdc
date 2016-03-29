@@ -2118,43 +2118,6 @@ class controlMain(QtGui.QMainWindow):
             currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
 
       
-
-    def reFillPolyRasterObsolete(self):
-
-      rasterEvalOption = str(self.rasterEvalComboBox.currentText())
-      my_array = np.zeros(len(self.currentRasterCellList))
-      for i in range (0,len(self.currentRasterCellList)): #first loop is to get floor and ceiling
-        cellIndex = i
-        if (rasterEvalOption == "Spot Count"):
-          spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
-          my_array[cellIndex] = spotcount 
-        elif (rasterEvalOption == "Intensity"):
-          total_intensity  = self.currentRasterCellList[i].data(3).toInt()[0]
-          my_array[cellIndex] = total_intensity
-        else:
-          d_min = self.currentRasterCellList[i].data(2).toDouble()[0]
-          my_array[cellIndex] = d_min
-      floor = np.amin(my_array)
-      ceiling = np.amax(my_array)
-      for i in range (0,len(self.currentRasterCellList)):
-        if (rasterEvalOption == "Spot Count"):
-          spotcount = self.currentRasterCellList[i].data(0).toInt()[0]
-          param = spotcount 
-        elif (rasterEvalOption == "Intensity"):
-          total_intensity  = self.currentRasterCellList[i].data(3).toInt()[0]
-          param = total_intensity
-        else:
-          d_min = self.currentRasterCellList[i].data(2).toDouble()[0]
-          param = d_min
-        if (ceiling == 0):
-          color_id = 255
-        if (rasterEvalOption == "Resolution"):
-          color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
-        else:
-          color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
-        self.currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
-
-      
         
     def saveCenterCB(self):
       pen = QtGui.QPen(QtCore.Qt.magenta)
@@ -2268,36 +2231,6 @@ class controlMain(QtGui.QMainWindow):
       fovY = fov["y"]
       return int(round(microns*(daq_utils.screenPixY/fovY)))
 
-
-    def definePolyRasterObsolete(self,raster_w,raster_h,stepsize,point_x,point_y): #all come in as pixels
-#raster status - 0=nothing done, 1=run, 2=displayed
-      beamWidth = float(self.beamWidth_ledit.text())
-      beamHeight = float(self.beamHeight_ledit.text())
-      rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":float(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here
-      numsteps_h = int(raster_w/stepsize) #raster_w = width,goes to numsteps horizonatl
-      numsteps_v = int(raster_h/stepsize)
-      if (numsteps_h%2 == 0):
-        numsteps_h = numsteps_h + 1
-      if (numsteps_v%2 == 0):
-        numsteps_v = numsteps_v + 1
-      point_offset_x = -(numsteps_h*stepsize)/2
-      point_offset_y = -(numsteps_v*stepsize)/2
-      newRasterCellList = []
-      for i in xrange(numsteps_v):
-        rowCellCount = 0
-        for j in xrange(numsteps_h):
-          newCellX = point_x+(j*stepsize)+point_offset_x
-          newCellY = point_y+(i*stepsize)+point_offset_y
-          if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsize/2.0),newCellY+(stepsize/2.0)))):
-            if (rowCellCount == 0): #start of a new row
-              rowStartX = newCellX
-              rowStartY = newCellY
-            rowCellCount = rowCellCount+1
-        if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
-          newRowDef = {"start":{"x": self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}
-          rasterDef["rowDefs"].append(newRowDef)
-      self.addSampleRequestCB(rasterDef)
-      return #short circuit
 
 
     def definePolyRaster(self,raster_w,raster_h,stepsizeXPix,stepsizeYPix,point_x,point_y): #all come in as pixels, raster_w and raster_h are bounding box of drawn graphic

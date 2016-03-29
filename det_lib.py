@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import sys
 import os
 import time
@@ -10,23 +9,23 @@ import epics_det
 #pixel array specific start
 
 def detector_set_period(period):
-  print "set detector period " + str(period)
+  print("set detector period " + str(period))
   epics_det.det_set_image_period(period)
 
 def detector_set_exposure_time(exptime):
-  print "set detector exposure time " + str(exptime)
+  print("set detector exposure time " + str(exptime))
   epics_det.det_set_exptime(exptime)
 
 def detector_set_numimages(numimages):
-  print "set detector number of images " + str(numimages)
+  print("set detector number of images " + str(numimages))
   epics_det.det_set_numimages(numimages)
 
 def detector_set_filepath(filepath):
-  print "set detector file path " + filepath
+  print("set detector file path " + filepath)
   epics_det.det_set_filepath(filepath)
 
 def detector_set_fileprefix(fileprefix):
-  print "set detector file prefix " + fileprefix
+  print("set detector file prefix " + fileprefix)
   epics_det.det_set_fileprefix(fileprefix)
 
 #def detector_set_fileNamePattern(fileNamePattern):
@@ -34,7 +33,7 @@ def detector_set_fileprefix(fileprefix):
 #  epics_det.det_set_fileprefix(fileprefix)
 
 def detector_set_filenumber(filenumber): #I think this does nothing with the eiger
-  print "set detector file number " + str(filenumber)
+  print("set detector file number " + str(filenumber))
   epics_det.det_set_filenum(filenumber)
 
 def detector_wait():
@@ -43,16 +42,16 @@ def detector_wait():
 #pixel array specific end
 
 def init_detector():
-  print "init detector"
+  print("init detector")
   epics_det.det_channels_init()
   epics_det.det_set_numexposures(1)
 
 def detector_start():
-  print "start detector"  
+  print("start detector")  
   epics_det.det_start()
 
 def detector_stop():
-  print "stop detector"  
+  print("stop detector")  
   epics_det.det_stop()  
   
 def detector_write(flag):
@@ -69,8 +68,8 @@ def detector_collect_darks(exptime):
   pass
 
 def detector_set_filename(filename):
-  print "detector filename"
-  print filename
+  print("detector filename")
+  print(filename)
   last_slash = rfind(filename,"/")
   last_underscore = rfind(filename,"_")
   last_dot = rfind(filename,".")
@@ -83,7 +82,7 @@ def detector_set_filename(filename):
 
 def detector_set_fileheader(phist,phiinc,dist,wave,theta,exptime,xbeam,ybeam,rot_ax,o,k,p):
 #bogus rot axis,
-  print "detector filehead"  
+  print("detector filehead")  
   epics_det.det_setheader(float(phist),float(phiinc),float(dist),float(wave),
                  float(theta),float(exptime),float(xbeam),float(ybeam),
                  0,float(o),float(k),float(p))
@@ -101,7 +100,7 @@ def detector_set_filekind(flag):
 def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_name,wave,xbeam,ybeam,detDist): #will need some environ info to diff eiger/pilatus
   global image_started,allow_overwrite,abort_flag
 
-  print "data directory = " + data_directory_name
+  print("data directory = " + data_directory_name)
 
 #  test_filename = "%s_%05d.cbf" % (fileprefix,int(file_number))
 #  if (os.path.exists(test_filename) and allow_overwrite == 0):
