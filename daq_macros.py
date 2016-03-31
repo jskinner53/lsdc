@@ -551,7 +551,7 @@ def getXrecLoopShape(currentRequest):
       return 0
     mvrDescriptor("omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
-#    time.sleep(0.3) # for vid lag, sucks
+    time.sleep(0.3) # for vid lag, sucks
     daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)

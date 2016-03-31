@@ -1234,7 +1234,7 @@ class controlMain(QtGui.QMainWindow):
         omegaLabel = QtGui.QLabel("Omega")
         omegaRBLabel = QtGui.QLabel("Readback:")
 #        self.sampleOmegaRBVLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.RBV",self,0,"real") #type ignored for now, no validator yet
-        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,0) #this works better for remote!
+        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!
 #        self.sampleOmegaRBVLedit = QtEpicsMotorLabel(daq_utils.gonioPvPrefix+"Omega",self,70) #type ignored for now, no validator yet
         omegaSPLabel = QtGui.QLabel("SetPoint:")
 #        self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.VAL",self,70,"real")
@@ -2366,12 +2366,13 @@ class controlMain(QtGui.QMainWindow):
       height,width=self.currentFrame.shape[:2]
       qimage=QtGui.QImage(self.currentFrame,width,height,3*width,QtGui.QImage.Format_RGB888)
 #      print "got qimage" 
-      frameWidth = qimage.width()
-      frameHeight = qimage.height()
+#      frameWidth = qimage.width()
+#      frameHeight = qimage.height()
 #      print frameWidth
 #      print frameHeight
       pixmap_orig = QtGui.QPixmap.fromImage(qimage)
-      if (frameWidth>1000): #for now, this can be more specific later if needed, but I really never want to scale here!! 3/16 - we eliminated the need for gui scaling.
+      if (0): 
+#      if (frameWidth>1000): #for now, this can be more specific later if needed, but I really never want to scale here!! 3/16 - we eliminated the need for gui scaling.          
         pixmap = pixmap_orig.scaled(frameWidth/3,qimage.height()/3)
         self.pixmap_item.setPixmap(pixmap)
       else:
@@ -2903,7 +2904,7 @@ class controlMain(QtGui.QMainWindow):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(exitAction)
-        self.setGeometry(300, 300, 300, 970)
+        self.setGeometry(300, 300, 300, 970) #width and height here. 
         self.setWindowTitle('LSDC')    
         self.show()
 
@@ -2948,6 +2949,7 @@ class controlMain(QtGui.QMainWindow):
 
       self.omega_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")
       self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".RBV")
+#      self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")      
       self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.omegaRBV_pv.add_callback(self.processSampMoveCB,motID="omega")
 #      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")      
