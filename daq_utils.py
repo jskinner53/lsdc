@@ -207,8 +207,7 @@ def createDefaultRequest(sample_id):
                "resolution": screenReso,
                "slit_height": screenbeamHeight,  "slit_width": screenbeamWidth,
                "attenuation": screenTransmissionPercent,
-               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A',
-               "gridW": 0,  "gridH": 0,  "gridStep": 30}
+               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A', "gridStep": 30}
     request["request_obj"] = requestObj
 
     return request

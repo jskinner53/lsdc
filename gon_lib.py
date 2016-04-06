@@ -1,35 +1,13 @@
 import sys
 import os
 import time
-#import string
-#from beamline_lib import *
 import beamline_lib
 import beamline_support
-import dt_gon
 
-global beamline
-
-global command_active
-command_active = 0
-
-global still_osc
-still_osc = 0
-
-global head_alldone
-#diffractometer routines
 
 def lib_init_diffractometer():
-  global beamline,head_alldone
-
-#  beamline = beamline_support.beamline_designation
-  head_alldone = beamline_support.pvCreate(beamline_support.beamline_designation+"gonioDone")
+  gon_offline = int(os.environ["GON_OFFLINE"])
   beamline_support.initControlPVs()
-  dt_gon.dt_init()
-
-
-def lib_still_osc_mode(mode): #1=still,0=rotate(normal) - nsls2 - not sure how this changes
-  global still_osc
-  still_osc = mode
 
 
 def lib_gon_center_xtal(x,y,angle_omega,angle_phi):
@@ -40,28 +18,19 @@ def lib_gon_center_xtal(x,y,angle_omega,angle_phi):
   wait_for_goniohead()
   
 def lib_open_shutter():
-  dt_gon.dt_shutter(0)
+  pass
 
 
 def lib_close_shutter():
-  dt_gon.dt_shutter(1)
-
-
-def lib_open_shutter2():
-  dt_gon.dt_shutter2(0)
-
-
-def lib_close_shutter2():
-  dt_gon.dt_shutter2(1)
-
+  pass
 
 
 def lib_home():
-  dt_gon.dt_home_omega()
+  pass
 
 
 def lib_home_omega():
-  dt_gon.dt_home_omega() 
+  pass
 
 
 
@@ -71,15 +40,23 @@ def lib_home_dist():
 
 
 def gon_stop():
-  dt_gon.dt_stop()
-    
+  beamline_support.setPvValFromDescriptor("oscAbort",1)
 
-def gon_osc(motname,angle_start,width,exptime):
-#I think angle_start goes nowhere
-  dt_gon.dt_set_osc_width(float(width))
-  dt_gon.dt_set_osc_time(float(exptime))
-  dt_gon.dt_osc() 
-#  end_osc = get_epics_motor_pos("omega")
+
+def oscWait():
+  time.sleep(0.15)
+  while (beamline_support.getPvValFromDescriptor("oscRunning")):
+    time.sleep(0.05)
+  
+
+def gon_osc(angle_start,width,exptime):
+
+  angle_end = angle_start+width
+  beamline_support.setPvValFromDescriptor("oscOmegaStart",angle_start)
+  beamline_support.setPvValFromDescriptor("oscOmegaEnd",angle_end)
+  beamline_support.setPvValFromDescriptor("oscDuration",exptime)
+  beamline_support.setPvValFromDescriptor("oscGo",1)
+  oscWait()
   end_osc = beamline_lib.motorPosFromDescriptor("omega")
   print("end_osc in gon_osc = " + str(end_osc) + "\n")
   return end_osc
@@ -88,7 +65,7 @@ def gon_osc(motname,angle_start,width,exptime):
 def wait_for_goniohead(): #why can't I just call wait_motors????
   while (1):
     try:
-      done_stat = beamline_support.pvGet(head_alldone)
+      done_stat = beamline_support.getPvValFromDescriptor("gonioDone")
       if (done_stat != 0):
         break
       else:

@@ -38,7 +38,9 @@ def detector_set_filenumber(filenumber): #I think this does nothing with the eig
 
 def detector_wait():
   epics_det.det_wait()
-  
+
+def detector_waitArmed():
+  epics_det.det_waitArmed()
 #pixel array specific end
 
 def init_detector():

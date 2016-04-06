@@ -333,7 +333,8 @@ def snakeRaster(rasterReqID,grain=""):
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
   print("parent protocol = " + parentReqProtocol)
   if (parentReqProtocol == "multiCol"):
-    gotoMaxRaster(rasterResult,multiColThreshold=185) #terrible harcoded kludge for now, will want this in the DB, and editable from GUI
+    multiColThreshold  = parentReqObj["diffCutoff"]     
+    gotoMaxRaster(rasterResult,multiColThreshold=multiColThreshold) 
   else:
     if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
       gotoMaxRaster(rasterResult)    
@@ -423,7 +424,7 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   sweepStart = currentOmega - 5.0
   sweepEnd = currentOmega + 5.0
   imgWidth = 0.1
-  exptime = 0.05
+  exptime = 0.1
   currentDetDist = 200.0 # for now
 #  runNum = db_lib.incrementSampleRequestCount(sampleID)
 #  dataDirectory = parentRequest['directory']+"_"+str(locIndex)

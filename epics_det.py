@@ -203,9 +203,21 @@ def det_wait():
     return  
   if (det_type == "pixel_array"):
     time.sleep(0.5)      
-    while (get_det_pv("det_state") == "Acquire"):
+    while (get_det_pv("det_state") != 0):
+      print(get_det_pv("det_state"))
+#    while (get_det_pv("det_state") == "Acquire"):      
       time.sleep(.5)
-  
+
+def det_waitArmed(): #not even sure what this means.
+  if (offline):
+    return  
+  if (det_type == "pixel_array"):
+    print("armed = " + str(get_det_pv("armed_state")))
+    time.sleep(0.5)      
+    while (get_det_pv("armed_state") == 0):
+      print(get_det_pv("armed_state"))
+      time.sleep(.01)
+      
 def det_stop():
   if (offline):
     return  

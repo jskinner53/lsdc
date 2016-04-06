@@ -1052,7 +1052,7 @@ class controlMain(QtGui.QMainWindow):
         self.hBoxRasterLayout1= QtGui.QHBoxLayout()        
         self.hBoxRasterLayout1.setAlignment(QtCore.Qt.AlignLeft) 
         rasterStepLabel = QtGui.QLabel('Raster Step')
-        rasterStepLabel.setFixedWidth(100)
+        rasterStepLabel.setFixedWidth(110)
         self.rasterStepEdit = QtGui.QLineEdit("30")
         self.rasterStepEdit.setFixedWidth(60)
 
@@ -1078,6 +1078,18 @@ class controlMain(QtGui.QMainWindow):
         self.hBoxRasterLayout1.addWidget(self.rasterGrainFineRadio)
         self.hBoxRasterLayout1.addWidget(self.rasterGrainCustomRadio)
         self.rasterParamsFrame.setLayout(self.hBoxRasterLayout1)
+
+        self.multiColParamsFrame = QFrame() #something for criteria to decide on which hotspots to collect on for multi-xtal
+        self.hBoxMultiColParamsLayout1 = QtGui.QHBoxLayout()
+        self.hBoxMultiColParamsLayout1.setAlignment(QtCore.Qt.AlignLeft)
+        multiColCutoffLabel = QtGui.QLabel('Diffraction Cutoff')
+        multiColCutoffLabel.setFixedWidth(110)
+        self.multiColCutoffEdit = QtGui.QLineEdit("185") #may need to store this in DB at some point, it's a silly number for now
+        self.multiColCutoffEdit.setFixedWidth(60)
+        self.hBoxMultiColParamsLayout1.addWidget(multiColCutoffLabel)
+        self.hBoxMultiColParamsLayout1.addWidget(self.multiColCutoffEdit)
+        self.multiColParamsFrame.setLayout(self.hBoxMultiColParamsLayout1)
+                                           
         self.characterizeParamsFrame = QFrame()
         vBoxCharacterizeParams1 = QtGui.QVBoxLayout()
         self.hBoxCharacterizeLayout1= QtGui.QHBoxLayout() 
@@ -1139,12 +1151,14 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1.addLayout(hBoxColParams6)
 #        vBoxColParams1.addLayout(self.hBoxRasterLayout1)
         vBoxColParams1.addWidget(self.rasterParamsFrame)
+        vBoxColParams1.addWidget(self.multiColParamsFrame)
         vBoxColParams1.addWidget(self.vectorParamsFrame)
         vBoxColParams1.addWidget(self.characterizeParamsFrame)
         vBoxColParams1.addWidget(self.processingOptionsFrame)
         self.vectorParamsFrame.hide()
         self.processingOptionsFrame.hide()
         self.rasterParamsFrame.hide()
+        self.multiColParamsFrame.hide()
         self.characterizeParamsFrame.hide()
         colParamsGB.setLayout(vBoxColParams1)
         self.dataPathGB = DataLocInfo(self)
@@ -1784,10 +1798,14 @@ class controlMain(QtGui.QMainWindow):
       self.vectorParamsFrame.hide()
       self.characterizeParamsFrame.hide()
       self.processingOptionsFrame.hide()
+      self.multiColParamsFrame.hide()      
 
-      if (protocol == "raster" or protocol == "multiCol"):
+      if (protocol == "raster"):
         self.rasterParamsFrame.show()
-#        self.vectorParamsFrame.hide()
+      elif (protocol == "multiCol"):
+        self.rasterParamsFrame.show()
+        self.multiColParamsFrame.show()
+        #        self.vectorParamsFrame.hide()
 #        self.characterizeParamsFrame.hide()
       elif (protocol == "screen"):
 #        return #SHORT CIRCUIT #why would I short circuit this?
@@ -2606,7 +2624,8 @@ class controlMain(QtGui.QMainWindow):
 #        print colRequest
 #        if (rasterDef != False):
         if (reqObj["protocol"] == "multiCol"):
-          reqObj["gridStep"] = float(self.rasterStepEdit.text())            
+          reqObj["gridStep"] = float(self.rasterStepEdit.text())
+          reqObj["diffCutoff"] = float(self.multiColCutoffEdit.text())                      
         if (rasterDef != None):
           reqObj["rasterDef"] = rasterDef
           reqObj["gridStep"] = float(self.rasterStepEdit.text())
