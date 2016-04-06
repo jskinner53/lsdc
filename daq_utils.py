@@ -197,6 +197,7 @@ def createDefaultRequest(sample_id):
                "img_width": screenWidth,
                "exposure_time": screenExptime,
                "protocol": "standard",
+               "parentReqID": -1,
                "basePath": basePath,
                "file_prefix": sampleName,
                "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/",

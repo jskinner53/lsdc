@@ -36,6 +36,7 @@ def flipLoopShapeCoords(filename): # not used
 
 
 def autoRasterLoop(currentRequest):
+  set_field("xrecRasterFlag",100)        
   sampleID = currentRequest["sample_id"]
   print("auto raster " + str(sampleID))
   loop_center_xrec()
@@ -47,7 +48,14 @@ def autoRasterLoop(currentRequest):
   runRasterScan(currentRequest,"Line")  
   time.sleep(1) 
 
-
+def multiCol(currentRequest):
+  set_field("xrecRasterFlag",100)      
+  sampleID = currentRequest["sample_id"]
+  print("multiCol " + str(sampleID))
+  loop_center_xrec()
+  time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
+  runRasterScan(currentRequest,"LoopShape")
+#  time.sleep(1) 
 
 def loop_center_xrec():
   global face_on
@@ -59,7 +67,7 @@ def loop_center_xrec():
       return 0
     mvaDescriptor("omega",i)
     pic_prefix = "findloop_" + str(i)
-    time.sleep(0.3) #for video lag. This sucks
+    time.sleep(1.0) #for video lag. This sucks
     daq_utils.take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
   print(comm_s)
@@ -139,6 +147,7 @@ def generateGridMap(rasterRequest):
   testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
   testImgCount = 0
   rasterCellMap = {}
+  os.system("mkdir -p " + reqObj["directory"])
   for i in range(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
     if (i%2 == 0): #left to right if even, else right to left - a snake attempt
@@ -146,29 +155,28 @@ def generateGridMap(rasterRequest):
     else:
       startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
     startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
-    xRelativeMove = startX
-    yyRelativeMove = startY*sin(omegaRad)
-    yxRelativeMove = startY*cos(omegaRad)
-#old    yxRelativeMove = startY*sin(omegaRad)
-    zMotAbsoluteMove = rasterStartZ-xRelativeMove
 
-#old    yMotAbsoluteMove = rasterStartY-yyRelativeMove
-#    xMotAbsoluteMove = yxRelativeMove+rasterStartX
-    yMotAbsoluteMove = rasterStartY+yyRelativeMove
-    xMotAbsoluteMove = rasterStartX-yxRelativeMove
+    xRelativeMove = startX
+    yzRelativeMove = startY*sin(omegaRad)
+    yyRelativeMove = startY*cos(omegaRad)
+
+
+    xMotAbsoluteMove = rasterStartX+xRelativeMove    
+    yMotAbsoluteMove = rasterStartY-yyRelativeMove
+    zMotAbsoluteMove = rasterStartZ-yzRelativeMove
+
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
     for j in range(numsteps):
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-        zMotCellAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
+        xMotCellAbsoluteMove = xMotAbsoluteMove+(j*stepsize)
       else:
-        zMotCellAbsoluteMove = zMotAbsoluteMove+(j*stepsize)
-#      zMotAbsoluteMove = zMotAbsoluteMove-(j*stepsize)
+        xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
+
       dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
-      os.system("mkdir -p " + reqObj["directory"])
       comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
       os.system(comm_s)
       testImgCount+=1
-      rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotCellAbsoluteMove}
+      rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
       rasterCellMap[dataFileName[:-4]] = rasterCellCoords 
 #  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
   comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
@@ -180,7 +188,7 @@ def generateGridMap(rasterRequest):
     parentReqID = rasterRequest["request_obj"]["parentReqID"]
   else:
     parentReqID = -1
-  rasterResultObj = {"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
+  rasterResultObj = {"sample_id": rasterRequest["sample_id"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
 #  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
   rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
@@ -200,7 +208,12 @@ def vectorWait():
 def snakeRaster(rasterReqID,grain=""):
   rasterRequest = db_lib.getRequest(rasterReqID)
   reqObj = rasterRequest["request_obj"]
-  
+  parentReqID = reqObj["parentReqID"]
+  parentReqProtocol = ""
+  if (parentReqID != -1):
+    parentRequest = db_lib.getRequest(parentReqID)
+    parentReqObj = parentRequest["request_obj"]
+    parentReqProtocol = parentReqObj["protocol"]
 # 2/17/16 - a few things for integrating dials/spotfinding into this routine
 #  filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
   data_directory_name = str(reqObj["directory"])
@@ -316,12 +329,16 @@ def snakeRaster(rasterReqID,grain=""):
 # add the threading dials stuff here, and the thread routine elsewhere.
 
 
-  rasterResult = generateGridMap(rasterRequest)
+  rasterResult = generateGridMap(rasterRequest) #I think rasterRequest is entire request, of raster type
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
-#  print "2"
-#  gotoMaxRaster(rasterResult)
-#  print "3"
+  print("parent protocol = " + parentReqProtocol)
+  if (parentReqProtocol == "multiCol"):
+    gotoMaxRaster(rasterResult,multiColThreshold=185) #terrible harcoded kludge for now, will want this in the DB, and editable from GUI
+  else:
+    if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
+      gotoMaxRaster(rasterResult)    
   db_lib.updateRequest(rasterRequest)
+  db_lib.updatePriority(rasterRequest["request_id"],-1)  
   set_field("xrecRasterFlag",rasterRequest["request_id"])  
 
 
@@ -347,7 +364,10 @@ def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
 #    set_field("xrecRasterFlag",100)    
 
 
-def gotoMaxRaster(rasterResult):
+def gotoMaxRaster(rasterResult,multiColThreshold=-1):
+  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"] == None):
+    print("no raster result!!\n")
+    return
   ceiling = 0.0
   floor = 100000000.0 #for resolution where small number means high score
   hotFile = ""
@@ -355,6 +375,7 @@ def gotoMaxRaster(rasterResult):
   print("in gotomax")
   print(rasterResult)
   cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
+  rasterMap = rasterResult["result_obj"]["rasterCellMap"]  
   rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
   if (rasterScoreFlag==0):
     scoreOption = "spot_count"
@@ -364,6 +385,13 @@ def gotoMaxRaster(rasterResult):
     scoreOption = "total_intensity"
   for i in range (0,len(cellResults)):
     scoreVal = float(cellResults[i][scoreOption])
+    if (multiColThreshold>0):
+      if (scoreVal > multiColThreshold):
+        hitFile = cellResults[i]["image"]
+        hitCoords = rasterMap[hitFile[:-4]]
+#        sampID = rasterResult['result_obj']['sample_id']
+        parentReqID = rasterResult['result_obj']["parentReqID"]
+        addMultiRequestLocation(parentReqID,hitCoords,i)
     if (scoreOption == "d_min"):
       if (scoreVal < floor):
         floor = scoreVal
@@ -376,13 +404,47 @@ def gotoMaxRaster(rasterResult):
     print(ceiling)
     print(floor)
     print(hotFile)
-    rasterMap = rasterResult["result_obj"]["rasterCellMap"]
+#    rasterMap = rasterResult["result_obj"]["rasterCellMap"]
     hotCoords = rasterMap[hotFile[:-4]] 
     x = hotCoords["x"]
     y = hotCoords["y"]
     z = hotCoords["z"]
     print("goto " + str(x) + " " + str(y) + " " + str(z))
     mvaDescriptor("sampleX",x,"sampleY",y,"sampleZ",z)
+  
+
+def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of what to pass here for details like how to organize data
+  parentRequest = db_lib.getRequest(parentReqID)
+  sampleID = parentRequest["sample_id"]
+
+  print (str(sampleID))
+  print (hitCoords)
+  currentOmega = round(motorPosFromDescriptor("omega"),2)
+  sweepStart = currentOmega - 5.0
+  sweepEnd = currentOmega + 5.0
+  imgWidth = 0.1
+  exptime = 0.05
+  currentDetDist = 200.0 # for now
+#  runNum = db_lib.incrementSampleRequestCount(sampleID)
+#  dataDirectory = parentRequest['directory']+"_"+str(locIndex)
+  dataDirectory = parentRequest["request_obj"]['directory']+"multi_"+str(locIndex)
+  runNum = parentRequest["request_obj"]['runNum']
+  tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
+  newReqObj = tempnewStratRequest["request_obj"]
+  newReqObj["sweep_start"] = sweepStart
+  newReqObj["sweep_end"] = sweepEnd
+  newReqObj["img_width"] = imgWidth
+  newReqObj["exposure_time"] = exptime
+  newReqObj["detDist"] = currentDetDist
+  newReqObj["directory"] = dataDirectory  
+  newReqObj["pos_x"] = hitCoords['x']
+  newReqObj["pos_y"] = hitCoords['y']
+  newReqObj["pos_z"] = hitCoords['z']
+  newReqObj["fastDP"] = False
+  newReqObj["fastEP"] = False
+  newReqObj["xia2"] = False
+  newReqObj["runNum"] = runNum
+  newRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=6000) # a higher priority
   
     
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
@@ -549,13 +611,14 @@ def getXrecLoopShape(currentRequest):
   for i in range(4):
     if (daq_lib.abort_flag == 1):
       return 0
-    mvrDescriptor("omega",i*30)
+    mvaDescriptor("omega",i*30)
     pic_prefix = "findloopshape_" + str(i)
-    time.sleep(0.3) # for vid lag, sucks
+    time.sleep(1.0) # for vid lag, sucks
     daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
   comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
-  mvaDescriptor("omega",face_on)
+  print ("face on = " + str(face_on))
+  mvaDescriptor("omega",face_on) #global, yuk.
   os.system("cp /dev/shm/masks2_hull_0.txt loopPoints.txt")
   polyPoints = [] 
   rasterPoly = None     
@@ -577,7 +640,10 @@ def getXrecLoopShape(currentRequest):
   raster_h = int(polyBoundingRect.height())
   center_x = int(polyBoundingRect.center().x())
   center_y = int(polyBoundingRect.center().y())
-  stepsizeMicrons = 30.0 #for now.
+  if (currentRequest['request_obj']['protocol'] == "multiCol"):
+    stepsizeMicrons = currentRequest['request_obj']['gridStep']
+  else:
+    stepsizeMicrons = 30.0 #for now.
   rasterReqID = definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
   return rasterReqID
 

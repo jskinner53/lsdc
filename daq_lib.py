@@ -293,10 +293,10 @@ def collectData(currentRequest):
   prot = str(reqObj["protocol"])
   if (prot == "raster"):
     daq_macros.snakeRaster(currentRequest["request_id"])
-#    return
   elif (prot == "vector"):
     daq_macros.vectorScan(currentRequest)
-#    return
+  elif (prot == "multiCol"):
+    daq_macros.multiCol(currentRequest)
   else: #standard, screening, or edna - these may require autoalign, checking first
     if (reqObj["pos_x"] != 0):
       beamline_lib.mvaDescriptor("sampleX",reqObj["pos_x"])

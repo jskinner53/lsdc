@@ -1022,7 +1022,7 @@ class controlMain(QtGui.QMainWindow):
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
-        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol"] # these should probably come from db
+        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol"] # these should probably come from db
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1719,7 +1719,7 @@ class controlMain(QtGui.QMainWindow):
         elif (rasterDef["status"] == 2):        
           self.fillPolyRaster(rasterReq)
           self.selectedSampleID = rasterReq["sample_id"]
-          db_lib.deleteRequest(rasterReq)
+#          db_lib.deleteRequest(rasterReq)
           self.treeChanged_pv.put(1) #not sure about this
         else:
           pass
@@ -1785,7 +1785,7 @@ class controlMain(QtGui.QMainWindow):
       self.characterizeParamsFrame.hide()
       self.processingOptionsFrame.hide()
 
-      if (protocol == "raster"):
+      if (protocol == "raster" or protocol == "multiCol"):
         self.rasterParamsFrame.show()
 #        self.vectorParamsFrame.hide()
 #        self.characterizeParamsFrame.hide()
@@ -2605,6 +2605,8 @@ class controlMain(QtGui.QMainWindow):
         reqObj["protocol"] = str(self.protoComboBox.currentText())
 #        print colRequest
 #        if (rasterDef != False):
+        if (reqObj["protocol"] == "multiCol"):
+          reqObj["gridStep"] = float(self.rasterStepEdit.text())            
         if (rasterDef != None):
           reqObj["rasterDef"] = rasterDef
           reqObj["gridStep"] = float(self.rasterStepEdit.text())
