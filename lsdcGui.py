@@ -1005,7 +1005,7 @@ class controlMain(QtGui.QMainWindow):
         colResoDistLabel = QtGui.QLabel('Detector Distance')
         colResoDistLabel.setFixedWidth(140)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        self.colResoCalcDistance_ledit = QtGui.QLabel()
+        self.colResoCalcDistance_ledit = QtGui.QLabel() #NOTE - this is really a label, not a lineEdit widget!
 #        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
 #        self.colResoCalcDistance_ledit.setReadOnly(True)
         self.colResoCalcDistance_ledit.setFixedWidth(60)
@@ -1235,11 +1235,24 @@ class controlMain(QtGui.QMainWindow):
         self.view = QtGui.QGraphicsView(self.scene)
         self.pixmap_item = QtGui.QGraphicsPixmapItem(None, self.scene)      
         self.pixmap_item.mousePressEvent = self.pixelSelect
-        pen = QtGui.QPen(QtCore.Qt.red)
-        brush = QtGui.QBrush(QtCore.Qt.red)
-        scalePen = QtGui.QPen(brush,3.0)
-        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, pen,brush)      
-#####zzzzz        self.imageScale = self.scene.addLine(30,daq_utils.screenPixY-30,70, daq_utils.screenPixY-30, scalePen)      
+
+        centerMarkBrush = QtGui.QBrush(QtCore.Qt.red)        
+        centerMarkPen = QtGui.QPen(centerMarkBrush,3.0)
+        
+        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)      
+
+        scaleBrush = QtGui.QBrush(QtCore.Qt.blue)        
+        scalePen = QtGui.QPen(scaleBrush,2.0)
+
+        scaleTextPen = QtGui.QPen(scaleBrush,1.0)
+
+        self.imageScaleLineLen = 50
+        self.imageScale = self.scene.addLine(10,daq_utils.screenPixY-30,10+self.imageScaleLineLen, daq_utils.screenPixY-30, scalePen)
+        self.imageScaleText = self.scene.addSimpleText("50 microns",font=QtGui.QFont("Times", 13))        
+        self.imageScaleText.setPen(scaleTextPen)
+#        self.imageScaleText.setBrush(scaleBrush)
+        self.imageScaleText.setPos(10,425)
+
         self.click_positions = []
         self.vectorStartFlag = 0
 #        self.vectorPointsList = []
@@ -1436,6 +1449,7 @@ class controlMain(QtGui.QMainWindow):
         self.XRFTab.setLayout(XRFhBox)
         self.tabs.addTab(sampleTab,"Collect")
         self.tabs.addTab(self.XRFTab,"XRF Spectrum")
+        self.vidSourceToggledCB()
 
     def albulaCheckCB(self,state):
       if state != QtCore.Qt.Checked:
@@ -1483,6 +1497,10 @@ class controlMain(QtGui.QMainWindow):
 
 
     def adjustGraphics4ZoomChange(self,fov):
+      imageScaleMicrons = int(round(self.imageScaleLineLen * (fov["x"]/daq_utils.screenPixX)))
+      self.imageScaleText.setText(str(imageScaleMicrons) + " microns")
+      
+#      self.imageScale.len() * (fov["x"]/daq_utils.screenPixX)      
       if (self.rasterList != []):
         saveRasterList = self.rasterList
         self.eraseDisplayCB()
@@ -2577,6 +2595,7 @@ class controlMain(QtGui.QMainWindow):
              reqObj["slit_height"] = float(self.beamHeight_ledit.text())
              wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
              reqObj["wavelength"] = wave
+             reqObj["detDist"] = float(self.colResoCalcDistance_ledit.text())             
              reqObj["protocol"] = str(self.protoComboBox.currentText())
              reqObj["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
              reqObj["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
@@ -2621,6 +2640,7 @@ class controlMain(QtGui.QMainWindow):
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
         reqObj["wavelength"] = wave
         reqObj["protocol"] = str(self.protoComboBox.currentText())
+        reqObj["detDist"] = float(self.colResoCalcDistance_ledit.text())
 #        print colRequest
 #        if (rasterDef != False):
         if (reqObj["protocol"] == "multiCol"):

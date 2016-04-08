@@ -2,16 +2,10 @@ import sys
 import os
 import time
 from string import *
-#import CaChannel
-#from CaChannel import *
-###2/3/12from pygrace import *
-###import daq_lib
-#import plot_lib2
 import daq_utils
 import math
 from element_info import *
 import beamline_support
-#import epicsMotor
 
 global scan_detector_count,scan_list,scanfile_root
 global CNT
@@ -22,6 +16,111 @@ global alldone, allstop, scanactive, scanstop
 
 global number_of_counter_readouts
 number_of_counter_readouts = 12
+
+
+
+def mvrDescriptor(*args): #convenience to get around nasty PV names
+  newArgsList = []
+  for i in range(0,len(args),2):
+    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
+    newArgsList.append(float(args[i+1]))
+  newArgs = tuple(newArgsList)
+  mvr(*newArgs)
+#  mvr(beamline_support.pvNameSuffix_from_descriptor(motorDescriptor),float(rmov))  
+
+
+def mvaDescriptor(*args): #convenience to get around nasty PV names
+  newArgsList = []
+  for i in range(0,len(args),2):
+    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
+    newArgsList.append(float(args[i+1]))
+  newArgs = tuple(newArgsList)
+  mva(*newArgs)
+  
+
+  
+def motorPosFromDescriptor(descriptor):
+  return get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor(descriptor))
+
+
+def get_epics_motor_pos(motcode): #gets an epics motor pos with error handling
+  try:
+    current_pos = beamline_support.get_motor_pos(motcode)
+    return current_pos
+  except KeyError:
+    print("No data available for EPICS channel %s\n" % (mcode))
+    return -9999.9
+
+def mvr(*args):
+    if (args[0] == "omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
+      return
+    try:
+      beamline_support.mvr(*args)
+    except KeyboardInterrupt:
+      bl_stop_motors()
+#    except epicsMotor.epicsMotorException as status:
+#      try:
+#        ii = 0
+#        status_string = ""
+#        while(1):
+#          status_string = status_string + str(status[ii])
+#          ii = ii + 1
+#      except IndexError:
+#        print(status_string)
+#        daq_lib.gui_message(status_string+"&")
+      
+
+    
+def mva(*args):
+    if (args[0] == "Omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
+      return
+
+    try:    
+      beamline_support.mva(*args)
+    except KeyboardInterrupt:
+      bl_stop_motors()
+#    except epicsMotor.epicsMotorException as status:
+#      try:
+#        ii = 0
+#        status_string = ""
+#        while(1):
+#          status_string = status_string + str(status[ii])
+#          ii = ii + 1
+#      except IndexError:
+#        print(status_string)
+#        daq_lib.gui_message(status_string+"&")
+
+def read_db():
+  beamline_support.read_db()
+
+def init_mots():
+  global alldone,scanfile_root
+
+  beamline_support.init_motors()
+#  beamline_support.init_scanparms()
+#  alldone = CaChannel()
+#  alldone.search(beamline_support.beamline_designation+":alldone")
+#  alldone.pend_io(5.0)
+#  alldone.setTimeout(3.0)
+  return
+
+def bl_stop_motors():
+  print("stopping motors")  
+  stop_motors()
+##  daq_lib.abort_flag = 1
+  print("done stopping motors")
+
+def stop_motors():
+  beamline_support.stop_motors()
+#following commented out for nsls2 dev
+#  if (beamline_support.beamline_scan_record.getPhase()!=0):
+#    beamline_support.beamline_scan_record.stop()
+#  else:
+#    beamline_support.stop_motors()
+  return
+
+
+# 4/16 - lots of unused stuff from here down. Leave for now until counting and scanning worked out
 
 def datafile(filename):
   beamline_support.datafile(filename)
@@ -81,9 +180,6 @@ def read_intensity(time_to_count):
   else:
     daq_lib.set_field("beamline_merit",0)
   
-def stop_epics_motor(motcode):
-  stop_motors() #skinner try this for now 12/09
-  return
 
 def get_counts(ctime,count_list):
   global CNT
@@ -95,42 +191,6 @@ def get_counts(ctime,count_list):
   countdwell(oldcount)
 
 
-
-#the difference between the motor functions and the regular pv functions is that we already have mot channels.
-
-
-def set_epics_pv_nowait(motcode,field_name,value): #just sets a pv
-  
-
-  mcode = "%s%s" % (beamline_support.beamline_designation,motcode)
-  beamline_support.set_any_epics_pv(mcode,field_name,value)
-
-
-def get_epics_motor_pos(motcode): #gets an epics motor pos with error handling
-  try:
-    current_pos = beamline_support.get_motor_pos(motcode)
-    return current_pos
-  except KeyError:
-    print("No data available for EPICS channel %s\n" % (mcode))
-    return -9999.9
-
-
-#def get_motor_pos(motcode):
-#  return beamline_support.get_motor_pos(motcode)
-
-def read_db():
-  beamline_support.read_db()
-
-def init_mots():
-  global alldone,scanfile_root
-
-  beamline_support.init_motors()
-#  beamline_support.init_scanparms()
-#  alldone = CaChannel()
-#  alldone.search(beamline_support.beamline_designation+":alldone")
-#  alldone.pend_io(5.0)
-#  alldone.setTimeout(3.0)
-  return
 
 def get_scan_points(motcode):
   return beamline_support.get_scan_points(motcode)
@@ -243,9 +303,6 @@ def specgen(filename,element_edge,transmit_counter,incident_counter):
   return chooch_raw_prefix;
 
     
-
-
-
 def guess_element_for_chooch(midpoint_wave_param):
 #  midpoint_wave = float(midpoint_wave_param)
   for line in open("spectrum.dat","r"):
@@ -328,51 +385,17 @@ def spectrum_analysis():
   return result_list
 
 
-def bl_stop_motors():
-  print("stopping motors")  
-  stop_motors()
-##  daq_lib.abort_flag = 1
-  print("done stopping motors")
-
-def stop_motors():
-  beamline_support.stop_motors()
-#following commented out for nsls2 dev
-#  if (beamline_support.beamline_scan_record.getPhase()!=0):
-#    beamline_support.beamline_scan_record.stop()
-#  else:
-#    beamline_support.stop_motors()
-  return
-    
-
-def wait_for_motors():
-  time.sleep(.2) #used to be .5 seconds before 2k10
-  while (1):
-    try:
-      done_stat = alldone.getw()
-      if (done_stat != 0):
-        break
-      else:
-        time.sleep(.2) #used to be .5 seconds before 2k10
-        pass      
-    except KeyboardInterrupt:
-      stop_motors()
-#  daq_utils.broadcast_output("beamline_done|0|~\n")
-
-
 def sp(motcode,posn):
   beamline_support.sp(motcode,posn)
   return
 
 
-#nsls2 - a lot of these 
-#skinner - for now
 def align(motcode):
   beamline_support.dscan(motcode)
   copy_datafile_to_global(beamline_support.datafile_name,motcode)    
   beamline_support.newfile("scandata")    
   return
 
-#skinner - for now
 def scan(motcode):
   beamline_support.ascan(motcode)
   copy_datafile_to_global(beamline_support.datafile_name,motcode)    
@@ -385,54 +408,10 @@ def mvf(motcode,counter_num):
   beamline_support.newfile("scandata")    
   return
       
-def mvr(*args):
-    if (args[0] == "omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
-      return
-    try:
-      beamline_support.mvr(*args)
-    except KeyboardInterrupt:
-      bl_stop_motors()
-#    except epicsMotor.epicsMotorException as status:
-#      try:
-#        ii = 0
-#        status_string = ""
-#        while(1):
-#          status_string = status_string + str(status[ii])
-#          ii = ii + 1
-#      except IndexError:
-#        print(status_string)
-#        daq_lib.gui_message(status_string+"&")
-      
-
-    
-def mva(*args):
-    if (args[0] == "Omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
-      return
-
-    try:    
-      beamline_support.mva(*args)
-    except KeyboardInterrupt:
-      bl_stop_motors()
-#    except epicsMotor.epicsMotorException as status:
-#      try:
-#        ii = 0
-#        status_string = ""
-#        while(1):
-#          status_string = status_string + str(status[ii])
-#          ii = ii + 1
-#      except IndexError:
-#        print(status_string)
-#        daq_lib.gui_message(status_string+"&")
-
 
 def po(data_file):
   command_string = "xmgrace -nxy %s&\n" % data_file
   os.system(command_string)
-
-
-
-def set_attenuators(att_value):
-    mva("filter",int(att_value))
 
 
 def set_scan_fly(motcode):
@@ -465,30 +444,6 @@ def set_scanstepsize(motcode,stepsize):
   beamline_support.set_scanstepsize(motcode,stepsize)
 
             
-
-def mvrDescriptor(*args): #convenience to get around nasty PV names
-  newArgsList = []
-  for i in range(0,len(args),2):
-    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
-    newArgsList.append(float(args[i+1]))
-  newArgs = tuple(newArgsList)
-  mvr(*newArgs)
-#  mvr(beamline_support.pvNameSuffix_from_descriptor(motorDescriptor),float(rmov))  
-
-
-def mvaDescriptor(*args): #convenience to get around nasty PV names
-  newArgsList = []
-  for i in range(0,len(args),2):
-    newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
-    newArgsList.append(float(args[i+1]))
-  newArgs = tuple(newArgsList)
-  mva(*newArgs)
-  
-
-  
-def motorPosFromDescriptor(descriptor):
-  return get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor(descriptor))
-
 
 
 

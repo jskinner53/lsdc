@@ -204,7 +204,7 @@ def det_wait():
   if (det_type == "pixel_array"):
     time.sleep(0.5)      
     while (get_det_pv("det_state") != 0):
-      print(get_det_pv("det_state"))
+#      print(get_det_pv("det_state"))
 #    while (get_det_pv("det_state") == "Acquire"):      
       time.sleep(.5)
 

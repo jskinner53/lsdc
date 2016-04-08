@@ -224,7 +224,7 @@ def snakeRaster(rasterReqID,grain=""):
   img_width_per_cell = reqObj["img_width"]
 #really should read these two from hardware  
   wave = reqObj["wavelength"]
-  detDist = 100.0
+  detDist = parentReqObj["detDist"]
   
   xbeam = daq_utils.xbeam
   ybeam = daq_utils.ybeam  
@@ -421,16 +421,17 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   print (str(sampleID))
   print (hitCoords)
   currentOmega = round(motorPosFromDescriptor("omega"),2)
-  sweepStart = currentOmega - 5.0
-  sweepEnd = currentOmega + 5.0
-  imgWidth = 0.1
-  exptime = 0.1
-  currentDetDist = 200.0 # for now
 #  runNum = db_lib.incrementSampleRequestCount(sampleID)
 #  dataDirectory = parentRequest['directory']+"_"+str(locIndex)
   dataDirectory = parentRequest["request_obj"]['directory']+"multi_"+str(locIndex)
   runNum = parentRequest["request_obj"]['runNum']
   tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
+  sweepStart = currentOmega - 5.0
+  sweepEnd = currentOmega + 5.0
+  imgWidth = parentRequest["request_obj"]['img_width']
+  exptime = parentRequest["request_obj"]['exposure_time']
+  currentDetDist = parentRequest["request_obj"]['detDist']
+  
   newReqObj = tempnewStratRequest["request_obj"]
   newReqObj["sweep_start"] = sweepStart
   newReqObj["sweep_end"] = sweepEnd
