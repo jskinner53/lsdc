@@ -4,6 +4,8 @@ import sys
 ###from epicsScanParms import *
 #from epicsMotor import *
 #from epicsScaler import *
+import ophyd
+ophyd.utils.startup.setup()
 from ophyd import EpicsMotor
 from ophyd import EpicsScaler
 ###from epicsScan import *

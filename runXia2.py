@@ -41,6 +41,7 @@ os.system(comm_s)
 fd = open("xia2.json")
 resultObj = json.loads(fd.read())
 fd.close()
+print resultObj
 #result["resultObj"] = resultObj
 db_lib.addResultforRequest("xia2",request_id,resultObj)
 print "finished xia2"

@@ -1229,6 +1229,7 @@ class controlMain(QtGui.QMainWindow):
         self.rasterDefList = []
         self.polyPointItems = []
         self.rasterPoly = None
+        self.measureLine = None
         self.scene = QtGui.QGraphicsScene(0,0,564,450,self)
 #        self.scene = QtGui.QGraphicsScene(0,0,646,482,self)        
         self.scene.keyPressEvent = self.sceneKey
@@ -1327,6 +1328,8 @@ class controlMain(QtGui.QMainWindow):
         centerLoopButton.clicked.connect(self.autoCenterLoopCB)
 ##        rasterLoopButton = QtGui.QPushButton("Raster\nLoop")
 ##        rasterLoopButton.clicked.connect(self.autoRasterLoopCB)
+        measureButton = QtGui.QPushButton("Measure")
+        measureButton.clicked.connect(self.measurePolyCB)
         loopShapeButton = QtGui.QPushButton("Draw\nRaster")
         loopShapeButton.clicked.connect(self.drawInteractiveRasterCB)
         runRastersButton = QtGui.QPushButton("Run\nRaster")
@@ -1343,6 +1346,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
         hBoxSampleAlignLayout.addWidget(loopShapeButton)
+        hBoxSampleAlignLayout.addWidget(measureButton)        
 ###        hBoxSampleAlignLayout.addWidget(runRastersButton) #maybe not a good idea to have multiple ways to run a raster. Force the collect button.
         hBoxSampleAlignLayout.addWidget(clearGraphicsButton)
         hBoxSampleAlignLayout.addWidget(self.click3Button)
@@ -2027,6 +2031,26 @@ class controlMain(QtGui.QMainWindow):
       self.click_positions = []
       self.definePolyRaster(raster_w,raster_h,stepsizeXPix,stepsizeYPix,center_x,center_y)
 
+
+    def measurePolyCB(self):
+      for i in xrange(len(self.polyPointItems)):
+        self.scene.removeItem(self.polyPointItems[i])
+      if (self.measureLine != None):
+        self.scene.removeItem(self.measureLine)
+      self.polyPointItems = []
+        
+      pen = QtGui.QPen(QtCore.Qt.red)
+      brush = QtGui.QBrush(QtCore.Qt.red)
+      points = []
+      if (self.click_positions != []): #use the user clicks
+        if (len(self.click_positions) == 2): #draws a single row or column
+          self.measureLine = self.scene.addLine(self.click_positions[0].x(),self.click_positions[0].y(),self.click_positions[1].x(),self.click_positions[1].y(), pen)
+      length = self.measureLine.line().length()
+      fov = self.getCurrentFOV()
+      lineMicronsX = int(round(length * (fov["x"]/daq_utils.screenPixX)))
+      print("linelength = " + str(lineMicronsX))      
+      self.click_positions = []
+
       
     def center3LoopCB(self):
       print "3-click center loop"
@@ -2193,6 +2217,8 @@ class controlMain(QtGui.QMainWindow):
 
     def eraseCB(self):
       self.click_positions = []
+      if (self.measureLine != None):
+        self.scene.removeItem(self.measureLine)
       for i in xrange(len(self.centeringMarksList)):
         self.scene.removeItem(self.centeringMarksList[i]["graphicsItem"])        
       self.centeringMarksList = []

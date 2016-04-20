@@ -7,7 +7,7 @@ import xmltodict
 import daq_utils
 
 
-def generateSpotsFileFromXML(fastdpXmlFilename="fast_dp.xml"):
+def generateSpotsFileFromXMLObsolete(fastdpXmlFilename="fast_dp.xml"):
 
   tree = ET.parse(fastdpXmlFilename)
   root = tree.getroot()

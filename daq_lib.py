@@ -142,6 +142,7 @@ def abort_data_collection():
   abort_flag = 1
   gon_stop()
   detector_stop()
+  daq_macros.abortBS()
   close_shutter()
 
 
@@ -379,11 +380,13 @@ def collectData(currentRequest):
           fastEPFlag = 1
         else:
           fastEPFlag = 0
-        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
+        comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "\"&"
+#        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"        
         print(comm_s)
         os.system(comm_s)
       if (reqObj["xia2"]):
-        comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"
+        comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "\"&"
+#        comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"        
         os.system(comm_s)
   
   db_lib.updatePriority(currentRequest["request_id"],-1)
@@ -425,7 +428,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_filenumber(file_number)
   detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
-  detector_start()
+#####  detector_start()
 #  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
   image_started = range_seconds
 #  time.sleep(1.0) #4/15 - why so long?
@@ -435,11 +438,10 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
   angleStart = beamline_lib.motorPosFromDescriptor("omega")%360.0 #note, nsls2 angle start now used, just get current position for now
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  detector_wait()
+#####  detector_wait()
   image_started = 0        
   set_field("state","Idle")        
-###  detector_wait()
-##  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
 

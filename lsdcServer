@@ -1,0 +1,2 @@
+killall -KILL daq_main2.py
+$LSDCHOME/daq_main2.py
