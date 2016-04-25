@@ -2073,7 +2073,7 @@ class controlMain(QtGui.QMainWindow):
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]      
       numLines = len(cellResults)
       cellResults_array = [{} for i in xrange(numLines)]
 #      filename_array = ["" for i in xrange(numLines)]

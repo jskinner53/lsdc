@@ -19,7 +19,7 @@ import xmltodict
 from importlib import reload
 import start_bs
 from start_bs import *
-
+import subprocess
 
 def hi_macro():
   print("hello from macros\n")
@@ -134,7 +134,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 #  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
   if (numimages > 360):
     return
-  testImgFileList = glob.glob("/nfs/skinner/testdata/johnPil6/data/B1GGTApo_9_0*.cbf")
+  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/johnPil6/data/B1GGTApo_9_0*.cbf")
   testImgFileList.sort()
   prefix_long = directory+"/"+filePrefix
   expectedFilenameList = []
@@ -147,6 +147,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
     os.system(comm_s)
 
 
+
 def generateGridMap(rasterRequest):
   reqObj = rasterRequest["request_obj"]
   rasterDef = reqObj["rasterDef"]
@@ -157,7 +158,8 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
-  testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
+#  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/Eiger1M/*.cbf")
+  testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")  
   testImgCount = 0
   rasterCellMap = {}
   os.system("mkdir -p " + reqObj["directory"])
@@ -186,15 +188,25 @@ def generateGridMap(rasterRequest):
         xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
 
       dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
-      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
+      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName      
       os.system(comm_s)
       testImgCount+=1
       rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
-      rasterCellMap[dataFileName[:-4]] = rasterCellCoords 
-#  comm_s = "ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|dials.find_spots_client"
-  comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
+      rasterCellMap[dataFileName[:-4]] = rasterCellCoords
+####  comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
+#  comm_s = "ssh -q cpu-004 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
+###############the following 2 lines are for that strange bug where a remote process doesn't see stuff on a remote filesystem!
+  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf>>/dev/null'"
+  lsOut = os.system(comm_s)
+  
+  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf| /usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client'"  
+#  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|strace /usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client >dialsClientOut2.txt 2>&1'"  
   print(comm_s)
-  dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+#  dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+  dialsOut = os.popen(comm_s)
+#  dialsOut = subprocess.Popen(comm_s,shell=True)  
+  time.sleep(1)
+  dialsResultObj = xmltodict.parse("<data>\n"+dialsOut.read()+"</data>\n")  
   print("done parsing dials output")
   print(dialsResultObj)
   if ("parentReqID" in rasterRequest["request_obj"]):
@@ -390,7 +402,7 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
   scoreOption = ""
   print("in gotomax")
   print(rasterResult)
-  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]
+  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]  
   rasterMap = rasterResult["result_obj"]["rasterCellMap"]  
   rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
   if (rasterScoreFlag==0):
