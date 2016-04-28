@@ -26,6 +26,7 @@
 #############################################################################*/
 import sys
 from PyMca.PyMcaQt import *
+from element_info import element_info #skinner, from nsls-I
 
 QTVERSION = qVersion()
 if QTVERSION < '4.0.0':
@@ -303,7 +304,7 @@ class QPeriodicTable(QWidget):
             #, 6, 10, 0, 0, "PTLayout")
             self.gridLayout.addItem(QSpacerItem(0, 5), 7, 0)
 
-        for idx in xrange(10):
+        for idx in range(10):
             self.gridLayout.setRowStretch(idx, 3)
         self.gridLayout.setRowStretch(7, 2)
 
@@ -328,10 +329,12 @@ class QPeriodicTable(QWidget):
         if (self.butSize > 0): #skinner - use a fixed size
           b.setFixedSize(self.butSize,self.butSize)
         b.setAutoDefault(False)
-
+        if (element_info.has_key(symbol) and element_info[symbol][4] == 1):
+          b.setEnabled(True)
+        else:
+          b.setEnabled(False)
         self.eltButton[symbol]= b
         self.gridLayout.addWidget(b, row, col)
-
         if QTVERSION <'4.0.0':
             QObject.connect(b, PYSIGNAL("elementEnter"), self.elementEnter)
             QObject.connect(b, PYSIGNAL("elementLeave"), self.elementLeave)
@@ -357,6 +360,9 @@ class QPeriodicTable(QWidget):
             self.emit(PYSIGNAL("elementClicked"), (symbol,))
         else:
             self.emit(SIGNAL("elementClicked"), symbol)
+        print(self.eltCurrent.symbol)
+        print(self.eltButton[symbol].isSelected())                        
+            
             
     def getSelection(self):
         return [ e for (e,b) in self.eltButton.items() if b.isSelected() ]
@@ -554,10 +560,10 @@ class QPeriodicList(MyQListView):
         self.emit(PYSIGNAL("selectionChanged"), (self.getSelection(),))
     
     def getSelection(self):
-        return [ Elements[idx][0] for idx in xrange(len(self.items)) if self.items[idx].isSelected() ]   
+        return [ Elements[idx][0] for idx in range(len(self.items)) if self.items[idx].isSelected() ]   
 
     def setSelection(self, symbolList):
-        for idx in xrange(len(self.items)):
+        for idx in range(len(self.items)):
             self.items[idx].setSelected(Elements[idx][0] in symbolList)
     """
     def __selectionChanged(self):
@@ -568,17 +574,17 @@ class QPeriodicList(MyQListView):
     
     def getSelection(self):
         if QTVERSION < "4.0.0":
-            return [ Elements[idx][0] for idx in xrange(len(self.items)) \
+            return [ Elements[idx][0] for idx in range(len(self.items)) \
                     if self.items[idx].isSelected() ]
         else:
-            return [ Elements[idx][0] for idx in xrange(len(self.items)) \
+            return [ Elements[idx][0] for idx in range(len(self.items)) \
                     if self.isItemSelected(self.items[idx]) ]
             
             #return self.selectedItems()
 
     if QTVERSION < "4.0.0":
         def setSelection(self, symbolList):
-            for idx in xrange(len(self.items)):
+            for idx in range(len(self.items)):
                 if QTVERSION < "4.0.0":
                     self.items[idx].setSelected(Elements[idx][0] in symbolList)
 

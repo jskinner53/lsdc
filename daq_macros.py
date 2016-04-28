@@ -676,6 +676,63 @@ def getXrecLoopShape(currentRequest):
   rasterReqID = definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,center_x,center_y,rasterPoly)
   return rasterReqID
 
+
+def eScan(energyScanRequest):
+  reqObj = energyScanRequest["request_obj"]
+  print("energy scan for " + str(reqObj['scanEnergy']))
+  scan_element = "Se"
+  chooch_prefix = "choochData1"
+  choochOutfile = chooch_prefix+".efs"
+  comm_s = "chooch -e %s -o %s %s" % (scan_element, choochOutfile,"/nfs/skinner/temp/choochData1.raw")
+#  comm_s = "chooch -e %s -o %s -p %s %s" % (scan_element,chooch_prefix+".efs",chooch_prefix+".ps",chooch_prefix+".raw")
+  print(comm_s)
+  for outputline in os.popen(comm_s).readlines():
+    print(outputline)
+    tokens = outputline.split()    
+    if (len(tokens)>4):
+      if (tokens[1] == "peak"):
+        peak = float(tokens[3])
+        fprime_peak = float(tokens[7])
+        f2prime_peak = float(tokens[5])        
+      elif (tokens[1] == "infl"):
+        infl = float(tokens[3])
+        fprime_infl = float(tokens[7])
+        f2prime_infl = float(tokens[5])        
+      else:
+        pass
+#  os.system("xmgrace spectrum.spec&")
+#  os.system("gv.sh "+chooch_prefix+".ps") #kludged with a shell call to get around gv bug
+#  os.system("ln -sf "+chooch_prefix+".ps latest_chooch_plot.ps")
+  resultDict = {}
+  resultDict["infl"] = infl
+  resultDict["peak"] = peak
+  resultDict["f2prime_infl"] = f2prime_infl
+  resultDict["fprime_infl"] = fprime_infl
+  resultDict["f2prime_peak"] = f2prime_peak
+  resultDict["fprime_peak"] = fprime_peak
+  choochOutFile = open("/nfs/skinner/temp/choochData1.efs","r")
+  chooch_graph_x = []
+  chooch_graph_y1 = []
+  chooch_graph_y2 = []
+  for outLine in choochOutFile.readlines():
+    tokens = outLine.split()
+    chooch_graph_x.append(float(tokens[0]))
+    chooch_graph_y1.append(float(tokens[1]))
+    chooch_graph_y2.append(float(tokens[2]))
+  choochOutFile.close()
+  plt.plot(chooch_graph_x,chooch_graph_y1)
+  plt.plot(chooch_graph_x,chooch_graph_y2)
+  plt.show()
+#  plt.plot(chooch_graph_x,chooch_graph_y1,chooch_graph_y2)  
+#  self.choochGraph.setTitle("Chooch PLot")
+#  self.choochGraph.newcurve("spline", chooch_graph_x, chooch_graph_y1)
+#  self.choochGraph.newcurve("fp", chooch_graph_x, chooch_graph_y2)
+#  self.choochGraph.replot()
+#  self.choochResultFlag_pv.put(0)
+  print(resultDict)
+  
+
+
 def vectorScan(vecRequest): 
   reqObj = vecRequest["request_obj"]
   sweep_start_angle = reqObj["sweep_start"]

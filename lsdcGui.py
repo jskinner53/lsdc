@@ -21,9 +21,11 @@ import daq_utils
 import albulaUtils
 from testSimpleConsole import *
 import functools
-from QPeriodicTable import QPeriodicTable
+from QPeriodicTable import *
 from PyMca.QtBlissGraph import QtBlissGraph
 from PyMca.McaAdvancedFit import McaAdvancedFit
+from PyMca import ElementsInfo
+from element_info import element_info #skinner - this is what I used at NSLS-I
 import numpy as np
 import thread
 ##import lsdcOlog
@@ -1173,7 +1175,8 @@ class controlMain(QtGui.QMainWindow):
         self.mainColFrame.setLayout(vBoxMainColLayout)
         self.EScanToolFrame = QFrame()
         vBoxEScanTool = QtGui.QVBoxLayout()
-        self.periodicTableTool = QPeriodicTable(self.EScanToolFrame,butSize=20)
+        self.periodicTableTool = QPeriodicTable(butSize=20)
+#        self.periodicTableTool = QPeriodicTable(self.EScanToolFrame,butSize=20)        
         self.EScanDataPathGBTool = DataLocInfo(self)
         vBoxEScanTool.addWidget(self.periodicTableTool)
         vBoxEScanTool.addWidget(self.EScanDataPathGBTool)
@@ -1404,7 +1407,8 @@ class controlMain(QtGui.QMainWindow):
         vBoxEScan = QtGui.QVBoxLayout()
 #        self.periodicFrame = QFrame()
 #        self.periodicFrame.setLineWidth(1)
-        self.periodicTable = QPeriodicTable(self.energyFrame,butSize=20)
+####        self.periodicTable = QPeriodicTable(self.energyFrame,butSize=20)
+        self.periodicTable = QPeriodicTable(butSize=20)        
         vBoxEScan.addWidget(self.periodicTable)
 #        vBoxEScan.addWidget(self.periodicFrame)
         EScanDataPathGB = DataLocInfo(self)
@@ -2588,6 +2592,34 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addSampleRequestCB(self,rasterDef=None,selectedSampleID=None):
+#skinner, temp, a try to see if this is an enscan
+      if (self.periodicTableTool.isVisible()):
+        if (self.periodicTableTool.eltCurrent != None):
+          symbol = self.periodicTableTool.eltCurrent.symbol
+          print(symbol)
+          print("EnergyScan!!")        
+          targetEdge = element_info[symbol][2]
+          targetEnergy = ElementsInfo.Elements.Element[symbol]["binding"][targetEdge]
+          print(targetEnergy)
+          colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
+          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
+          runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+          reqObj = colRequest["request_obj"]
+          reqObj["runNum"] = runNum
+          reqObj["file_prefix"] = str(self.EScanDataPathGBTool.prefix_ledit.text()+"_eScan")
+          reqObj["basePath"] = str(self.EScanDataPathGBTool.base_path_ledit.text())
+          reqObj["directory"] = str(self.EScanDataPathGBTool.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+          reqObj["file_number_start"] = int(self.EScanDataPathGBTool.file_numstart_ledit.text())
+          reqObj["protocol"] = "eScan"
+          reqObj["scanEnergy"] = targetEnergy
+          colRequest["request_obj"] = reqObj             
+          newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+          if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
+            self.treeChanged_pv.put(1)
+        else:
+          print("choose an element and try again")
+        return          
+            
 #      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
 
 #      centeringOption = str(self.centeringComboBox.currentText())
@@ -2881,6 +2913,11 @@ class controlMain(QtGui.QMainWindow):
           self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
           self.dataPathGB.setBasePath_ledit(reqObj["basePath"])
           self.dataPathGB.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGBTool.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
+          self.EScanDataPathGBTool.setBasePath_ledit(reqObj["basePath"])
+          self.EScanDataPathGBTool.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGBTool.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
+          
       else: #collection request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
         reqObj = self.selectedSampleRequest["request_obj"]

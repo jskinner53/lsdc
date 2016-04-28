@@ -300,6 +300,8 @@ def collectData(currentRequest):
     daq_macros.vectorScan(currentRequest)
   elif (prot == "multiCol"):
     daq_macros.multiCol(currentRequest)
+  elif (prot == "eScan"):
+    daq_macros.eScan(currentRequest)    
   else: #standard, screening, or edna - these may require autoalign, checking first
     if (reqObj["pos_x"] != 0):
       beamline_lib.mvaDescriptor("sampleX",reqObj["pos_x"])
@@ -365,8 +367,7 @@ def collectData(currentRequest):
           db_lib.updatePriority(currentRequest["request_id"],-1)
           refreshGuiTree()
           collectData(newStratRequest)
-          return
-
+          return        
     else: #standard
       sweep_start = reqObj["sweep_start"]
       sweep_end = reqObj["sweep_end"]
