@@ -1411,10 +1411,10 @@ class controlMain(QtGui.QMainWindow):
         self.periodicTable = QPeriodicTable(butSize=20)        
         vBoxEScan.addWidget(self.periodicTable)
 #        vBoxEScan.addWidget(self.periodicFrame)
-        EScanDataPathGB = DataLocInfo(self)
-        vBoxEScan.addWidget(EScanDataPathGB)
-        tempPlotButton = QtGui.QPushButton("Plot")        
-        tempPlotButton.clicked.connect(self.plotChoochCB)
+        self.EScanDataPathGB = DataLocInfo(self)
+        vBoxEScan.addWidget(self.EScanDataPathGB)
+        tempPlotButton = QtGui.QPushButton("Queue Request")        
+        tempPlotButton.clicked.connect(self.queueEnScanCB)
         vBoxEScan.addWidget(tempPlotButton)
         hBoxEScan.addLayout(vBoxEScan)
         verticalLine = QFrame()
@@ -1741,8 +1741,9 @@ class controlMain(QtGui.QMainWindow):
             self.vecLine.setLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+self.vectorEnd["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorEnd["graphicsitem"].y())
 
 
-    def plotChoochCB(self):
-      self.send_to_server("runChooch()")
+    def queueEnScanCB(self):
+      self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+      self.treeChanged_pv.put(1)      
 
 
     def displayXrecRaster(self,xrecRasterFlag):
@@ -1771,28 +1772,16 @@ class controlMain(QtGui.QMainWindow):
 
 
     def processChoochResult(self,choochResultFlag):
-      eScanOutFile = open("/nfs/skinner/temp/choochData1.spec","r")
-      graph_x = []
-      graph_y = []
-      for outLine in eScanOutFile.readlines():
-        tokens = string.split(outLine)
-        graph_x.append(float(tokens[0]))
-        graph_y.append(float(tokens[1]))
-      eScanOutFile.close()
+      choochResult = db_lib.getResult(choochResultFlag)
+      choochResultObj = choochResult["result_obj"]
+      graph_x = choochResultObj["choochInXAxis"]
+      graph_y = choochResultObj["choochInYAxis"]      
       self.EScanGraph.setTitle("Chooch PLot")
       self.EScanGraph.newcurve("whatever", graph_x, graph_y)
       self.EScanGraph.replot()
-
-      choochOutFile = open("/nfs/skinner/temp/choochData1.efs","r")
-      chooch_graph_x = []
-      chooch_graph_y1 = []
-      chooch_graph_y2 = []
-      for outLine in choochOutFile.readlines():
-        tokens = string.split(outLine)
-        chooch_graph_x.append(float(tokens[0]))
-        chooch_graph_y1.append(float(tokens[1]))
-        chooch_graph_y2.append(float(tokens[2]))
-      choochOutFile.close()
+      chooch_graph_x = choochResultObj["choochOutXAxis"]
+      chooch_graph_y1 = choochResultObj["choochOutY1Axis"]
+      chooch_graph_y2 = choochResultObj["choochOutY2Axis"]      
       self.choochGraph.setTitle("Chooch PLot")
       self.choochGraph.newcurve("spline", chooch_graph_x, chooch_graph_y1)
       self.choochGraph.newcurve("fp", chooch_graph_x, chooch_graph_y2)
@@ -2585,6 +2574,12 @@ class controlMain(QtGui.QMainWindow):
           if (len(indexes)>1):
             self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
             self.dataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+            self.EScanDataPathGBTool.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
+            self.EScanDataPathGBTool.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+            self.EScanDataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
+            self.EScanDataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+            
+            
           self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
 #      self.refreshTree()
       self.progressDialog.close()
@@ -2592,7 +2587,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addSampleRequestCB(self,rasterDef=None,selectedSampleID=None):
-#skinner, temp, a try to see if this is an enscan
+#skinner, not pretty below the way stuff is duplicated.
       if (self.periodicTableTool.isVisible()):
         if (self.periodicTableTool.eltCurrent != None):
           symbol = self.periodicTableTool.eltCurrent.symbol
@@ -2606,12 +2601,41 @@ class controlMain(QtGui.QMainWindow):
           runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
           reqObj = colRequest["request_obj"]
           reqObj["runNum"] = runNum
-          reqObj["file_prefix"] = str(self.EScanDataPathGBTool.prefix_ledit.text()+"_eScan")
+          reqObj["file_prefix"] = str(self.EScanDataPathGBTool.prefix_ledit.text())
           reqObj["basePath"] = str(self.EScanDataPathGBTool.base_path_ledit.text())
           reqObj["directory"] = str(self.EScanDataPathGBTool.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
           reqObj["file_number_start"] = int(self.EScanDataPathGBTool.file_numstart_ledit.text())
           reqObj["protocol"] = "eScan"
           reqObj["scanEnergy"] = targetEnergy
+          reqObj["runChooch"] = True #just hardcode for now
+          colRequest["request_obj"] = reqObj             
+          newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+          if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
+            self.treeChanged_pv.put(1)
+        else:
+          print("choose an element and try again")
+        return          
+
+      if (self.periodicTable.isVisible()):
+        if (self.periodicTable.eltCurrent != None):
+          symbol = self.periodicTable.eltCurrent.symbol
+          print(symbol)
+          print("EnergyScan!!")        
+          targetEdge = element_info[symbol][2]
+          targetEnergy = ElementsInfo.Elements.Element[symbol]["binding"][targetEdge]
+          print(targetEnergy)
+          colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
+          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
+          runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+          reqObj = colRequest["request_obj"]
+          reqObj["runNum"] = runNum
+          reqObj["file_prefix"] = str(self.EScanDataPathGB.prefix_ledit.text())
+          reqObj["basePath"] = str(self.EScanDataPathGB.base_path_ledit.text())
+          reqObj["directory"] = str(self.EScanDataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+          reqObj["file_number_start"] = int(self.EScanDataPathGB.file_numstart_ledit.text())
+          reqObj["protocol"] = "eScan"
+          reqObj["scanEnergy"] = targetEnergy
+          reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
           newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
           if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
@@ -2917,11 +2941,27 @@ class controlMain(QtGui.QMainWindow):
           self.EScanDataPathGBTool.setBasePath_ledit(reqObj["basePath"])
           self.EScanDataPathGBTool.setDataPath_ledit(reqObj["directory"])
           self.EScanDataPathGBTool.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
+          self.EScanDataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
+          self.EScanDataPathGB.setBasePath_ledit(reqObj["basePath"])
+          self.EScanDataPathGB.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGB.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
           
-      else: #collection request
+      else: #request
         self.selectedSampleRequest = db_lib.getRequest(itemData)
         reqObj = self.selectedSampleRequest["request_obj"]
+        reqID = self.selectedSampleRequest["request_id"]
         self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+        if (reqObj["protocol"] == "eScan"):
+          if (reqObj["runChooch"]):
+            resultList = db_lib.getResultsforRequest(reqID)
+            if (len(resultList) > 0):
+              lastResult = resultList[-1]
+#              if (lastResult["result_type"] == "choochResult"): #I don't know how to get this from the damn DBRef type, see next line, not ideal, but not bad.
+              if (db_lib.getResult(lastResult['result_id'], as_mongo_obj=True).result_type.name == "choochResult"):
+                resultID = lastResult['result_id']
+                print("plotting chooch")
+                self.processChoochResult(resultID)
+
 #        if (self.selectedSampleRequest["protocol"] == "raster"): #might want this, problem is that it requires "rasterSelect", and maybe we don't want that.
 #          for i in xrange(len(self.rasterList)):
 #            if (self.rasterList[i] != None):

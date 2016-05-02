@@ -212,7 +212,7 @@ def broadcast_output(s):
   beamline_support.pvPut(message_string_pv,s)
 
 
-def runChooch():
+def runChoochObsolete():
   broadcast_output("running chooch")
   time.sleep(4)
   set_field("choochResultFlag",1)

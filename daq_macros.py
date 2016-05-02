@@ -678,59 +678,73 @@ def getXrecLoopShape(currentRequest):
 
 
 def eScan(energyScanRequest):
+  sampleID = energyScanRequest["sample_id"]
   reqObj = energyScanRequest["request_obj"]
   print("energy scan for " + str(reqObj['scanEnergy']))
   scan_element = "Se"
-  chooch_prefix = "choochData1"
-  choochOutfile = chooch_prefix+".efs"
-  comm_s = "chooch -e %s -o %s %s" % (scan_element, choochOutfile,"/nfs/skinner/temp/choochData1.raw")
+  if (reqObj["runChooch"]):
+    chooch_prefix = "choochData1"
+    choochOutfileName = chooch_prefix+".efs"
+    choochInputFileName = "/nfs/skinner/temp/choochData1.raw"
+    comm_s = "chooch -e %s -o %s %s" % (scan_element, choochOutfileName,choochInputFileName)
 #  comm_s = "chooch -e %s -o %s -p %s %s" % (scan_element,chooch_prefix+".efs",chooch_prefix+".ps",chooch_prefix+".raw")
-  print(comm_s)
-  for outputline in os.popen(comm_s).readlines():
-    print(outputline)
-    tokens = outputline.split()    
-    if (len(tokens)>4):
-      if (tokens[1] == "peak"):
-        peak = float(tokens[3])
-        fprime_peak = float(tokens[7])
-        f2prime_peak = float(tokens[5])        
-      elif (tokens[1] == "infl"):
-        infl = float(tokens[3])
-        fprime_infl = float(tokens[7])
-        f2prime_infl = float(tokens[5])        
-      else:
-        pass
+    print(comm_s)
+    choochInputData_x = []
+    choochInputData_y = []
+    choochInputFile = open(choochInputFileName,"r")
+    for outputLine in choochInputFile.readlines():
+      tokens = outputLine.split()
+      if (len(tokens) == 2): #not a very elegant way to get past the first two lines that I don't need.    
+        choochInputData_x.append(float(tokens[0]))
+        choochInputData_y.append(float(tokens[1]))
+    choochInputFile.close()
+    for outputline in os.popen(comm_s).readlines():
+      print(outputline)
+      tokens = outputline.split()    
+      if (len(tokens)>4):
+        if (tokens[1] == "peak"):
+          peak = float(tokens[3])
+          fprime_peak = float(tokens[7])
+          f2prime_peak = float(tokens[5])        
+        elif (tokens[1] == "infl"):
+          infl = float(tokens[3])
+          fprime_infl = float(tokens[7])
+          f2prime_infl = float(tokens[5])        
+        else:
+          pass
 #  os.system("xmgrace spectrum.spec&")
 #  os.system("gv.sh "+chooch_prefix+".ps") #kludged with a shell call to get around gv bug
 #  os.system("ln -sf "+chooch_prefix+".ps latest_chooch_plot.ps")
-  resultDict = {}
-  resultDict["infl"] = infl
-  resultDict["peak"] = peak
-  resultDict["f2prime_infl"] = f2prime_infl
-  resultDict["fprime_infl"] = fprime_infl
-  resultDict["f2prime_peak"] = f2prime_peak
-  resultDict["fprime_peak"] = fprime_peak
-  choochOutFile = open("/nfs/skinner/temp/choochData1.efs","r")
-  chooch_graph_x = []
-  chooch_graph_y1 = []
-  chooch_graph_y2 = []
-  for outLine in choochOutFile.readlines():
-    tokens = outLine.split()
-    chooch_graph_x.append(float(tokens[0]))
-    chooch_graph_y1.append(float(tokens[1]))
-    chooch_graph_y2.append(float(tokens[2]))
-  choochOutFile.close()
-  plt.plot(chooch_graph_x,chooch_graph_y1)
-  plt.plot(chooch_graph_x,chooch_graph_y2)
-  plt.show()
-#  plt.plot(chooch_graph_x,chooch_graph_y1,chooch_graph_y2)  
-#  self.choochGraph.setTitle("Chooch PLot")
-#  self.choochGraph.newcurve("spline", chooch_graph_x, chooch_graph_y1)
-#  self.choochGraph.newcurve("fp", chooch_graph_x, chooch_graph_y2)
-#  self.choochGraph.replot()
-#  self.choochResultFlag_pv.put(0)
-  print(resultDict)
-  
+    choochResultObj = {}
+    choochResultObj["infl"] = infl
+    choochResultObj["peak"] = peak
+    choochResultObj["f2prime_infl"] = f2prime_infl
+    choochResultObj["fprime_infl"] = fprime_infl
+    choochResultObj["f2prime_peak"] = f2prime_peak
+    choochResultObj["fprime_peak"] = fprime_peak
+    choochResultObj["sample_id"] = sampleID
+    choochOutFile = open("/nfs/skinner/temp/choochData1.efs","r")
+    chooch_graph_x = []
+    chooch_graph_y1 = []
+    chooch_graph_y2 = []
+    for outLine in choochOutFile.readlines():
+      tokens = outLine.split()
+      chooch_graph_x.append(float(tokens[0]))
+      chooch_graph_y1.append(float(tokens[1]))
+      chooch_graph_y2.append(float(tokens[2]))
+    choochOutFile.close()
+    choochResultObj["choochOutXAxis"] = chooch_graph_x
+    choochResultObj["choochOutY1Axis"] = chooch_graph_y1
+    choochResultObj["choochOutY2Axis"] = chooch_graph_y2
+    choochResultObj["choochInXAxis"] = choochInputData_x
+    choochResultObj["choochInYAxis"] = choochInputData_y  
+    plt.plot(chooch_graph_x,chooch_graph_y1)
+    plt.plot(chooch_graph_x,chooch_graph_y2)
+    plt.show()
+    print(choochResultObj)
+    choochResult = db_lib.addResultforRequest("choochResult",energyScanRequest["request_id"], choochResultObj)
+    choochResultID = choochResult["result_id"]
+    set_field("choochResultFlag",choochResultID)
 
 
 def vectorScan(vecRequest): 
