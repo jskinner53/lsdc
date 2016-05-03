@@ -682,6 +682,10 @@ def eScan(energyScanRequest):
   reqObj = energyScanRequest["request_obj"]
   print("energy scan for " + str(reqObj['scanEnergy']))
   scan_element = "Se"
+  scanID = dscan(omega,-20,20,10,1)
+  scanData = db[scanID]
+  scanDataTable = get_table(scanData,["omega","cam_7_stats1_total"])
+  print(scanDataTable)
   if (reqObj["runChooch"]):
     chooch_prefix = "choochData1"
     choochOutfileName = chooch_prefix+".efs"
@@ -738,10 +742,10 @@ def eScan(energyScanRequest):
     choochResultObj["choochOutY2Axis"] = chooch_graph_y2
     choochResultObj["choochInXAxis"] = choochInputData_x
     choochResultObj["choochInYAxis"] = choochInputData_y  
-    plt.plot(chooch_graph_x,chooch_graph_y1)
-    plt.plot(chooch_graph_x,chooch_graph_y2)
-    plt.show()
-    print(choochResultObj)
+#    plt.plot(chooch_graph_x,chooch_graph_y1)
+#    plt.plot(chooch_graph_x,chooch_graph_y2)
+#    plt.show()
+#    print(choochResultObj)
     choochResult = db_lib.addResultforRequest("choochResult",energyScanRequest["request_id"], choochResultObj)
     choochResultID = choochResult["result_id"]
     set_field("choochResultFlag",choochResultID)

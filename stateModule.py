@@ -69,7 +69,7 @@ def gotoState(stateName):
 
 def transProcM2SE():
   print("transition Maintenance to Sample Exchange")
-  var_channel_list["beamStop"].put(0)
+  var_channel_list["beamStop"].put(11)  
   var_channel_list["aperature"].put(0)
 
 

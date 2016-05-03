@@ -212,6 +212,7 @@ def main(mode):
   if (mode=="gui"):
     run_server()
   else:
+#    pass
     os.system("/nfs/skinner/projects/lsdcPy3/daq_main2.py gui&")    
 
 if (len(sys.argv)>1):

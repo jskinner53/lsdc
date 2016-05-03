@@ -1,4 +1,6 @@
 #!/opt/conda_envs/lsdc_dev3/bin/ipython -i
+import matplotlib.pyplot as plt
+plt.ion()
 import ophyd
 ophyd.utils.startup.setup()
 
