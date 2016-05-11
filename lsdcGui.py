@@ -1416,6 +1416,9 @@ class controlMain(QtGui.QMainWindow):
         tempPlotButton = QtGui.QPushButton("Queue Request")        
         tempPlotButton.clicked.connect(self.queueEnScanCB)
         vBoxEScan.addWidget(tempPlotButton)
+        clearEnscanPlotButton = QtGui.QPushButton("Clear")        
+        clearEnscanPlotButton.clicked.connect(self.clearEnScanPlotCB)
+        vBoxEScan.addWidget(clearEnscanPlotButton)
         hBoxEScan.addLayout(vBoxEScan)
         verticalLine = QFrame()
         verticalLine.setFrameStyle(QFrame.VLine)
@@ -1745,6 +1748,9 @@ class controlMain(QtGui.QMainWindow):
       self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
       self.treeChanged_pv.put(1)      
 
+    def clearEnScanPlotCB(self):
+      self.EScanGraph.removeCurves()     
+      self.choochGraph.removeCurves()
 
     def displayXrecRaster(self,xrecRasterFlag):
       self.xrecRasterFlag_pv.put(0)

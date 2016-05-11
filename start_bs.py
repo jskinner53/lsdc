@@ -18,7 +18,7 @@ from bluesky.broker_callbacks import *
 from bluesky.callbacks.olog import logbook_cb_factory
 from bluesky.hardware_checklist import *
 from bluesky.qt_kicker import install_qt_kicker
-
+from mercury import *
 
 # The following line allows bluesky and pyqt4 GUIs to play nicely together:
 install_qt_kicker()
@@ -31,7 +31,7 @@ stop = RE.stop
 
 RE.md['group'] = 'amx'
 RE.md['beamline_id'] = 'AMX'
-RE.ignore_callback_exceptions = False
+#RE.ignore_callback_exceptions = False
 
 loop = asyncio.get_event_loop()
 loop.set_debug(False)
@@ -78,5 +78,9 @@ cam_7 = StandardProsilica('XF:17IDC-ES:FMX{Cam:7}', name='cam_7')
 filter_camera_data(cam_7)
 
 omega = EpicsMotor("XF:17IDC-ES:FMX{Gon:1-Ax:O}Mtr",name="omega")
-gs.DETS=[cam_7]
+#gs.DETS=[cam_7,mercury]
+gs.DETS=[mercury]
+mercury.count_time = 1
 gs.PLOT_Y=cam_7.stats1.total.name
+#gs.PLOT_Y=mercury.mca.spectrum.value.sum
+
