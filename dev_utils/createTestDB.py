@@ -94,7 +94,9 @@ def createTestDB():
         createType("rasterJpeg","","result")        
         createType("rasterResult","","result")             
         createType("characterizationStrategy","","result")        
-        createType("mxExpParams","","result") 
+        createType("mxExpParams","","result")
+        createType("eScanResult","","result")        
+        
 
         createBeamline("fmx", "17id1")
         createBeamline("john", "99id1")

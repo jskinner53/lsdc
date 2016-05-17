@@ -825,6 +825,7 @@ class controlMain(QtGui.QMainWindow):
         self.SelectedItemData = -999 #attempt to know what row is selected
         self.popUpMessageInit = 1 # I hate these next two, but I don't want to catch old messages. Fix later, maybe.
         self.textWindowMessageInit = 1
+        self.processID = os.getpid()
         self.popupMessage = QtGui.QErrorMessage(self)
         self.popupMessage.setModal(False)
         self.groupName = "skinner"        
@@ -1447,6 +1448,10 @@ class controlMain(QtGui.QMainWindow):
         fileHBoxLayout = QtGui.QHBoxLayout()
         self.statusLabel = QtEpicsPVLabel(daq_utils.beamlineComm+"program_state",self,300,highlight_on_change=False)
         fileHBoxLayout.addWidget(self.statusLabel.getEntry())
+        self.controlMasterCheckBox = QCheckBox("Control Master")
+        self.controlMasterCheckBox.stateChanged.connect(self.changeControlMasterCB)
+        self.controlMasterCheckBox.setChecked(False)
+        fileHBoxLayout.addWidget(self.controlMasterCheckBox)
         fileHBoxLayout.addWidget(self.lastFileLabel2)
         fileHBoxLayout.addWidget(self.lastFileRBV2.getEntry())
         vBoxlayout.addLayout(fileHBoxLayout)
@@ -1608,6 +1613,11 @@ class controlMain(QtGui.QMainWindow):
       del painter
 
 
+
+    def changeControlMasterCB(self, state):
+      if state == QtCore.Qt.Checked:
+        self.controlMaster_pv.put(self.processID)
+      
     def changeZoomCB(self, state):
       fov = {}      
       if state == QtCore.Qt.Checked:
@@ -1776,6 +1786,12 @@ class controlMain(QtGui.QMainWindow):
       print "in callback mounted pin = " + str(mountedPinPos)
       self.treeChanged_pv.put(1)
 
+    def processControlMaster(self,controlPID):
+      print "in callback controlPID = " + str(controlPID)
+      if (int(controlPID) == self.processID):
+        self.controlMasterCheckBox.setChecked(True)
+      else:
+        self.controlMasterCheckBox.setChecked(False)      
 
     def processChoochResult(self,choochResultFlag):
       choochResult = db_lib.getResult(choochResultFlag)
@@ -3000,6 +3016,10 @@ class controlMain(QtGui.QMainWindow):
       mountedPinPos = value
       self.emit(QtCore.SIGNAL("mountedPinSignal"),mountedPinPos)
 
+    def controlMasterChangedCB(self,value=None, char_value=None, **kw):
+      controlMasterPID = value
+      self.emit(QtCore.SIGNAL("controlMasterSignal"),controlMasterPID)
+      
     def processSampMoveCB(self,value=None, char_value=None, **kw):
       posRBV = value
       motID = kw["motID"]
@@ -3068,6 +3088,11 @@ class controlMain(QtGui.QMainWindow):
       self.mountedPin_pv = PV(daq_utils.beamlineComm + "mounted_pin")
       self.connect(self, QtCore.SIGNAL("mountedPinSignal"),self.processMountedPin)
       self.mountedPin_pv.add_callback(self.mountedPinChangedCB)  
+
+      self.controlMaster_pv = PV(daq_utils.beamlineComm + "zinger_flag")
+      self.connect(self, QtCore.SIGNAL("controlMasterSignal"),self.processControlMaster)
+      self.controlMaster_pv.add_callback(self.controlMasterChangedCB)  
+
       self.choochResultFlag_pv = PV(daq_utils.beamlineComm + "choochResultFlag")
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
       self.choochResultFlag_pv.add_callback(self.processChoochResultsCB)  
@@ -3140,11 +3165,15 @@ class controlMain(QtGui.QMainWindow):
 #        self.statusLabel.setColor("None")
         self.text_output.newPrompt()
 
+    def controlEnabled(self):
+      return (self.processID == int(self.controlMaster_pv.get()))
         
     def send_to_server(self,s):
-#      if not (control_disabled):
-      time.sleep(.01)
-      self.comm_pv.put(s)
+      if (self.controlEnabled()):
+        time.sleep(.01)
+        self.comm_pv.put(s)
+      else:
+        print("You don't have control")
 
     def aux_send_to_server(self,s):
 #      if not (control_disabled):

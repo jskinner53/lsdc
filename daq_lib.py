@@ -255,7 +255,7 @@ def runDCQueue(): #maybe don't run rasters from here???
   while (1):
     if (abort_flag):
       abort_flag =  0 #careful about when to reset this
-      return
+##?????5/16      return
     currentRequest = db_lib.popNextRequest()
     if (currentRequest == {}):
       break
@@ -442,7 +442,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 ###  detector_wait()
   image_started = 0        
   set_field("state","Idle")        
-  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+#  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
 

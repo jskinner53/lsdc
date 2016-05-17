@@ -20,6 +20,7 @@ from importlib import reload
 import start_bs
 from start_bs import *
 import subprocess
+import super_state_machine
 
 def hi_macro():
   print("hello from macros\n")
@@ -33,7 +34,11 @@ def BS2():
   ascan(omega,0,100,10)
 
 def abortBS():
-  RE.abort()
+  if (RE.state != "idle"):
+    try:
+      RE.abort()
+    except super_state_machine.errors.TransitionError:
+      print("caught BS")
   
 def flipLoopShapeCoords(filename): # not used
   xrec_out_file = open(filename,"r")  
@@ -685,6 +690,10 @@ def eScan(energyScanRequest):
   scanID = dscan(omega,-20,20,10,1)
   scanData = db[scanID]
   scanDataTable = get_table(scanData,["omega","cam_7_stats1_total"])
+  eScanResultObj = {}
+  eScanResultObj["databrokerID"] = scanID
+  eScanResultObj["sample_id"] = sampleID  
+  eScanResult = db_lib.addResultforRequest("eScanResult",energyScanRequest["request_id"], eScanResultObj)  
   print(scanDataTable)
   if (reqObj["runChooch"]):
     chooch_prefix = "choochData1"
