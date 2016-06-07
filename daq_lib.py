@@ -309,7 +309,9 @@ def collectData(currentRequest):
       beamline_lib.mvaDescriptor("sampleZ",reqObj["pos_z"])
     else:
       print("autoRaster")
-      daq_macros.autoRasterLoop(currentRequest)    
+      if not (daq_macros.autoRasterLoop(currentRequest)):
+        print("could not center sample")
+        return
     exposure_period = reqObj["exposure_time"]
     wavelength = reqObj["wavelength"]
     resolution = reqObj["resolution"]
@@ -415,6 +417,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   number_of_images = round(range_degrees/image_width)
   range_seconds = number_of_images*exposure_period
   exposure_time = exposure_period - .0024
+  angleStart = beamline_lib.motorPosFromDescriptor("omega")%360.0 #note, nsls2 angle start now used, just get current position for now  
   file_prefix_minus_directory = str(fileprefix)
   try:
     file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
@@ -427,19 +430,19 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
-  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))
+  detector_set_fileheader(angleStart,image_width,get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))
+#  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))  
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
-###  detector_start()
-#  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
+  detector_start()
+  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
   image_started = range_seconds
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
   set_field("state","Expose")
 ##########  set_epics_pv_nowait("xtz","VAL",z_target)   #this is for grid!!!!!!!!
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  angleStart = beamline_lib.motorPosFromDescriptor("omega")%360.0 #note, nsls2 angle start now used, just get current position for now
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
-###  detector_wait()
+  detector_wait()
   image_started = 0        
   set_field("state","Idle")        
 #  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  

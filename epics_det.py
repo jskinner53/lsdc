@@ -117,9 +117,9 @@ def det_setheader(phist,phiinc,dist,wave,theta,exptime,xbeam,ybeam,rot_ax,omega,
   set_det_pv("det_distance",dist)
   set_det_pv("x_beam",xbeam)
   set_det_pv("y_beam",ybeam)
+  set_det_pv("img_width",phiinc)
+  set_det_pv("start_angle",phist)  
   if (det_id=="PILATUS-6"):
-    set_det_pv("img_width",phiinc)
-    set_det_pv("start_angle",phist)  
     set_det_pv("wave",wave)
     set_det_pv("twotheta",theta)
     set_det_pv("kappa",kappa)
@@ -215,7 +215,7 @@ def det_waitArmed(): #not even sure what this means.
     print("armed = " + str(get_det_pv("armed_state")))
     time.sleep(0.5)      
     while (get_det_pv("armed_state") == 0):
-      print(get_det_pv("armed_state"))
+#      print(get_det_pv("armed_state"))
       time.sleep(.01)
       
 def det_stop():

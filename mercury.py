@@ -17,6 +17,7 @@ class Mercury(Device):
     save_system = Cpt(EpicsSignalWithRBV, 'SaveSystem')
     save_system_file = Cpt(EpicsSignal, 'SaveSystemFile')
     set_client_wait = Cpt(EpicsSignal, 'SetClientWait')
+    count_time = Cpt(EpicsSignal, 'PresetReal')
 
 
 class MercurySoftTrigger(BlueskyInterface):
@@ -62,14 +63,14 @@ class MercurySoftTrigger(BlueskyInterface):
             self._status._finished()
             self._status = None
 
-    @property
-    def count_time(self):
-        '''Exposure time, as set by bluesky'''
-        return self._count_time
+#    @property
+#    def count_time(self):
+#        '''Exposure time, as set by bluesky'''
+#        return self._count_time
 
-    @count_time.setter
-    def count_time(self, count_time):
-        self._count_time = count_time
+#    @count_time.setter
+#    def count_time(self, count_time):
+#        self._count_time = count_time
 
 
 class FMXMercury(MercurySoftTrigger, Mercury):

@@ -21,6 +21,13 @@ import start_bs
 from start_bs import *
 import subprocess
 import super_state_machine
+import _thread
+
+global dialsResultDict, rasterRowResultsList, processedRasterRowCount
+
+dialsResultDict = {}
+rasterRowResultsList = []
+
 
 def hi_macro():
   print("hello from macros\n")
@@ -57,14 +64,16 @@ def autoRasterLoop(currentRequest):
   set_field("xrecRasterFlag",100)        
   sampleID = currentRequest["sample_id"]
   print("auto raster " + str(sampleID))
-  loop_center_xrec()
+  if not (loop_center_xrec()):
+    return 0
   time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
   runRasterScan(currentRequest,"LoopShape")
   time.sleep(1.5) 
   runRasterScan(currentRequest,"Fine")
   time.sleep(1) 
   runRasterScan(currentRequest,"Line")  
-  time.sleep(1) 
+  time.sleep(1)
+  return 1
 
 def multiCol(currentRequest):
   set_field("xrecRasterFlag",100)      
@@ -82,6 +91,7 @@ def loop_center_xrec():
 
   for i in range(0,360,40):
     if (daq_lib.abort_flag == 1):
+      print("caught abort in loop center")
       return 0
     mvaDescriptor("omega",i)
     pic_prefix = "findloop_" + str(i)
@@ -154,6 +164,8 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 
 
 def generateGridMap(rasterRequest):
+  global dialsResultDict,rasterRowResultsList
+
   reqObj = rasterRequest["request_obj"]
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
@@ -163,8 +175,8 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
+  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")  
 #  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/Eiger1M/*.cbf")
-  testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")  
   testImgCount = 0
   rasterCellMap = {}
   os.system("mkdir -p " + reqObj["directory"])
@@ -192,34 +204,30 @@ def generateGridMap(rasterRequest):
       else:
         xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
 
-      dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
-      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName      
-      os.system(comm_s)
+      dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
+ ##     comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName      
+##      os.system(comm_s)
       testImgCount+=1
       rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
       rasterCellMap[dataFileName[:-4]] = rasterCellCoords
-####  comm_s = "ssh -q xf17id1-srv1 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
-#  comm_s = "ssh -q cpu-004 \"ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|/usr/local/crys/dials-installer-dev-316-intel-linux-2.6-x86_64-centos5/build/bin/dials.find_spots_client\""
-###############the following 2 lines are for that strange bug where a remote process doesn't see stuff on a remote filesystem!
-  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf>>/dev/null'"
-  lsOut = os.system(comm_s)
-  
-  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf| /usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client'"  
-#  comm_s = "ssh -q cpu-004 'ls -rt " + reqObj["directory"]+"/"+reqObj["file_prefix"]+"*.cbf|strace /usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client >dialsClientOut2.txt 2>&1'"  
-  print(comm_s)
-#  dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
-  dialsOut = os.popen(comm_s)
-#  dialsOut = subprocess.Popen(comm_s,shell=True)  
-  time.sleep(1)
-  dialsResultObj = xmltodict.parse("<data>\n"+dialsOut.read()+"</data>\n")  
-  print("done parsing dials output")
-  print(dialsResultObj)
+#commented out all of the processing, as this should have been done by the thread
   if ("parentReqID" in rasterRequest["request_obj"]):
     parentReqID = rasterRequest["request_obj"]["parentReqID"]
   else:
     parentReqID = -1
-  rasterResultObj = {"sample_id": rasterRequest["sample_id"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultObj}}
-#  rasterResult = daq_utils.createResult("rasterResult",rasterResultObj)
+  print("RASTER CELL RESULTS")
+  dialsResultLocalList = []
+  for i in range (0,len(rasterRowResultsList)):
+    for j in range (0,len(rasterRowResultsList[i])):
+      try:
+        dialsResultLocalList.append(rasterRowResultsList[i][j])
+      except KeyError: #this is to deal with single cell row. Instead of getting back a list of one row, I get back just the row from Dials.
+        dialsResultLocalList.append(rasterRowResultsList[i])
+        break
+###############
+  print(dialsResultLocalList)
+
+  rasterResultObj = {"sample_id": rasterRequest["sample_id"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}
   rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
 
@@ -235,7 +243,36 @@ def vectorWait():
     time.sleep(0.05)
 
 
+def runDialsThread(pattern,rowIndex,rowCellCount):
+  global rasterRowResultsList,processedRasterRowCount
+
+  hdfRowFilepattern = pattern + str(rowIndex) + "_master.h5"
+  CBF_conversion_pattern = pattern
+#  CBF_conversion_pattern = pattern+str(rowIndex)+"_"  
+#normally use the cbf converter to get the frame count here, but we'll just harcode it for now, but we'll call it anyway
+  comm_s = "eiger2cbf-linux " + hdfRowFilepattern
+###  os.system(comm_s)
+  comm_s = "eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern
+###  os.system(comm_s)
+  CBFpattern = CBF_conversion_pattern + "*.cbf"
+  comm_s = "ssh -q cpu-004 \"ls -rt " + CBFpattern + ">>/dev/null\""
+  lsOut = os.system(comm_s)
+  comm_s = "ssh -q cpu-004 \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
+###  comm_s = "ls -rt " + CBFpattern + "|/usr/local/crys-local/dials/build/bin/dials.find_spots_client"  
+####  comm_s = "ssh -q cpu-004 \"ls -rt " + pattern + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
+  print(comm_s)
+  localDialsResultDict = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+  rasterRowResultsList[rowIndex] = localDialsResultDict["data"]["response"]
+  print("\n")
+  print(rasterRowResultsList[rowIndex])
+  print("\n")
+  processedRasterRowCount+=1
+
+
+
 def snakeRaster(rasterReqID,grain=""):
+  global dialsResultDict,rasterRowResultsList,processedRasterRowCount
+  
   rasterRequest = db_lib.getRequest(rasterReqID)
   reqObj = rasterRequest["request_obj"]
   parentReqID = reqObj["parentReqID"]
@@ -252,6 +289,7 @@ def snakeRaster(rasterReqID,grain=""):
   os.system("mkdir -p " + data_directory_name)
   os.system("chmod -R 777 " + data_directory_name)  
   filePrefix = str(reqObj["file_prefix"])
+  dataFilePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]  
   exptimePerCell = reqObj["exposure_time"]
   img_width_per_cell = reqObj["img_width"]
 #really should read these two from hardware  
@@ -271,19 +309,25 @@ def snakeRaster(rasterReqID,grain=""):
 #  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
 
 # 2/17/16 - a few things for integrating dials/spotfinding into this routine, this is just to fake the data
-#  testImgFileList = glob.glob("/nfs/skinner/testdata/Eiger1M/*.cbf")
-#  testImgCount = 0
-#  for i in xrange(len(rasterDef["rowDefs"])):
-#    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])    
-#    for j in xrange(numsteps):
-#      dataFileName = daq_utils.create_filename(filePrefix+"_"+str(i),j+1)
-#      os.system("mkdir -p " + reqObj["directory"])
-#      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
-#      os.system(comm_s)
-#      testImgCount+=1
-
+  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")
+  testImgCount = 0
+##  for i in range(0,len(rasterDef["rowDefs"])):
+##    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])    
+  rowCount = len(rasterDef["rowDefs"])
+  rasterRowResultsList = [{} for i in range(0,rowCount)]    
+  processedRasterRowCount = 0
+  
   for i in range(len(rasterDef["rowDefs"])):    
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
+#6/16  a few things for integrating dials/spotfinding into this routine, this is just to fake the data 
+    for j in range(0,numsteps):
+      rasterFilePrefix = dataFilePrefix + "_Raster_"
+      dataFileName = daq_utils.create_filename(rasterFilePrefix+str(i),j+1)
+      os.system("mkdir -p " + reqObj["directory"])
+      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
+      os.system(comm_s)
+      testImgCount+=1
+    
 #    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
 #    endX = rasterDef["rowDefs"][i]["end"]["x"]-(stepsize/2.0)    
 
@@ -348,18 +392,19 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorEndZ",zEnd)  
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
     beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
-    rasterFilePrefix = filePrefix + "_Raster_" + str(i+1)
+    rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
     if (daq_utils.detector_id == "EIGER-16" and 0):
       detectorArmEiger(numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
     vectorWait()
 ##    detector_wait()
-
-# 2/17/16 - a few things for integrating dials/spotfinding into this routine    
-#    rasterFilePattern = filePrefix+"_"+str(i)+"*.cbf"
-
 # add the threading dials stuff here, and the thread routine elsewhere.
-
+    _thread.start_new_thread(runDialsThread,(rasterFilePrefix,i,numsteps,))
+  while (1):
+    time.sleep(1)
+    print(processedRasterRowCount)
+    if (processedRasterRowCount == rowCount):
+      break
 
   rasterResult = generateGridMap(rasterRequest) #I think rasterRequest is entire request, of raster type
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
@@ -398,7 +443,8 @@ def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
 
 
 def gotoMaxRaster(rasterResult,multiColThreshold=-1):
-  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"] == None):
+  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj'] == None):
+#  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"] == None):    
     print("no raster result!!\n")
     return
   ceiling = 0.0
@@ -406,8 +452,9 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
   hotFile = ""
   scoreOption = ""
   print("in gotomax")
-  print(rasterResult)
-  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]  
+#  print(rasterResult)
+  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']
+#  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]    
   rasterMap = rasterResult["result_obj"]["rasterCellMap"]  
   rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
   if (rasterScoreFlag==0):
@@ -685,11 +732,24 @@ def getXrecLoopShape(currentRequest):
 def eScan(energyScanRequest):
   sampleID = energyScanRequest["sample_id"]
   reqObj = energyScanRequest["request_obj"]
+  exptime = reqObj['exposure_time']
   print("energy scan for " + str(reqObj['scanEnergy']))
   scan_element = "Se"
-  scanID = dscan(omega,-20,20,10,1)
+  scanID = RE(dscan(omega,-20,20,10,exptime))
   scanData = db[scanID]
-  scanDataTable = get_table(scanData,["omega","cam_7_stats1_total"])
+  for ev in get_events(scanData):
+    if ('mercury_mca_spectrum' in ev['data']):
+      print(ev['seq_num'], ev['data']['mercury_mca_spectrum'].sum())
+      
+  scanDataTable = get_table(scanData)
+#these next lines only make sense for the mca
+  specFile = open("spectrumData.txt","w+")
+  for i in range (0,len(scanDataTable.mercury_mca_spectrum.values)):
+    for j in range (0,len(scanDataTable.mercury_mca_spectrum.values[i])):
+      specFile.write(str(scanDataTable.mercury_mca_spectrum.values[i][j]) + ",")
+    specFile.write("\n")
+  specFile.close()
+#  scanDataTable = get_table(scanData,["omega","cam_7_stats1_total"])  
   eScanResultObj = {}
   eScanResultObj["databrokerID"] = scanID
   eScanResultObj["sample_id"] = sampleID  

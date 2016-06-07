@@ -1,30 +1,44 @@
 #!/opt/conda_envs/lsdc_dev3/bin/ipython -i
+import asyncio
+#from ophyd import setup_ophyd
+from ophyd import *
+setup_ophyd()
+
+# Subscribe metadatastore to documents.
+# If this is removed, data is not saved to metadatastore.
+import metadatastore.commands
+from bluesky.global_state import gs
+gs.RE.subscribe_lossless('all', metadatastore.commands.insert)
+from bluesky.callbacks.broker import post_run
+# At the end of every run, verify that files were saved and
+# print a confirmation message.
+from bluesky.callbacks.broker import verify_files_saved
+gs.RE.subscribe('stop', post_run(verify_files_saved))
+
+# Import matplotlib and put it in interactive mode.
 import matplotlib.pyplot as plt
 plt.ion()
-import ophyd
-ophyd.utils.startup.setup()
 
-import bluesky
-from ophyd import *
-from ophyd.commands import *
-from ophyd import EpicsMotor
-
-import asyncio
-from functools import partial
-from bluesky.standard_config import *
-from bluesky.plans import *
-from bluesky.callbacks import *
-from bluesky.broker_callbacks import *
-from bluesky.callbacks.olog import logbook_cb_factory
-from bluesky.hardware_checklist import *
-from bluesky.qt_kicker import install_qt_kicker
-from mercury import *
-
-# The following line allows bluesky and pyqt4 GUIs to play nicely together:
+# Make plots update live while scans run.
+from bluesky.utils import install_qt_kicker
 install_qt_kicker()
 
+# Optional: set any metadata that rarely changes.
+# RE.md['beamline_id'] = 'YOUR_BEAMLINE_HERE'
 
-RE = gs.RE
+# convenience imports
+from ophyd.commands import *
+from bluesky.callbacks import *
+from bluesky.spec_api import *
+from bluesky.global_state import gs, abort, stop, resume
+from databroker import (DataBroker as db, get_events, get_images,
+                                                get_table, get_fields, restream, process)
+from time import sleep
+import numpy as np
+from mercury import *
+
+RE = gs.RE  # convenience alias
+#rest is hugo
 abort = RE.abort
 resume = RE.resume
 stop = RE.stop
@@ -80,7 +94,8 @@ filter_camera_data(cam_7)
 omega = EpicsMotor("XF:17IDC-ES:FMX{Gon:1-Ax:O}Mtr",name="omega")
 #gs.DETS=[cam_7,mercury]
 gs.DETS=[mercury]
-mercury.count_time = 1
-gs.PLOT_Y=cam_7.stats1.total.name
+mercury.count_time.set(1.0)
+#mercury.count_time = 1
+#gs.PLOT_Y=cam_7.stats1.total.name
 #gs.PLOT_Y=mercury.mca.spectrum.value.sum
 

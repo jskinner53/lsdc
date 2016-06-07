@@ -1025,7 +1025,7 @@ class controlMain(QtGui.QMainWindow):
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
-        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol"] # these should probably come from db
+        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1414,7 +1414,7 @@ class controlMain(QtGui.QMainWindow):
 #        vBoxEScan.addWidget(self.periodicFrame)
         self.EScanDataPathGB = DataLocInfo(self)
         vBoxEScan.addWidget(self.EScanDataPathGB)
-        tempPlotButton = QtGui.QPushButton("Queue Request")        
+        tempPlotButton = QtGui.QPushButton("Queue Requests")        
         tempPlotButton.clicked.connect(self.queueEnScanCB)
         vBoxEScan.addWidget(tempPlotButton)
         clearEnscanPlotButton = QtGui.QPushButton("Clear")        
@@ -1615,8 +1615,9 @@ class controlMain(QtGui.QMainWindow):
 
 
     def changeControlMasterCB(self, state):
-      if state == QtCore.Qt.Checked:
+      if (state == QtCore.Qt.Checked):
         self.controlMaster_pv.put(self.processID)
+
       
     def changeZoomCB(self, state):
       fov = {}      
@@ -1755,7 +1756,8 @@ class controlMain(QtGui.QMainWindow):
 
 
     def queueEnScanCB(self):
-      self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+#      self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+      self.addRequestsToAllSelectedCB()
       self.treeChanged_pv.put(1)      
 
     def clearEnScanPlotCB(self):
@@ -1787,7 +1789,7 @@ class controlMain(QtGui.QMainWindow):
       self.treeChanged_pv.put(1)
 
     def processControlMaster(self,controlPID):
-      print "in callback controlPID = " + str(controlPID)
+#      print "in callback controlPID = " + str(controlPID)
       if (int(controlPID) == self.processID):
         self.controlMasterCheckBox.setChecked(True)
       else:
@@ -2088,7 +2090,8 @@ class controlMain(QtGui.QMainWindow):
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]      
+      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']
+#      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]            
       numLines = len(cellResults)
       cellResults_array = [{} for i in xrange(numLines)]
 #      filename_array = ["" for i in xrange(numLines)]
@@ -2627,6 +2630,7 @@ class controlMain(QtGui.QMainWindow):
           reqObj["basePath"] = str(self.EScanDataPathGBTool.base_path_ledit.text())
           reqObj["directory"] = str(self.EScanDataPathGBTool.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
           reqObj["file_number_start"] = int(self.EScanDataPathGBTool.file_numstart_ledit.text())
+          reqObj["exposure_time"] = float(self.exp_time_ledit.text())          
           reqObj["protocol"] = "eScan"
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
@@ -2655,6 +2659,7 @@ class controlMain(QtGui.QMainWindow):
           reqObj["basePath"] = str(self.EScanDataPathGB.base_path_ledit.text())
           reqObj["directory"] = str(self.EScanDataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
           reqObj["file_number_start"] = int(self.EScanDataPathGB.file_numstart_ledit.text())
+          reqObj["exposure_time"] = float(self.exp_time_ledit.text())                    
           reqObj["protocol"] = "eScan"
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
@@ -3166,19 +3171,22 @@ class controlMain(QtGui.QMainWindow):
         self.text_output.newPrompt()
 
     def controlEnabled(self):
-      return (self.processID == int(self.controlMaster_pv.get()))
+      return (self.processID == int(self.controlMaster_pv.get()) and self.controlMasterCheckBox.isChecked())
         
     def send_to_server(self,s):
       if (self.controlEnabled()):
         time.sleep(.01)
         self.comm_pv.put(s)
       else:
-        print("You don't have control")
+        self.popupServerMessage("You don't have control")
+
 
     def aux_send_to_server(self,s):
-#      if not (control_disabled):
-      time.sleep(.01)
-      self.immediate_comm_pv.put(s)
+      if (self.controlEnabled()):
+        time.sleep(.01)
+        self.immediate_comm_pv.put(s)
+      else:
+        self.popupServerMessage("You don't have control")
 
 
 def main():
