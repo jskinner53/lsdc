@@ -246,18 +246,32 @@ def vectorWait():
 def runDialsThread(pattern,rowIndex,rowCellCount):
   global rasterRowResultsList,processedRasterRowCount
 
-  hdfRowFilepattern = pattern + str(rowIndex) + "_master.h5"
-  CBF_conversion_pattern = pattern
+  hdfSampleDataPattern = "/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/insu6_"
+  hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_master.h5"
+#  hdfRowFilepattern = pattern + str(rowIndex) + "_master.h5"  
+  CBF_conversion_pattern = pattern+"_"
 #  CBF_conversion_pattern = pattern+str(rowIndex)+"_"  
 #normally use the cbf converter to get the frame count here, but we'll just harcode it for now, but we'll call it anyway
   comm_s = "eiger2cbf-linux " + hdfRowFilepattern
 ###  os.system(comm_s)
-  comm_s = "eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern
-###  os.system(comm_s)
+#some stuff to pull different images from the hdf container, No, b/c it uses those indices in the output filenames
+#  startIndex = randint(1,700)
+#  endIndex = startIndex + rowCellCount - 1
+  if (rowIndex%2 == 0):
+    node = "cpu-004"
+  else:
+    node = "cpu-005"    
+  if (rowCellCount==1): #account for bug in converter
+    comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
+  else:
+    comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
+  print(comm_s)
+#  comm_s = "ssh -q cpu-004 \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " " + str(startIndex) + ":" + str(endIndex) + " " + CBF_conversion_pattern + "\""  
+  os.system(comm_s)
   CBFpattern = CBF_conversion_pattern + "*.cbf"
-  comm_s = "ssh -q cpu-004 \"ls -rt " + CBFpattern + ">>/dev/null\""
+  comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + ">>/dev/null\""
   lsOut = os.system(comm_s)
-  comm_s = "ssh -q cpu-004 \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
+  comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
 ###  comm_s = "ls -rt " + CBFpattern + "|/usr/local/crys-local/dials/build/bin/dials.find_spots_client"  
 ####  comm_s = "ssh -q cpu-004 \"ls -rt " + pattern + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
   print(comm_s)
@@ -325,7 +339,7 @@ def snakeRaster(rasterReqID,grain=""):
       dataFileName = daq_utils.create_filename(rasterFilePrefix+str(i),j+1)
       os.system("mkdir -p " + reqObj["directory"])
       comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
-      os.system(comm_s)
+##      os.system(comm_s)
       testImgCount+=1
     
 #    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)

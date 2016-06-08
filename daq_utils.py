@@ -371,7 +371,7 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
   return imageJpegData
 
 def create_filename(prefix,number):
-  tmp_filename = "%s_%05d.cbf" % (prefix,int(number))
+  tmp_filename = "%s_%06d.cbf" % (prefix,int(number))
   if (prefix[0] != "/"):
     cwd = os.getcwd()
     filename = "%s/%s" % (cwd,tmp_filename)
