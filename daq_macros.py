@@ -145,11 +145,10 @@ def loop_center_xrec():
   return 1
 
 def fakeDC(directory,filePrefix,numstart,numimages):
-#  return #SHORT CIRCUIT
-#  testImgFileList = glob.glob("/home/pxuser/Test-JJ/johnPil6/data/B1GGTApo_9_*.cbf")
-  if (numimages > 360):
+  if (numimages > 900):
     return
-  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/johnPil6/data/B1GGTApo_9_0*.cbf")
+  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")    
+#  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/johnPil6/data/B1GGTApo_9_0*.cbf")  
   testImgFileList.sort()
   prefix_long = directory+"/"+filePrefix
   expectedFilenameList = []
@@ -275,7 +274,15 @@ def runDialsThread(pattern,rowIndex,rowCellCount):
 ###  comm_s = "ls -rt " + CBFpattern + "|/usr/local/crys-local/dials/build/bin/dials.find_spots_client"  
 ####  comm_s = "ssh -q cpu-004 \"ls -rt " + pattern + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
   print(comm_s)
-  localDialsResultDict = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
+  retry = 3
+  while(1):
+    resultString = "<data>\n"+os.popen(comm_s).read()+"</data>\n"
+    localDialsResultDict = xmltodict.parse(resultString)
+    if (localDialsResultDict["data"] == None and retry>0):
+      print("ERROR \n" + resultString + " retry = " + str(retry))
+      retry = retry - 1
+    else:
+      break
   rasterRowResultsList[rowIndex] = localDialsResultDict["data"]["response"]
   print("\n")
   print(rasterRowResultsList[rowIndex])
@@ -334,13 +341,13 @@ def snakeRaster(rasterReqID,grain=""):
   for i in range(len(rasterDef["rowDefs"])):    
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
 #6/16  a few things for integrating dials/spotfinding into this routine, this is just to fake the data 
-    for j in range(0,numsteps):
-      rasterFilePrefix = dataFilePrefix + "_Raster_"
-      dataFileName = daq_utils.create_filename(rasterFilePrefix+str(i),j+1)
-      os.system("mkdir -p " + reqObj["directory"])
-      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
+##    for j in range(0,numsteps):
+##      rasterFilePrefix = dataFilePrefix + "_Raster_"
+##n      dataFileName = daq_utils.create_filename(rasterFilePrefix+str(i),j+1)
+##      os.system("mkdir -p " + reqObj["directory"])
+##      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
 ##      os.system(comm_s)
-      testImgCount+=1
+##      testImgCount+=1
     
 #    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
 #    endX = rasterDef["rowDefs"][i]["end"]["x"]-(stepsize/2.0)    

@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/opt/conda_envs/lsdc_dev3/bin/python
+##!/usr/bin/python
 import time
 import os
 import sys
@@ -7,7 +8,7 @@ import xmltodict
 import daq_utils
 
 
-def generateSpotsFileFromXMLObsolete(fastdpXmlFilename="fast_dp.xml"):
+def generateSpotsFileFromXMLObsolete(fastdpXmlFilename="fast_dp.xml"): #no idea what this is - 6/16
 
   tree = ET.parse(fastdpXmlFilename)
   root = tree.getroot()
@@ -42,8 +43,10 @@ while(not os.path.exists(expectedFilenameList[len(expectedFilenameList)-1])): #t
   time.sleep(1.0)
   if (timeout_check > timeoutLimit):
     break
-comm_s = "fast_dp " + expectedFilenameList[0]
-print comm_s
+node = "cpu-004"
+comm_s = "ssh  -q " + node + " \"cd " + runningDir +";fast_dp " + expectedFilenameList[0] + "\""  
+#comm_s = "fast_dp " + expectedFilenameList[0] #note this the first image
+print(comm_s)
 os.system(comm_s)
 fd = open("fast_dp.xml")
 #nresult = {}
@@ -52,7 +55,7 @@ fd = open("fast_dp.xml")
 resultObj = xmltodict.parse(fd.read())
 #result["resultObj"] = resultObj
 db_lib.addResultforRequest("fastDP",request_id,resultObj)
-print "finished fast_dp"
+print("finished fast_dp")
 if (runFastEP):
   os.system("fast_ep")
 

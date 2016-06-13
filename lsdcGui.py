@@ -1087,7 +1087,7 @@ class controlMain(QtGui.QMainWindow):
         self.hBoxMultiColParamsLayout1.setAlignment(QtCore.Qt.AlignLeft)
         multiColCutoffLabel = QtGui.QLabel('Diffraction Cutoff')
         multiColCutoffLabel.setFixedWidth(110)
-        self.multiColCutoffEdit = QtGui.QLineEdit("185") #may need to store this in DB at some point, it's a silly number for now
+        self.multiColCutoffEdit = QtGui.QLineEdit("320") #may need to store this in DB at some point, it's a silly number for now
         self.multiColCutoffEdit.setFixedWidth(60)
         self.hBoxMultiColParamsLayout1.addWidget(multiColCutoffLabel)
         self.hBoxMultiColParamsLayout1.addWidget(self.multiColCutoffEdit)
@@ -2037,7 +2037,8 @@ class controlMain(QtGui.QMainWindow):
       else:
         return
       self.polyBoundingRect = self.rasterPoly.boundingRect()
-#      self.polyBoundingRect = self.scene.addRect(self.rasterPoly.boundingRect(),penBlue) #really don't need this
+#      penBlue = QtGui.QPen(QtCore.Qt.blue)
+#      self.scene.addRect(self.polyBoundingRect,penBlue) #really don't need this
       raster_w = int(self.polyBoundingRect.width())
       raster_h = int(self.polyBoundingRect.height())
       center_x = int(self.polyBoundingRect.center().x())
@@ -2342,7 +2343,7 @@ class controlMain(QtGui.QMainWindow):
             vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
             vectorEndX = vectorStartX 
             vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
-            vectorEndY = vectorStartY + (rowCellCount*stepsizeYPix)
+            vectorEndY = vectorStartY + self.screenYPixels2microns(rowCellCount*stepsizeYPix)
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
             rasterDef["rowDefs"].append(newRowDef)
       else: #horizontal raster
@@ -2358,7 +2359,7 @@ class controlMain(QtGui.QMainWindow):
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
             vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
-            vectorEndX = vectorStartX + (rowCellCount*stepsizeXPix)
+            vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix)
             vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
             vectorEndY = vectorStartY
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
@@ -2448,8 +2449,8 @@ class controlMain(QtGui.QMainWindow):
 #      print "got qimage" 
 #      frameWidth = qimage.width()
 #      frameHeight = qimage.height()
-#      print frameWidth
-#      print frameHeight
+#      print(frameWidth)
+#      print(frameHeight)
       pixmap_orig = QtGui.QPixmap.fromImage(qimage)
       if (0): 
 #      if (frameWidth>1000): #for now, this can be more specific later if needed, but I really never want to scale here!! 3/16 - we eliminated the need for gui scaling.          
