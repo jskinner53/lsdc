@@ -137,8 +137,10 @@ def loop_center_xrec():
 #  set_epics_pv("image_Y_center","A",y_center)
   print("center on click " + str(x_center) + " " + str(y_center-radius))
   print("center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec))
-  center_on_click(x_center,y_center-radius,source="macro")
-  center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,source="macro")
+  fovx = daq_utils.lowMagFOVx
+  fovy = daq_utils.lowMagFOVy
+  center_on_click(x_center,y_center-radius,fovx,fovy,source="macro")
+  center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,fovx,fovy,source="macro")
 #  center_on_click(y_centre_xrec,x_centre_xrec,source="macro")  
   mvaDescriptor("omega",face_on)
   #now try to get the loopshape starting from here
@@ -550,10 +552,11 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   
     
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
+#careful here, I'm hardcoding the view I think we'll use for definePolyRaster
 def getCurrentFOV(): 
   fov = {"x":0.0,"y":0.0}
-  fov["x"] = daq_utils.highMagFOVx
-  fov["y"] = daq_utils.highMagFOVy
+  fov["x"] = daq_utils.lowMagFOVx/3.0
+  fov["y"] = daq_utils.lowMagFOVy/3.0
   return fov
 
 

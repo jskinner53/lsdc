@@ -451,39 +451,34 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 
 
 
-def center_on_click(x,y,maglevel=0,source="screen",jog=0): #maglevel=0 means lowmag, high fov, #1 = himag with digizoom option, 
+def center_on_click(x,y,fovx,fovy,source="screen",maglevel=0,jog=0): #maglevel=0 means lowmag, high fov, #1 = himag with digizoom option, 
   #source=screen = from screen click, otherwise from macro with full pixel dimensions
   if (source == "screen"):
     beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.screenPixX) #these are video dimensions in the gui
     beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.screenPixY)
     beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.screenPixX/2)
-    beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.screenPixY/2)    
+    beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.screenPixY/2)
+    beamline_support.setPvValFromDescriptor("image_X_scaleMM",float(fovx))
+    beamline_support.setPvValFromDescriptor("image_Y_scaleMM",float(fovy))
+    
   else:
     if (int(maglevel)==0):
       beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.lowMagPixX)
       beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.lowMagPixY)
       beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.lowMagPixX/2)
       beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.lowMagPixY/2)
+      beamline_support.setPvValFromDescriptor("image_X_scaleMM",float(fovx))
+      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",float(fovy))
+      
     else:
-      beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.highMagPixX)
-      beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.highMagPixY)
+      beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.lowMagPixX)
+      beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.lowMagPixY)
       beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.highMagPixX/2)
       beamline_support.setPvValFromDescriptor("image_Y_centerPix",daq_utils.highMagPixY/2)
+      beamline_support.setPvValFromDescriptor("image_X_scaleMM",float(fovx))
+      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",float(fovy))
 
-  if (int(maglevel)==0):
-    beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.lowMagFOVx)
-    beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.lowMagFOVy)
-  else:
-    if (1):
-#    if (beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL") == "ROI2"):      
-      beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.highMagFOVx)
-      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.highMagFOVy)
-    else:
-      beamline_support.setPvValFromDescriptor("image_X_scaleMM",daq_utils.highMagFOVx/2.0)
-      beamline_support.setPvValFromDescriptor("image_Y_scaleMM",daq_utils.highMagFOVy/2.0)
-#  omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
   omega_mod = beamline_lib.motorPosFromDescriptor("omega")%360.0
-#  omega_mod = beamline_lib.get_epics_motor_pos("Omega")%360.0  
 #  daq_utils.broadcast_output("\ncenter on x = %s, y = %s, omega = %f, phi = %f\n" % (x,y,omega_mod,0))
   lib_gon_center_xtal(x,y,omega_mod,0)
   if (jog):
