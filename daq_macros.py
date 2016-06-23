@@ -654,7 +654,7 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
     numsteps_v = numsteps_v + 1
   point_offset_x = -(numsteps_h*stepsizeXPix)/2
   point_offset_y = -(numsteps_v*stepsizeYPix)/2
-  if (numsteps_v > numsteps_h): #vertical raster
+  if (numsteps_v > numsteps_h): #vertical raster, other than single column, I don't think we have loopshapes that hit this vert raster code
     for i in range(numsteps_h):
       rowCellCount = 0
       for j in range(numsteps_v):
@@ -669,7 +669,8 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
         vectorStartX = screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
         vectorEndX = vectorStartX 
         vectorStartY = screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
-        vectorEndY = vectorStartY + (rowCellCount*stepsizeMicrons)
+#        vectorEndY = vectorStartY + (rowCellCount*stepsizeMicrons)
+        vectorEndY = vectorStartY + screenYPixels2microns(rowCellCount*stepsizeYPix)    #looks better
         newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
         rasterDef["rowDefs"].append(newRowDef)
   else: #horizontal raster
@@ -686,7 +687,8 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
           rowCellCount = rowCellCount+1
       if (rowCellCount != 0): #no points in this row of the bounding rect are in the poly?
         vectorStartX = screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
-        vectorEndX = vectorStartX + (rowCellCount*stepsizeMicrons)
+        vectorEndX = vectorStartX + screenXPixels2microns(rowCellCount*stepsizeXPix) #this looks better, see gui and notes comments
+#        vectorEndX = vectorStartX + (rowCellCount*stepsizeMicrons) 
         vectorStartY = screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
         vectorEndY = vectorStartY
         newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}

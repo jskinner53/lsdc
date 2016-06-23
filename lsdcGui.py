@@ -851,11 +851,14 @@ class controlMain(QtGui.QMainWindow):
 
     def initVideo2(self,frequency):
 #      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C1.MJPG.mjpg")
-      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C2.MJPG.mjpg")
+      self.captureHighMag=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C2.MJPG.mjpg")
 
+    def initVideo4(self,frequency):
+      self.captureHighMagZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C1.MJPG.mjpg")
+      
 
     def initVideo3(self,frequency):
-      self.captureDigiZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C3.MJPG.mjpg")
+      self.captureLowMagZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C3.MJPG.mjpg")
             
     def createSampleTab(self):
 
@@ -1219,16 +1222,18 @@ class controlMain(QtGui.QMainWindow):
         self.VidFrame = QFrame()
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
-          thread.start_new_thread(self.initVideo2,(.25,))
-          thread.start_new_thread(self.initVideo3,(.25,))          #this sets up highMagDigiZoom
+          thread.start_new_thread(self.initVideo2,(.25,)) #highMag
+          thread.start_new_thread(self.initVideo3,(.25,))          #this sets up lowMagDigiZoom
+          thread.start_new_thread(self.initVideo4,(.25,))          #this sets up highMagDigiZoom          
 #          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1ZOOM.MJPG.mjpg")          
-          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg")          
+          self.captureLowMag=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg")          
         else:
-          self.captureFull = None
-          self.captureZoom = None
-          self.captureDigiZoom = None          
+          self.captureLowMag = None
+          self.captureHighMag = None
+          self.captureHighMagZoom = None          
+          self.captureLowMagZoom = None          
         time.sleep(5)
-        self.capture = self.captureFull
+        self.capture = self.captureLowMag
         if (daq_utils.has_xtalview):
           self.timerId = self.startTimer(40) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
         self.centeringMarksList = []
@@ -1237,8 +1242,8 @@ class controlMain(QtGui.QMainWindow):
         self.polyPointItems = []
         self.rasterPoly = None
         self.measureLine = None
-        self.scene = QtGui.QGraphicsScene(0,0,564,450,self)
-#        self.scene = QtGui.QGraphicsScene(0,0,640,512,self)        
+#        self.scene = QtGui.QGraphicsScene(0,0,564,450,self)
+        self.scene = QtGui.QGraphicsScene(0,0,640,512,self)        
 #        self.scene = QtGui.QGraphicsScene(0,0,646,482,self)        
         self.scene.keyPressEvent = self.sceneKey
         self.view = QtGui.QGraphicsView(self.scene)
@@ -1269,11 +1274,9 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout = QtGui.QHBoxLayout()
         omegaLabel = QtGui.QLabel("Omega")
         omegaRBLabel = QtGui.QLabel("Readback:")
-#        self.sampleOmegaRBVLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.RBV",self,0,"real") #type ignored for now, no validator yet
-        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!
-#        self.sampleOmegaRBVLedit = QtEpicsMotorLabel(daq_utils.gonioPvPrefix+"Omega",self,70) #type ignored for now, no validator yet
+#        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70) #creates a video lag
+        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!        
         omegaSPLabel = QtGui.QLabel("SetPoint:")
-#        self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.gonioPvPrefix+"Omega.VAL",self,70,"real")
         self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.motor_dict["omega"] + ".VAL",self,70,2)
         moveOmegaButton = QtGui.QPushButton("Move")
         moveOmegaButton.clicked.connect(self.moveOmegaCB)
@@ -1313,7 +1316,7 @@ class controlMain(QtGui.QMainWindow):
         self.cameraRadioGroup.addButton(self.highMagLevelRadio)
         self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
         self.digiZoomCheckBox = QCheckBox("Zoom")
-        self.digiZoomCheckBox.setEnabled(False)
+#        self.digiZoomCheckBox.setEnabled(False)
         self.digiZoomCheckBox.stateChanged.connect(self.changeZoomCB)
         snapshotButton = QtGui.QPushButton("Snapshot")
         snapshotButton.clicked.connect(self.saveVidSnapshotButtonCB)
@@ -1561,23 +1564,29 @@ class controlMain(QtGui.QMainWindow):
         return
       fov = {}
       if (self.lowMagLevelRadio.isChecked()):
-        self.digiZoomCheckBox.setEnabled(True)          
+#        self.digiZoomCheckBox.setEnabled(True)          
         if (self.digiZoomCheckBox.isChecked()):
-          self.flushBuffer(self.captureDigiZoom)
-          self.capture = self.captureDigiZoom
+          self.flushBuffer(self.captureLowMagZoom)
+          self.capture = self.captureLowMagZoom
           fov["x"] = daq_utils.lowMagFOVx/3.0
           fov["y"] = daq_utils.lowMagFOVy/3.0      
         else:
-          self.flushBuffer(self.captureFull)
-          self.capture = self.captureFull          
+          self.flushBuffer(self.captureLowMag)
+          self.capture = self.captureLowMag
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
       else:
-        self.digiZoomCheckBox.setEnabled(False)          
-        self.flushBuffer(self.captureZoom)
-        self.capture = self.captureZoom        
-        fov["x"] = daq_utils.highMagFOVx
-        fov["y"] = daq_utils.highMagFOVy
+        if (self.digiZoomCheckBox.isChecked()):
+          self.flushBuffer(self.captureHighMagZoom)
+          self.capture = self.captureHighMagZoom
+          fov["x"] = daq_utils.highMagFOVx/2.0
+          fov["y"] = daq_utils.highMagFOVy/2.0      
+        else:
+#        self.digiZoomCheckBox.setEnabled(False)          
+          self.flushBuffer(self.captureHighMag)
+          self.capture = self.captureHighMag
+          fov["x"] = daq_utils.highMagFOVx
+          fov["y"] = daq_utils.highMagFOVy
       self.adjustGraphics4ZoomChange(fov)
 
 
@@ -1641,21 +1650,26 @@ class controlMain(QtGui.QMainWindow):
 
       
     def changeZoomCB(self, state):
+      if (self.lowMagLevelRadio.isChecked()):
+        self.vidSourceToggledCB("LowMag")
+      else:
+        self.vidSourceToggledCB("HighMag")
+      return #short circuit
       fov = {}      
       if state == QtCore.Qt.Checked:
-        self.flushBuffer(self.captureDigiZoom)          
-        self.capture = self.captureDigiZoom          
+        self.flushBuffer(self.captureLowMagZoom)
+        self.capture = self.captureLowMagZoom          
         fov["x"] = daq_utils.lowMagFOVx/3.0
         fov["y"] = daq_utils.lowMagFOVy/3.0
       else:
         if (self.lowMagLevelRadio.isChecked()):
-          self.flushBuffer(self.captureFull)          
-          self.capture = self.captureFull
+          self.flushBuffer(self.captureLowMag)          
+          self.capture = self.captureLowMag
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
         else:
-          self.flushBuffer(self.captureZoom)                      
-          self.capture = self.captureZoom            
+          self.flushBuffer(self.captureHighMag)                      
+          self.capture = self.captureHighMag       
           fov["x"] = daq_utils.highMagFOVx
           fov["y"] = daq_utils.highMagFOVy
       self.adjustGraphics4ZoomChange(fov)
@@ -2248,19 +2262,6 @@ class controlMain(QtGui.QMainWindow):
       print "dimmer"
       
 
-    def zoomInCB(self): #notused
-      print "zoom in"
-      self.capture = self.captureZoom
-
-      
-    def zoomOutCB(self): #notused
-      print "zoom out"
-      self.capture = self.captureFull
-
-
-    def zoomResetCB(self):
-      print "zoom reset"
-
     def eraseCB(self):
       self.click_positions = []
       if (self.measureLine != None):
@@ -2313,8 +2314,13 @@ class controlMain(QtGui.QMainWindow):
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
       else:
-        fov["x"] = daq_utils.highMagFOVx
-        fov["y"] = daq_utils.highMagFOVy
+        if (self.digiZoomCheckBox.isChecked()):                    
+          fov["x"] = daq_utils.highMagFOVx/2.0
+          fov["y"] = daq_utils.highMagFOVy/2.0
+        else:
+          fov["x"] = daq_utils.highMagFOVx
+          fov["y"] = daq_utils.highMagFOVy
+            
       return fov
 
 
@@ -2342,9 +2348,10 @@ class controlMain(QtGui.QMainWindow):
 
     def definePolyRaster(self,raster_w,raster_h,stepsizeXPix,stepsizeYPix,point_x,point_y): #all come in as pixels, raster_w and raster_h are bounding box of drawn graphic
 #raster status - 0=nothing done, 1=run, 2=displayed
+      stepsize =float(self.rasterStepEdit.text())
       beamWidth = float(self.beamWidth_ledit.text())
       beamHeight = float(self.beamHeight_ledit.text())
-      rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":float(self.rasterStepEdit.text()),"rowDefs":[]} #just storing step as microns, not using here      
+      rasterDef = {"rasterType":"normal","beamWidth":beamWidth,"beamHeight":beamHeight,"status":0,"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get(),"stepsize":stepsize,"rowDefs":[]} #just storing step as microns, not using here      
       numsteps_h = int(raster_w/stepsizeXPix) #raster_w = width,goes to numsteps horizonatl
       numsteps_v = int(raster_h/stepsizeYPix)
       if (numsteps_h%2 == 0): # make odd numbers of rows and columns
@@ -2384,8 +2391,12 @@ class controlMain(QtGui.QMainWindow):
                 rowStartY = newCellY
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
+            print("rowStartX =" + str(rowStartX))
             vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
-            vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix)
+            print("vectorStartX = " + str(vectorStartX))
+#            vectorEndX = vectorStartX + (rowCellCount*stepsize) #this is the correct definition, but the next one accounts for any scaling issues on the video image and looks better!!
+            vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix) #this looks better
+            print("vectorEndX = " + str(vectorEndX))
             vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
             vectorEndY = vectorStartY
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
