@@ -44,7 +44,7 @@ def destroy_gui_message():
   beamline_support.pvPut(gui_popup_message_string_pv,"killMessage")
 
 
-def monitored_sleep(sleep_time):   #this sleeps while checking for aborts every second, good for stills
+def monitored_sleepObsolete(sleep_time):   #this sleeps while checking for aborts every second, good for stills
   global abort_flag                #and allowing for aborts from beamdump recovery sleeps.
   
   now = time.time()
@@ -132,15 +132,18 @@ def continue_data_collection():
   set_field("pause_button_state","Pause")  
 
 
-def abort_data_collection():
+def abort_data_collection(flag):
   global datafile_name,abort_flag,image_started
 
+  if (flag==2): #stop queue after current collection
+    abort_flag = 2
+    return
 #  logit("logfile.txt","message","User aborted")
 #  if (daq_utils.has_beamline):  
   if (1):   #for now
     beamline_lib.bl_stop_motors() ##this already sets abort flag to 1
   abort_flag = 1
-  gon_stop()
+  gon_stop() #this calls osc abort
   detector_stop()
   daq_macros.abortBS()
   close_shutter()
@@ -255,7 +258,7 @@ def runDCQueue(): #maybe don't run rasters from here???
   while (1):
     if (abort_flag):
       abort_flag =  0 #careful about when to reset this
-##?????5/16      return
+      return
     currentRequest = db_lib.popNextRequest()
     if (currentRequest == {}):
       break
@@ -271,9 +274,11 @@ def runDCQueue(): #maybe don't run rasters from here???
       break
 
 
-def stopDCQueue():
-  print("stopping queue in daq server")
-  abort_data_collection()
+def stopDCQueue(flag):
+  print("stopping queue in daq server " + str(flag))
+  abort_data_collection(int(flag))
+
+
 
 def logMxRequestParams(currentRequest):
   resultObj = {"requestObj":currentRequest["request_obj"]}
@@ -287,6 +292,7 @@ def collectData(currentRequest):
   logMxRequestParams(currentRequest)
   reqObj = currentRequest["request_obj"]
   data_directory_name = str(reqObj["directory"])
+  status = 1
   if not (os.path.isdir(data_directory_name)):
     comm_s = "mkdir -p " + data_directory_name
     os.system(comm_s)
@@ -295,7 +301,7 @@ def collectData(currentRequest):
   print(reqObj["protocol"])
   prot = str(reqObj["protocol"])
   if (prot == "raster"):
-    daq_macros.snakeRaster(currentRequest["request_id"])
+    status = daq_macros.snakeRaster(currentRequest["request_id"])
   elif (prot == "vector"):
     daq_macros.vectorScan(currentRequest)
   elif (prot == "multiCol"):
@@ -311,7 +317,9 @@ def collectData(currentRequest):
       print("autoRaster")
       if not (daq_macros.autoRasterLoop(currentRequest)):
         print("could not center sample")
-        return
+        db_lib.updatePriority(currentRequest["request_id"],-1)
+        refreshGuiTree()
+        return 0
     exposure_period = reqObj["exposure_time"]
     wavelength = reqObj["wavelength"]
     resolution = reqObj["resolution"]
@@ -322,7 +330,9 @@ def collectData(currentRequest):
     file_prefix = str(reqObj["file_prefix"])
     if (not stateModule.gotoState("DataCollection")):
       print("State violation")
-      return
+      db_lib.updatePriority(currentRequest["request_id"],-1)
+      refreshGuiTree()
+      return 0
     if (reqObj["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
@@ -369,7 +379,7 @@ def collectData(currentRequest):
           db_lib.updatePriority(currentRequest["request_id"],-1)
           refreshGuiTree()
           collectData(newStratRequest)
-          return        
+          return 1
     else: #standard
       sweep_start = reqObj["sweep_start"]
       sweep_end = reqObj["sweep_end"]
@@ -395,6 +405,7 @@ def collectData(currentRequest):
   
   db_lib.updatePriority(currentRequest["request_id"],-1)
   refreshGuiTree()
+  return status
 
     
 
@@ -418,7 +429,9 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   number_of_images = round(range_degrees/image_width)
   range_seconds = number_of_images*exposure_period
   exposure_time = exposure_period - .0024
-  angleStart = beamline_lib.motorPosFromDescriptor("omega")%360.0 #note, nsls2 angle start now used, just get current position for now  
+  angleStart = beamline_lib.motorPosFromDescriptor("omega")
+  if (angleStart>360.0):
+    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
   file_prefix_minus_directory = str(fileprefix)
   try:
     file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
@@ -440,13 +453,14 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
   set_field("state","Expose")
-##########  set_epics_pv_nowait("xtz","VAL",z_target)   #this is for grid!!!!!!!!
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
+###  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
+###  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
   detector_wait()
   image_started = 0        
   set_field("state","Idle")        
-  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+###  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
 
@@ -462,7 +476,7 @@ def center_on_click(x,y,fovx,fovy,source="screen",maglevel=0,jog=0): #maglevel=0
     beamline_support.setPvValFromDescriptor("image_Y_scaleMM",float(fovy))
     
   else:
-    if (int(maglevel)==0):
+    if (int(maglevel)==0): #I think hardcoded to not use maglevel anymore, replaced with more flexible fov
       beamline_support.setPvValFromDescriptor("image_X_scalePix",daq_utils.lowMagPixX)
       beamline_support.setPvValFromDescriptor("image_Y_scalePix",daq_utils.lowMagPixY)
       beamline_support.setPvValFromDescriptor("image_X_centerPix",daq_utils.lowMagPixX/2)

@@ -28,6 +28,8 @@ motor_dict = {}
 counter_dict = {}
 scan_list = []
 soft_motor_list = []
+global screenYCenterPixelsLowMagOffset
+screenYCenterPixelsLowMagOffset = 58
 
 
 #searchParams = {"config_params.beamline_id":beamline}
@@ -219,20 +221,6 @@ def createResult(typeName,resultObj):
   result["resultObj"] = resultObj
   return result
 
-def take_crystal_pictureCURLObsolete(filename,czoom=0):
-  zoom = int(czoom)
-  if not (has_xtalview):
-    return
-#  if (daq_utils.xtalview_user == "None"):
-  if (1):
-    if (zoom==0):
-      comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url)
-    else:
-      beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1")
-      comm_s = "curl -o %s.jpg -s %s" % (filename,xtal_url_small)
-  else:
-    comm_s = "curl -u %s:%s -o %s.jpg -s %s" % (xtalview_user,xtalview_pass,filename,xtal_url)
-  os.system(comm_s)
 
 def runDials(imgPath,reqID=None):
   comm_s = "dials.find_spots_client " + imgPath

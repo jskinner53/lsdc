@@ -406,7 +406,7 @@ class DewarTree(QtGui.QTreeView):
     def keyPressEvent(self, event):
       if (event.key() == Qt.Key_Delete or event.key() == Qt.Key_Backspace):
 #        print "caught the delete key"
-        self.deleteSelectedCB()
+        self.deleteSelectedCB(0)
       else:
         super(DewarTree,self).keyPressEvent(event)  
 
@@ -640,7 +640,9 @@ class DewarTree(QtGui.QTreeView):
           db_lib.updatePriority(itemData,0)
       self.parent.treeChanged_pv.put(1)
 
-    def deleteSelectedCB(self):
+    def deleteSelectedCB(self,deleteAll):
+      if (deleteAll):
+        self.selectAll()            
       selmod = self.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
@@ -895,7 +897,7 @@ class controlMain(QtGui.QMainWindow):
         runQueueButton = QtGui.QPushButton("Collect Queue")        
         runQueueButton.clicked.connect(self.collectQueueCB)
         stopRunButton = QtGui.QPushButton("Stop Collection")        
-        stopRunButton.clicked.connect(self.stopRunCB)
+        stopRunButton.clicked.connect(self.stopRunCB) #immediate stop everything
         puckToDewarButton = QtGui.QPushButton("Puck to Dewar...")        
         mountSampleButton = QtGui.QPushButton("Mount Sample")        
         mountSampleButton.clicked.connect(self.mountSampleCB)
@@ -908,6 +910,11 @@ class controlMain(QtGui.QMainWindow):
         expandAllButton.clicked.connect(self.dewarTree.expandAllCB)
         collapseAllButton = QtGui.QPushButton("Collapse All")        
         collapseAllButton.clicked.connect(self.dewarTree.collapseAllCB)
+        pauseQueueButton = QtGui.QPushButton("Pause Queue")
+        pauseQueueButton.clicked.connect(self.stopQueueCB) #this stops before the next sample
+        emptyQueueButton = QtGui.QPushButton("Empty Queue")
+        emptyQueueButton.clicked.connect(functools.partial(self.dewarTree.deleteSelectedCB,1))
+        
 
 ###        self.statusLabel = QtEpicsPVLabel(daq_utils.beamline+"_comm:program_state",self,300,highlight_on_change=False)
 #        self.statusLabel = QtEpicsPVLabel(daq_utils.beamline+"_comm:program_state",self,300)
@@ -920,11 +927,13 @@ class controlMain(QtGui.QMainWindow):
         vBoxTreeButtsLayoutLeft.addWidget(mountSampleButton)
         vBoxTreeButtsLayoutLeft.addWidget(unmountSampleButton)
         vBoxTreeButtsLayoutLeft.addWidget(expandAllButton)
+        vBoxTreeButtsLayoutLeft.addWidget(pauseQueueButton)
         vBoxTreeButtsLayoutRight.addWidget(puckToDewarButton)
         vBoxTreeButtsLayoutRight.addWidget(removePuckButton)
         vBoxTreeButtsLayoutRight.addWidget(queueSelectedButton)
         vBoxTreeButtsLayoutRight.addWidget(deQueueSelectedButton)
         vBoxTreeButtsLayoutRight.addWidget(collapseAllButton)
+        vBoxTreeButtsLayoutRight.addWidget(emptyQueueButton)        
         hBoxTreeButtsLayout.addLayout(vBoxTreeButtsLayoutLeft)
         hBoxTreeButtsLayout.addLayout(vBoxTreeButtsLayoutRight)
         vBoxDFlayout.addLayout(hBoxTreeButtsLayout)
@@ -1062,6 +1071,7 @@ class controlMain(QtGui.QMainWindow):
         rasterStepLabel = QtGui.QLabel('Raster Step')
         rasterStepLabel.setFixedWidth(110)
         self.rasterStepEdit = QtGui.QLineEdit("30")
+        self.rasterStepEdit.textChanged[str].connect(self.rasterStepChanged)        
         self.rasterStepEdit.setFixedWidth(60)
 
         self.rasterGrainRadioGroup=QtGui.QButtonGroup()
@@ -1209,7 +1219,7 @@ class controlMain(QtGui.QMainWindow):
         queueSampleButton = QtGui.QPushButton("Add Requests to Queue") 
         queueSampleButton.clicked.connect(self.addRequestsToAllSelectedCB)
         deleteSampleButton = QtGui.QPushButton("Delete Requests") 
-        deleteSampleButton.clicked.connect(self.dewarTree.deleteSelectedCB)
+        deleteSampleButton.clicked.connect(functools.partial(self.dewarTree.deleteSelectedCB,0))
         editScreenParamsButton = QtGui.QPushButton("Edit Screening Params...") 
         editScreenParamsButton.clicked.connect(self.editScreenParamsCB)
         vBoxMainSetup.addWidget(self.mainToolBox)
@@ -1251,7 +1261,7 @@ class controlMain(QtGui.QMainWindow):
         self.pixmap_item.mousePressEvent = self.pixelSelect
 
         centerMarkBrush = QtGui.QBrush(QtCore.Qt.red)        
-        centerMarkPen = QtGui.QPen(centerMarkBrush,3.0)
+        centerMarkPen = QtGui.QPen(centerMarkBrush,2.0)
         
         self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)      
 
@@ -1357,7 +1367,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
         hBoxSampleAlignLayout.addWidget(loopShapeButton)
-        hBoxSampleAlignLayout.addWidget(measureButton)        
+##### for now, until I figure out what people want        hBoxSampleAlignLayout.addWidget(measureButton)        
 ###        hBoxSampleAlignLayout.addWidget(runRastersButton) #maybe not a good idea to have multiple ways to run a raster. Force the collect button.
         hBoxSampleAlignLayout.addWidget(clearGraphicsButton)
         hBoxSampleAlignLayout.addWidget(self.click3Button)
@@ -1907,7 +1917,9 @@ class controlMain(QtGui.QMainWindow):
       else:
         pass 
 
-
+    def rasterStepChanged(self,text):
+      self.beamWidth_ledit.setText(text)
+      self.beamHeight_ledit.setText(text)      
 
     def resoTextChanged(self,text):
       try:
@@ -2308,8 +2320,8 @@ class controlMain(QtGui.QMainWindow):
       fov = {"x":0.0,"y":0.0}
       if (self.lowMagLevelRadio.isChecked()):
         if (self.digiZoomCheckBox.isChecked()):          
-          fov["x"] = daq_utils.lowMagFOVx/3.0
-          fov["y"] = daq_utils.lowMagFOVy/3.0
+          fov["x"] = daq_utils.lowMagFOVx/2.0
+          fov["y"] = daq_utils.lowMagFOVy/2.0
         else:
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
@@ -2533,7 +2545,7 @@ class controlMain(QtGui.QMainWindow):
         fov = self.getCurrentFOV()      
         if (self.threeClickCount > 0): #3-click centering
           self.threeClickCount = self.threeClickCount + 1
-          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",90)'
+          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'
         else:
           comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
 #          comm_s = "center_on_click(" + str(x_click) + "," + str(y_click) + "," + str(maglevel) + ",screen 0)"
@@ -2886,7 +2898,11 @@ class controlMain(QtGui.QMainWindow):
 
     def stopRunCB(self):
       print "stopping collection"
-      self.aux_send_to_server("stopDCQueue()")
+      self.aux_send_to_server("stopDCQueue(1)")
+
+    def stopQueueCB(self):
+      print "stopping queue"
+      self.aux_send_to_server("stopDCQueue(2)")
 
     def mountSampleCB(self):
       print "mount selected sample"

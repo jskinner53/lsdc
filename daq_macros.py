@@ -47,24 +47,16 @@ def abortBS():
     except super_state_machine.errors.TransitionError:
       print("caught BS")
   
-def flipLoopShapeCoords(filename): # not used
-  xrec_out_file = open(filename,"r")  
-  correctedFilename = "loopFaceShape.txt"
-  resultLine = xrec_out_file.readline()
-  tokens = resultLine.split()
-  numpoints = int(tokens[0])
-  points = []
-  for i in range(1,len(tokens)-1,2):
-    point = [tokens[i],tokens[i+1]]
-    correctedPoint = [daq_utils.screenPixX-int(tokens[i]),daq_utils.screenPixY-int(tokens[i+1])]
-  xrec_out_file.close() 
-
 
 def autoRasterLoop(currentRequest):
   set_field("xrecRasterFlag",100)        
   sampleID = currentRequest["sample_id"]
   print("auto raster " + str(sampleID))
-  if not (loop_center_xrec()):
+  status = loop_center_xrec()
+  if (status == -99): #abort, never hit this
+    db_lib.updatePriority(currentRequest["request_id"],5000)
+    return 0    
+  if not (status):
     return 0
   time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
   runRasterScan(currentRequest,"LoopShape")
@@ -79,7 +71,9 @@ def multiCol(currentRequest):
   set_field("xrecRasterFlag",100)      
   sampleID = currentRequest["sample_id"]
   print("multiCol " + str(sampleID))
-  loop_center_xrec()
+  status = loop_center_xrec()
+  if not (status):
+    return 0  
   time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
   runRasterScan(currentRequest,"LoopShape")
 #  time.sleep(1) 
@@ -131,14 +125,20 @@ def loop_center_xrec():
   if (reliability < 70 or check_result == 0): #bail if xrec couldn't align loop
     return 0
   mvaDescriptor("omega",target_angle)
-  x_center = daq_utils.lowMagPixX/2
-  y_center = daq_utils.lowMagPixY/2
+  x_center = daq_utils.highMagPixX/2
+  y_center = daq_utils.highMagPixY/2
+#  x_center = daq_utils.lowMagPixX/2
+#  y_center = daq_utils.lowMagPixY/2
+  
 #  set_epics_pv("image_X_center","A",x_center)
 #  set_epics_pv("image_Y_center","A",y_center)
   print("center on click " + str(x_center) + " " + str(y_center-radius))
   print("center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec))
-  fovx = daq_utils.lowMagFOVx
-  fovy = daq_utils.lowMagFOVy
+  fovx = daq_utils.highMagFOVx
+  fovy = daq_utils.highMagFOVy
+#  fovx = daq_utils.lowMagFOVx
+#  fovy = daq_utils.lowMagFOVy
+  
   center_on_click(x_center,y_center-radius,fovx,fovy,source="macro")
   center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,fovx,fovy,source="macro")
 #  center_on_click(y_centre_xrec,x_centre_xrec,source="macro")  
@@ -159,7 +159,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
     expectedFilenameList.append(filename)
   for i in range (0,len(expectedFilenameList)):
     comm_s = "ln -sf " + testImgFileList[i] + " " + expectedFilenameList[i]
-    print(comm_s)
+#    print(comm_s)
     os.system(comm_s)
 
 
@@ -317,11 +317,8 @@ def snakeRaster(rasterReqID,grain=""):
   img_width_per_cell = reqObj["img_width"]
 #really should read these two from hardware  
   wave = reqObj["wavelength"]
-
-  
   xbeam = daq_utils.xbeam
   ybeam = daq_utils.ybeam  
-  
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
@@ -340,7 +337,9 @@ def snakeRaster(rasterReqID,grain=""):
   rasterRowResultsList = [{} for i in range(0,rowCount)]    
   processedRasterRowCount = 0
   
-  for i in range(len(rasterDef["rowDefs"])):    
+  for i in range(len(rasterDef["rowDefs"])):
+    if (daq_lib.abort_flag == 1):
+      return 0
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
 #6/16  a few things for integrating dials/spotfinding into this routine, this is just to fake the data 
 ##    for j in range(0,numsteps):
@@ -440,11 +439,12 @@ def snakeRaster(rasterReqID,grain=""):
       gotoMaxRaster(rasterResult)    
   db_lib.updateRequest(rasterRequest)
   db_lib.updatePriority(rasterRequest["request_id"],-1)  
-  set_field("xrecRasterFlag",rasterRequest["request_id"])  
+  set_field("xrecRasterFlag",rasterRequest["request_id"])
+  return 1
 
 
 
-def runRasterScan(currentRequest,rasterType=""): #this actualkl defines and runs
+def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
   sampleID = currentRequest["sample_id"]
   if (rasterType=="Fine"):
     set_field("xrecRasterFlag",100)    
@@ -555,34 +555,35 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
 #careful here, I'm hardcoding the view I think we'll use for definePolyRaster
 def getCurrentFOV(): 
   fov = {"x":0.0,"y":0.0}
-  fov["x"] = daq_utils.lowMagFOVx/3.0
-  fov["y"] = daq_utils.lowMagFOVy/3.0
+#  fov["x"] = daq_utils.lowMagFOVx/3.0
+#  fov["y"] = daq_utils.lowMagFOVy/3.0
+
+  fov["x"] = daq_utils.highMagFOVx
+  fov["y"] = daq_utils.highMagFOVy
+  
   return fov
 
 
 def screenXmicrons2pixels(microns):
   fov = getCurrentFOV()
   fovX = fov["x"]
-#  return int(round(microns*(daq_utils.highMagPixX/fovX)))
-  return int(round(microns*(daq_utils.screenPixX/fovX)))
+  return int(round(microns*(daq_utils.highMagPixX/fovX)))
 
 def screenYmicrons2pixels(microns):
   fov = getCurrentFOV()
   fovY = fov["y"]
-  return int(round(microns*(daq_utils.screenPixY/fovY)))
+  return int(round(microns*(daq_utils.highMagPixY/fovY)))  
 
 
 def screenXPixels2microns(pixels):
   fov = getCurrentFOV()
   fovX = fov["x"]
-  return float(pixels)*(fovX/daq_utils.screenPixX)
-#  return float(pixels)*(fovX/daq_utils.highMagPixX)
+  return float(pixels)*(fovX/daq_utils.highMagPixX)
 
 def screenYPixels2microns(pixels):
   fov = getCurrentFOV()
   fovY = fov["y"]
-  return float(pixels)*(fovY/daq_utils.screenPixY)
-#  return float(pixels)*(fovY/daq_utils.highMagPixY)
+  return float(pixels)*(fovY/daq_utils.highMagPixY)
 
 
 def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns, make this a horz vector scan, note this never deals with pixels.
@@ -692,7 +693,6 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
         vectorStartY = screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
         vectorEndY = vectorStartY
         newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
-  #      newRowDef = {"start":{"x": screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX),"y":screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)},"numsteps":rowCellCount}      
         rasterDef["rowDefs"].append(newRowDef)
   tempnewRasterRequest = daq_utils.createDefaultRequest(sampleID)
   reqObj = tempnewRasterRequest["request_obj"]

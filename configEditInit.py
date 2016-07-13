@@ -10,9 +10,9 @@ for line in tmpConfigFile.readlines():
   print line
   (key,val) = string.split(line)
   newBeamlineConfig[key]=val
-  tmpConfigFile.close()
-  daq_utils.setBeamlineConfigParams(newBeamlineConfig)
-  #os.system("rm " + tmpFileName)
+tmpConfigFile.close()
+daq_utils.setBeamlineConfigParams(newBeamlineConfig)
+#os.system("rm " + tmpFileName)
 
 
           
