@@ -56,12 +56,12 @@ def pybass_init():
 ##      print(ca.message(status))
 ##      gui_message("EPICS motor Initialization Error. Exit and try again. If problem persists, EPICS may need to be restarted.")
   try:
-    sitefilename = os.environ["CBASS_SITE_FILE"]
+    sitefilename = os.environ["LSDC_SITE_FILE"]
   except KeyError:
-    gui_message("\$CBASS_SITE_FILE not defined. Questionable defaults in effect.")
+    gui_message("\$LSDC_SITE_FILE not defined. Questionable defaults in effect.")
   if (sitefilename != ""):    
     if (os.path.exists(sitefilename) == 0):
-      error_msg = "\$CBASS_SITE_FILE: %s does not exist. Questionable defaults in effect." % sitefilename
+      error_msg = "\$LSDC_SITE_FILE: %s does not exist. Questionable defaults in effect." % sitefilename
       gui_message(error_msg)
     else:
       process_command_file(sitefilename)

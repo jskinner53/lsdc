@@ -99,6 +99,7 @@ def createTestDB():
         
 
         createBeamline("fmx", "17id1")
+        createBeamline("amx", "17id2")        
         createBeamline("john", "99id1")
         
         

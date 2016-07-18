@@ -6,7 +6,6 @@ import beamline_support
 
 
 def lib_init_diffractometer():
-  gon_offline = int(os.environ["GON_OFFLINE"])
   beamline_support.initControlPVs()
 
 

@@ -15,7 +15,7 @@ import beamline_support
 import db_lib
 import stateModule
 
-var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':int(db_lib.beamlineInfo('john', 'mountedSample')["sampleID"]),'pause_button_state':'Pause','vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':0,'xrecRasterFlag':0}
+var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':int(db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]),'pause_button_state':'Pause','vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':0,'xrecRasterFlag':0}
 
 
 global x_vec_start, y_vec_start, z_vec_start, x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec
@@ -176,20 +176,6 @@ def home_omega():
   lib_home_omega()
 
 
-def px_id(id):
-  set_field("px_id",id)
-  if (pxdb_lib.is_mailin(id)):
-    print("is mailin")
-    if (archive_active == 1 and archive == ""):
-      try:
-        default_archive_location = os.environ["DEFAULT_ARCHIVE_LOCATION"]
-        set_archive(default_archive_location)
-      except KeyError:
-        pass
-  else:
-    print("is not mailin")
-
-
 def xtal_id(id):
   set_field("xtal_id",id)
 
@@ -222,7 +208,7 @@ def runChoochObsolete():
 
 
 def mountSample(sampID):
-  mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
+  mountedSampleDict = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
   if (currentMountedSampleID != 99): #then unmount what's there
     if (sampID!=currentMountedSampleID):
@@ -237,18 +223,18 @@ def mountSample(sampID):
   else: #nothing mounted
     (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(sampID)
     robot_lib.mountRobotSample(puckPos,pinPos,sampID)
-  db_lib.beamlineInfo('john', 'mountedSample', info_dict={'puckPos':puckPos,'pinPos':pinPos,'sampleID':sampID})
+  db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':puckPos,'pinPos':pinPos,'sampleID':sampID})
 
 
 
 def unmountSample():
-  mountedSampleDict = db_lib.beamlineInfo('john', 'mountedSample')
+  mountedSampleDict = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
   puckPos = mountedSampleDict["puckPos"]
   pinPos = mountedSampleDict["pinPos"]
   robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)
   set_field("mounted_pin",-99)
-  db_lib.beamlineInfo('john', 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':-99})
+  db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':-99})
 
 
 def runDCQueue(): #maybe don't run rasters from here???
@@ -283,8 +269,8 @@ def stopDCQueue(flag):
 def logMxRequestParams(currentRequest):
   resultObj = {"requestObj":currentRequest["request_obj"]}
   db_lib.addResultforRequest("mxExpParams",currentRequest["request_id"],resultObj)  
-  db_lib.beamlineInfo('john', 'currentSampleID', info_dict={'sampleID':currentRequest["sample_id"]})
-  db_lib.beamlineInfo('john', 'currentRequestID', info_dict={'requestID':currentRequest["request_id"]})
+  db_lib.beamlineInfo(daq_utils.beamline, 'currentSampleID', info_dict={'sampleID':currentRequest["sample_id"]})
+  db_lib.beamlineInfo(daq_utils.beamline, 'currentRequestID', info_dict={'requestID':currentRequest["request_id"]})
 
 def collectData(currentRequest):
   global data_directory_name
@@ -454,9 +440,9 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #  time.sleep(0.3)  
   set_field("state","Expose")
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-###  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
-###  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
   detector_wait()
   image_started = 0        
   set_field("state","Idle")        

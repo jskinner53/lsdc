@@ -49,6 +49,7 @@ def abortBS():
   
 
 def autoRasterLoop(currentRequest):
+  return 1 #short circuit for commissioning
   set_field("xrecRasterFlag",100)        
   sampleID = currentRequest["sample_id"]
   print("auto raster " + str(sampleID))
@@ -479,7 +480,7 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
   cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']
 #  cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]    
   rasterMap = rasterResult["result_obj"]["rasterCellMap"]  
-  rasterScoreFlag = int(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
+  rasterScoreFlag = int(db_lib.beamlineInfo(daq_utils.beamline,'rasterScoreFlag')["index"])
   if (rasterScoreFlag==0):
     scoreOption = "spot_count"
   elif (rasterScoreFlag==1):

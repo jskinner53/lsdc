@@ -161,7 +161,7 @@ def det_set_numexposures(numexposures):
 def det_take_image():
   set_det_pv("acquire",1)
 
-def det_set_exptime(exptime):
+def det_set_exptime(exptime): #exposure_time = exposure_period - .0024 for nsls1 pil6
   set_det_pv("exptime",exptime)
 
 def det_set_image_period(period):

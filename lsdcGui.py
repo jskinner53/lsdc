@@ -198,15 +198,15 @@ class screenDefaultsDialog(QDialog):
         self.resolution_ledit = QtGui.QLineEdit()
         self.resolution_ledit.setFixedWidth(60)
         self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
-        colResoDistLabel = QtGui.QLabel('Detector Distance')
+        colResoDistLabel = QtGui.QLabel('Detector Distance') #note - this is in screen defaults
         colResoDistLabel.setFixedWidth(120)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
-        self.colResoCalcDistance_ledit.setFixedWidth(60)
+        self.detDistMotorEntry = QtGui.QLineEdit()
+        self.detDistMotorEntry.setFixedWidth(60)
         hBoxColParams5.addWidget(colResoLabel)
         hBoxColParams5.addWidget(self.resolution_ledit)
 #        hBoxColParams5.addWidget(colResoDistLabel)
-#        hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
+#        hBoxColParams5.addWidget(self.detDistMotorEntry)
 
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.Apply | QDialogButtonBox.Cancel,
@@ -841,9 +841,10 @@ class controlMain(QtGui.QMainWindow):
         self.dewarTree.refreshTreeDewarView()
         self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}
         if (self.mountedPin_pv.get() == 0):
-          mountedPin = db_lib.beamlineInfo('john', 'mountedSample')["sampleID"]
+          mountedPin = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]
           self.mountedPin_pv.put(mountedPin)
         self.rasterExploreDialog = rasterExploreDialog()
+        self.detDistMotorEntry.getEntry().setText(self.detDistRBVLabel.getEntry().text()) #this is to fix the current val being overwritten by reso
 
 
     def closeEvent(self, evnt):
@@ -1014,22 +1015,27 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams4.addWidget(self.beamHeight_ledit)
         hBoxColParams5 = QtGui.QHBoxLayout()
         colResoLabel = QtGui.QLabel('Edge Resolution:')
-        colResoLabel.setFixedWidth(140)
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
-        self.resolution_ledit.textChanged[str].connect(self.resoTextChanged)
         self.resolution_ledit.setFixedWidth(60)
-        colResoDistLabel = QtGui.QLabel('Detector Distance')
-        colResoDistLabel.setFixedWidth(140)
-        colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        self.colResoCalcDistance_ledit = QtGui.QLabel() #NOTE - this is really a label, not a lineEdit widget!
-#        self.colResoCalcDistance_ledit = QtGui.QLineEdit()
-#        self.colResoCalcDistance_ledit.setReadOnly(True)
-        self.colResoCalcDistance_ledit.setFixedWidth(60)
-        hBoxColParams5.addWidget(colResoLabel)
-        hBoxColParams5.addWidget(self.resolution_ledit)
-        hBoxColParams5.addWidget(colResoDistLabel)
-        hBoxColParams5.addWidget(self.colResoCalcDistance_ledit)
+        self.resolution_ledit.textEdited[str].connect(self.resoTextChanged)
+        detDistLabel = QtGui.QLabel('Detector Dist.')
+        detDistLabel.setAlignment(QtCore.Qt.AlignCenter)         
+        detDistRBLabel = QtGui.QLabel("Readback:")
+        self.detDistRBVLabel = QtEpicsPVLabel(daq_utils.motor_dict["detectorDist"] + ".RBV",self,70) 
+        detDistSPLabel = QtGui.QLabel("SetPoint:")
+        self.detDistMotorEntry = QtEpicsPVEntry(daq_utils.motor_dict["detectorDist"] + ".VAL",self,70,2)        
+#        self.detDistMotorEntry = QtEpicsMotorEntry(daq_utils.motor_dict["detectorDist"],self,70,2)
+        self.detDistMotorEntry.getEntry().textChanged[str].connect(self.detDistTextChanged)        
+#        self.detDistMotorEntry.setFixedWidth(60)
+        self.moveDetDistButton = QtGui.QPushButton("Move Detector")
+        self.moveDetDistButton.clicked.connect(self.moveDetDistCB)
+        hBoxColParams5.addWidget(detDistLabel)
+        hBoxColParams5.addWidget(detDistRBLabel)
+        hBoxColParams5.addWidget(self.detDistRBVLabel.getEntry())
+        hBoxColParams5.addWidget(detDistSPLabel)        
+        hBoxColParams5.addWidget(self.detDistMotorEntry.getEntry())
+        hBoxColParams5.addWidget(self.moveDetDistButton)        
         hBoxColParams6 = QtGui.QHBoxLayout()
         hBoxColParams6.setAlignment(QtCore.Qt.AlignLeft) 
         centeringLabel = QtGui.QLabel('Centering:')
@@ -1039,12 +1045,16 @@ class controlMain(QtGui.QMainWindow):
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
+        protoLabel.setAlignment(QtCore.Qt.AlignCenter)                 
         protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
         hBoxColParams6.addWidget(protoLabel)
         hBoxColParams6.addWidget(self.protoComboBox)
+        hBoxColParams6.addWidget(colResoLabel)
+        hBoxColParams6.addWidget(self.resolution_ledit)
+        
 #        hBoxColParams6.addWidget(centeringLabel)
 #        hBoxColParams6.addWidget(self.centeringComboBox)
 
@@ -1394,10 +1404,10 @@ class controlMain(QtGui.QMainWindow):
 
         rasterEvalLabel = QtGui.QLabel('Raster\nEvaluate By:')
         rasterEvalOptionList = ["Spot Count","Resolution","Intensity"]
-#        rasterEvalOptionList = db_lib.beamlineInfo('john','rasterScoreFlag')["optionList"]
+#        rasterEvalOptionList = db_lib.beamlineInfo(daq_utils.beamline,'rasterScoreFlag')["optionList"]
         self.rasterEvalComboBox = QtGui.QComboBox(self)
         self.rasterEvalComboBox.addItems(rasterEvalOptionList)
-        self.rasterEvalComboBox.setCurrentIndex(db_lib.beamlineInfo('john','rasterScoreFlag')["index"])
+        self.rasterEvalComboBox.setCurrentIndex(db_lib.beamlineInfo(daq_utils.beamline,'rasterScoreFlag')["index"])
         self.rasterEvalComboBox.activated[str].connect(self.rasterEvalComboActivatedCB) 
 
 #        self.vidActionRasterMoveRadio = QtGui.QRadioButton("RasterMove")
@@ -1923,15 +1933,22 @@ class controlMain(QtGui.QMainWindow):
 
     def resoTextChanged(self,text):
       try:
-        dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(text),daq_utils.wave2energy(float(self.energy_ledit.text())),0))
+        dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(text),daq_utils.energy2wave(float(self.energy_ledit.text())),0))
       except ValueError:
         dist_s = "500.0"
-      self.colResoCalcDistance_ledit.setText(dist_s)
+      self.detDistMotorEntry.getEntry().setText(dist_s)
 
+    def detDistTextChanged(self,text):
+      try:
+        reso_s = "%.2f" % (daq_utils.calc_reso(daq_utils.det_radius,float(text),daq_utils.energy2wave(float(self.energy_ledit.text())),0))
+      except ValueError:
+        reso_s = "50.0"
+      self.resolution_ledit.setText(reso_s)
+      
     def energyTextChanged(self,text):
       dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(self.resolution_ledit.text()),float(text),0))
 #      dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,float(self.resolution_ledit.text()),daq_utils.wave2energy(float(text)),0))
-      self.colResoCalcDistance_ledit.setText(dist_s)
+      self.detDistMotorEntry.getEntry().setText(dist_s)
 
     def protoComboActivatedCB(self, text):
 #      print "protocol = " + str(text)
@@ -1942,7 +1959,7 @@ class controlMain(QtGui.QMainWindow):
 
     def rasterEvalComboActivatedCB(self, text):
 #      print "protocol = " + str(text)
-      db_lib.beamlineInfo('john','rasterScoreFlag',info_dict={"index":self.rasterEvalComboBox.findText(str(text))})
+      db_lib.beamlineInfo(daq_utils.beamline,'rasterScoreFlag',info_dict={"index":self.rasterEvalComboBox.findText(str(text))})
       if (self.currentRasterCellList != []):
         self.reFillPolyRaster()
 
@@ -2032,6 +2049,10 @@ class controlMain(QtGui.QMainWindow):
       comm_s = "mvaDescriptor(\"omega\"," + str(self.sampleOmegaMoveLedit.getEntry().text()) + ")"
       self.send_to_server(comm_s)
 
+    def moveDetDistCB(self):
+      comm_s = "mvaDescriptor(\"detectorDist\"," + str(self.detDistMotorEntry.getEntry().text()) + ")"
+      print(comm_s)
+      self.send_to_server(comm_s)
 
     def omegaTweakNegCB(self):
       tv = float(self.omegaTweakVal_ledit.text())
@@ -2750,7 +2771,7 @@ class controlMain(QtGui.QMainWindow):
              reqObj["slit_height"] = float(self.beamHeight_ledit.text())
              wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
              reqObj["wavelength"] = wave
-             reqObj["detDist"] = float(self.colResoCalcDistance_ledit.text())             
+             reqObj["detDist"] = float(self.detDistMotorEntry.getEntry().text())             
              reqObj["protocol"] = str(self.protoComboBox.currentText())
              reqObj["pos_x"] = float(self.centeringMarksList[i]["sampCoords"]["x"])
              reqObj["pos_y"] = float(self.centeringMarksList[i]["sampCoords"]["y"])
@@ -2795,7 +2816,7 @@ class controlMain(QtGui.QMainWindow):
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
         reqObj["wavelength"] = wave
         reqObj["protocol"] = str(self.protoComboBox.currentText())
-        reqObj["detDist"] = float(self.colResoCalcDistance_ledit.text())
+        reqObj["detDist"] = float(self.detDistMotorEntry.getEntry().text())
 #        print colRequest
 #        if (rasterDef != False):
         if (reqObj["protocol"] == "multiCol"):
@@ -2936,7 +2957,7 @@ class controlMain(QtGui.QMainWindow):
       self.energy_ledit.setText(str(energy_s))
       self.transmission_ledit.setText(str(reqObj["attenuation"]))
       dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,reqObj["resolution"],1.1,0))
-      self.colResoCalcDistance_ledit.setText(str(dist_s))
+      self.detDistMotorEntry.getEntry().setText(str(dist_s))
       self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))
       self.dataPathGB.setBasePath_ledit(str(reqObj["basePath"]))
       self.dataPathGB.setDataPath_ledit(str(reqObj["directory"]))

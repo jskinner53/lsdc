@@ -52,8 +52,6 @@ def get_epics_motor_pos(motcode): #gets an epics motor pos with error handling
     return -9999.9
 
 def mvr(*args):
-    if (args[0] == "omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
-      return
     try:
       beamline_support.mvr(*args)
     except KeyboardInterrupt:
@@ -72,9 +70,6 @@ def mvr(*args):
 
     
 def mva(*args):
-    if (args[0] == "Omega" and int(os.environ["GON_OFFLINE"]) == 1): #shitty kludge for omega issues
-      return
-
     try:    
       beamline_support.mva(*args)
     except KeyboardInterrupt:
