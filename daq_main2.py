@@ -208,7 +208,7 @@ def run_server():
 
 def main(mode):
   pybass_init()
-  stateModule.initStateControl()
+  stateModule.initStateControl(daq_utils.beamlineComm)
   if (mode=="gui"):
     run_server()
   else:

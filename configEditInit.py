@@ -1,11 +1,11 @@
-#!/opt/conda_envs/lsdc_dev/bin/ipython -i
+#!/opt/conda_envs/lsdc_dev/bin/python
 import daq_utils
 import time
 import os
 import string
 
 newBeamlineConfig = {}
-tmpConfigFile = open("./beamlineConfigMDS.txt","r")
+tmpConfigFile = open("/nfs/skinner/projects/bnlpx_config/blConfigs/amxBLConfig.txt","r")
 for line in tmpConfigFile.readlines():
   print line
   (key,val) = string.split(line)

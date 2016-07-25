@@ -97,8 +97,14 @@ def db_connect():
 
 
 # should be in config :(
-primaryDewarName = 'primaryDewar'
+global primaryDewarName
+primaryDewarName = ''
 
+def setPrimaryDewarName(dewarName):
+  global primaryDewarName
+
+  primaryDewarName = dewarName
+  
 
 # temp stuff for web stuff
 

@@ -420,7 +420,7 @@ class DewarTree(QtGui.QTreeView):
         puck = None
         collectionRunning = False
         self.model.clear()
-        dewarContents = db_lib.getContainerByName("primaryDewar")["item_list"]
+        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName)["item_list"]
         for i in range (0,len(dewarContents)): #dewar contents is the list of puck IDs
           parentItem = self.model.invisibleRootItem()
           if (dewarContents[i]==None):
@@ -471,7 +471,8 @@ class DewarTree(QtGui.QTreeView):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('white'))
                   elif (sampleRequestList[k]["priority"]< 0):
-                    col_item.setCheckState(Qt.Unchecked)
+#                    col_item.setCheckState(Qt.Unchecked)
+                    col_item.setCheckable(False)
                     col_item.setBackground(QtGui.QColor('cyan'))
                   else:
                     col_item.setCheckState(Qt.Unchecked)
@@ -533,7 +534,7 @@ class DewarTree(QtGui.QTreeView):
         selectedSampleIndex = None
         self.model.clear()
         self.orderedRequests = db_lib.getOrderedRequestList()
-        dewarContents = db_lib.getContainerByName("primaryDewar")["item_list"]
+        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName)["item_list"]
         maxPucks = len(dewarContents)
         requestedSampleList = []
         mountedPin = self.parent.mountedPin_pv.get()
@@ -576,7 +577,8 @@ class DewarTree(QtGui.QTreeView):
                 col_item.setCheckState(Qt.Checked)
                 col_item.setBackground(QtGui.QColor('white'))
               elif (self.orderedRequests[k]["priority"]< 0):
-                col_item.setCheckState(Qt.Unchecked)
+#                col_item.setCheckState(Qt.Unchecked)
+                col_item.setCheckable(False)                
                 col_item.setBackground(QtGui.QColor('cyan'))
               else:
                 col_item.setCheckState(Qt.Unchecked)
@@ -854,14 +856,14 @@ class controlMain(QtGui.QMainWindow):
 
     def initVideo2(self,frequency):
 #      self.captureZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C1.MJPG.mjpg")
-      self.captureHighMag=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C2.MJPG.mjpg")
+      self.captureHighMag=cv2.VideoCapture(daq_utils.highMagCamURL)
 
     def initVideo4(self,frequency):
-      self.captureHighMagZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8008/C1.MJPG.mjpg")
+      self.captureHighMagZoom=cv2.VideoCapture(daq_utils.highMagZoomCamURL)
       
 
     def initVideo3(self,frequency):
-      self.captureLowMagZoom=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C3.MJPG.mjpg")
+      self.captureLowMagZoom=cv2.VideoCapture(daq_utils.lowMagZoomCamURL)
             
     def createSampleTab(self):
 
@@ -1246,7 +1248,7 @@ class controlMain(QtGui.QMainWindow):
           thread.start_new_thread(self.initVideo3,(.25,))          #this sets up lowMagDigiZoom
           thread.start_new_thread(self.initVideo4,(.25,))          #this sets up highMagDigiZoom          
 #          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1ZOOM.MJPG.mjpg")          
-          self.captureLowMag=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg")          
+          self.captureLowMag=cv2.VideoCapture(daq_utils.lowMagCamURL)
         else:
           self.captureLowMag = None
           self.captureHighMag = None
@@ -1567,6 +1569,8 @@ class controlMain(QtGui.QMainWindow):
         self.processSampMove(self.sampz_pv.get(),"z")
 
     def flushBuffer(self,vidStream):
+      if (vidStream == None):
+        return
       for i in range (0,200):
         stime = time.time()              
         vidStream.grab()
@@ -2829,6 +2833,7 @@ class controlMain(QtGui.QMainWindow):
           characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
           reqObj["characterizationParams"] = characterizationParams
         if (reqObj["protocol"] == "vector"):
+          selectedCenteringFound = 1            
           x_vec_end = self.vectorEnd["coords"]["x"]
           y_vec_end = self.vectorEnd["coords"]["y"]
           z_vec_end = self.vectorEnd["coords"]["z"]
@@ -2913,7 +2918,7 @@ class controlMain(QtGui.QMainWindow):
          ipos = int(dewarPos)+1
 #         ipos = int(dewarPos)-1
          if (ok):
-           db_lib.insertIntoContainer("primaryDewar",ipos,db_lib.getContainerIDbyName(puckName))
+           db_lib.insertIntoContainer(daq_utils.primaryDewarName,ipos,db_lib.getContainerIDbyName(puckName))
            self.treeChanged_pv.put(1)
 
 

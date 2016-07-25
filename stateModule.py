@@ -21,11 +21,11 @@ stateDefinitions = [{"stateName":"Maintenance","stateDef":{},"safeTransitions":[
 
 global var_channel_list
 var_channel_list = {}
-global beamline, beamlineStateChannel
+global beamlineStateChannel
 beamlineStateChannel = None
-beamline = "john"
-global beamlineComm #this is the comm_ioc
-beamlineComm = "XF:17IDC-ES:FMX{Comm}"
+#beamline = "john"
+#global beamlineComm #this is the comm_ioc
+#beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 
 global command_list,is_first
 command_list = []
@@ -64,7 +64,7 @@ def gotoState(stateName):
       print(machineState["safeTransitions"][i]['transitionProc'])
       exec(machineState["safeTransitions"][i]['transitionProc']+"()")  
       return 1
-  return 0
+  return 1
 
 
 def transProcM2SE():
@@ -106,7 +106,7 @@ def transProcBL2SE():
   var_channel_list["beamStop"].put(11)
 
 
-def init_var_channels():
+def init_var_channels(beamlineComm):
   global var_channel_list,beamlineStateChannel
 
   beamlineStateChannel = PV(beamlineComm + "beamlineState")
@@ -135,7 +135,7 @@ def stateEvalThread(frequency):
     getCurrentState()    
 
 
-def initStateControl():
-  init_var_channels()
+def initStateControl(beamlineComm):
+  init_var_channels(beamlineComm)
   _thread.start_new_thread(stateEvalThread,(.5,))     
 

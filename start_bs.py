@@ -35,7 +35,7 @@ from databroker import (DataBroker as db, get_events, get_images,
                                                 get_table, get_fields, restream, process)
 from time import sleep
 import numpy as np
-from mercury import *
+###from mercury import *
 
 RE = gs.RE  # convenience alias
 #rest is hugo
@@ -88,13 +88,13 @@ def filter_camera_data(camera):
     camera.stats5.read_attrs = ['total', 'centroid']
 
 
-cam_7 = StandardProsilica('XF:17IDC-ES:FMX{Cam:7}', name='cam_7')
-filter_camera_data(cam_7)
+###cam_7 = StandardProsilica('XF:17IDC-ES:FMX{Cam:7}', name='cam_7')
+###filter_camera_data(cam_7)
 
 omega = EpicsMotor("XF:17IDC-ES:FMX{Gon:1-Ax:O}Mtr",name="omega")
 #gs.DETS=[cam_7,mercury]
-gs.DETS=[mercury]
-mercury.count_time.set(1.0)
+###gs.DETS=[mercury]
+###mercury.count_time.set(1.0)
 #mercury.count_time = 1
 #gs.PLOT_Y=cam_7.stats1.total.name
 #gs.PLOT_Y=mercury.mca.spectrum.value.sum

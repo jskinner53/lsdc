@@ -19,7 +19,8 @@ from db_lib import (setBeamlineConfigParams, getBeamlineConfigParam, getAllBeaml
 #global det_radius
 #det_radius = 0
 global beamline
-beamline = "john"
+beamline = os.environ["BEAMLINE_ID"]
+#beamline = "john"
 global beamlineComm #this is the comm_ioc
 beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 global searchParams
@@ -44,13 +45,19 @@ getAllBeamlineConfigParams = functools.partial(getAllBeamlineConfigParams, searc
 
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,xbeam,ybeam
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,xbeam,ybeam,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL
 
 #  var_list["state"] = "Idle"
 
 
 # beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
   beamlineConfig = getAllBeamlineConfigParams()
+  primaryDewarName = beamlineConfig["primaryDewarName"]
+  db_lib.setPrimaryDewarName(primaryDewarName)
+  lowMagCamURL = beamlineConfig["lowMagCamURL"]
+  highMagCamURL = beamlineConfig["highMagCamURL"]
+  highMagZoomCamURL = beamlineConfig["highMagZoomCamURL"]
+  lowMagZoomCamURL = beamlineConfig["lowMagZoomCamURL"]      
   xbeam = float(beamlineConfig["xbeam"])
   ybeam = float(beamlineConfig["ybeam"])  
   lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
@@ -63,6 +70,7 @@ def init_environment():
   highMagPixY = float(beamlineConfig["highMagPixY"])
   screenPixX = float(beamlineConfig["screenPixX"])
   screenPixY = float(beamlineConfig["screenPixY"])
+  beamlineComm = beamlineConfig["beamlineComm"]
   screenPixCenterX = screenPixX/2.0
   screenPixCenterY = screenPixY/2.0
   gonioPvPrefix = beamlineConfig["gonioPvPrefix"]
@@ -73,10 +81,10 @@ def init_environment():
     det_radius = 105.0
   elif (detector_id == "PILATUS-6"):
     det_radius = 212.0
-  elif (detector_id == "ADSC-Q4"):
-    det_radius = 94.0
-  else: #default q4
-    det_radius = 94.0 
+  elif (detector_id == "EIGER-16"):
+    det_radius = 155.0
+  else: #default eiger 16
+    det_radius = 155.0
   det_type = beamlineConfig["detector_type"]
   imgsrv_port = beamlineConfig["imgsrv_port"]
   imgsrv_host = beamlineConfig["imgsrv_host"]
@@ -104,9 +112,9 @@ def init_environment():
   beamstop_x_pvname = beamlineConfig["beamstop_x_pvname"]
   beamstop_y_pvname = beamlineConfig["beamstop_y_pvname"]
 
-  varname = "HAS_XTALVIEW"
-  if varname in os.environ:
-    has_xtalview = int(os.environ[varname])
+#  varname = "HAS_XTALVIEW"
+#  if varname in os.environ:
+#    has_xtalview = int(os.environ[varname])
   varname = "DETECTOR_OFFLINE"
   if varname in os.environ:
     detectorOffline = int(os.environ[varname])

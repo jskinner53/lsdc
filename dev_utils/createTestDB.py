@@ -114,9 +114,12 @@ def createTestDB():
 
 
         # named containers
-        primary_dewar_name = 'primaryDewar'
+#        primary_dewar_name = 'primaryDewar'
 
-        createContainer(primary_dewar_name, '24_puck_robot_dewar')
+        createContainer("primaryDewar", '24_puck_robot_dewar')
+        createContainer("primaryDewarAMX", '24_puck_robot_dewar')
+        createContainer("primaryDewarFMX", '24_puck_robot_dewar')
+        
 
         for i in range(1,5)+[7]:  # discontinuity for testing
             containerName = 'Puck_{0}'.format(i)

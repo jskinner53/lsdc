@@ -289,7 +289,8 @@ def collectData(currentRequest):
   if (prot == "raster"):
     status = daq_macros.snakeRaster(currentRequest["request_id"])
   elif (prot == "vector"):
-    daq_macros.vectorScan(currentRequest)
+#    daq_macros.vectorScan(currentRequest)
+    collect_vector_seq(currentRequest)
   elif (prot == "multiCol"):
     daq_macros.multiCol(currentRequest)
   elif (prot == "eScan"):
@@ -440,9 +441,77 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #  time.sleep(0.3)  
   set_field("state","Expose")
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+  if (daq_utils.beamline == "john"):
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+  if (daq_utils.beamline == "amx"):
+    pass
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+  if (daq_utils.beamline == "amx"):
+    pass
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+  if (daq_utils.beamline == "john"):  
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+  detector_wait()
+  image_started = 0        
+  set_field("state","Idle")        
+###  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+  return number_of_images
+
+
+def collect_vector_seq(currentRequest):
+  global image_started,allow_overwrite,abort_flag
+
+  reqObj = currentRequest["request_obj"]
+  data_directory_name = str(reqObj["directory"])  
+  sweep_start = reqObj["sweep_start"]
+  sweep_end = reqObj["sweep_end"]
+  fileprefix = str(reqObj["file_prefix"])
+  file_number = reqObj["file_number_start"]
+  range_degrees = abs(sweep_end-sweep_start)
+  beamline_lib.mvaDescriptor("omega",sweep_start)
+  image_width = reqObj["img_width"]
+  exposure_period = reqObj["exposure_time"]  
+  number_of_images = round(range_degrees/image_width)
+  range_seconds = number_of_images*exposure_period
+  exposure_time = exposure_period - .0024
+  angleStart = beamline_lib.motorPosFromDescriptor("omega")
+  if (angleStart>360.0):
+    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
+  file_prefix_minus_directory = str(fileprefix)
+  try:
+    file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
+  except ValueError: 
+    pass
+  print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
+  detector_set_period(exposure_period)
+  detector_set_exposure_time(exposure_time)
+  detector_set_numimages(number_of_images)
+  detector_set_filepath(data_directory_name)
+  detector_set_fileprefix(file_prefix_minus_directory)
+  detector_set_filenumber(file_number)
+  detector_set_fileheader(angleStart,image_width,get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))
+#  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))  
+  print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
+  detector_start()
+  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
+  image_started = range_seconds
+#  time.sleep(1.0) #4/15 - why so long?
+#  time.sleep(0.3)  
+  set_field("state","Expose")
+#  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
+  if (daq_utils.beamline == "john"):
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+  if (daq_utils.beamline == "amx"):
+    pass
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
+#  gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
+  daq_macros.vectorScan(currentRequest)  
+  if (daq_utils.beamline == "amx"):
+    pass
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+  if (daq_utils.beamline == "john"):  
+    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
   detector_wait()
   image_started = 0        
   set_field("state","Idle")        
