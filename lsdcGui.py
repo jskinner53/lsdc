@@ -158,7 +158,7 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams2.addWidget(colExptimeLabel)
         hBoxColParams2.addWidget(self.exp_time_ledit)
         hBoxColParams3 = QtGui.QHBoxLayout()
-        colEnergyLabel = QtGui.QLabel('Energy (KeV):')
+        colEnergyLabel = QtGui.QLabel('Energy (eV):')
         colEnergyLabel.setFixedWidth(120)
         colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.energy_ledit = QtGui.QLineEdit()
@@ -985,12 +985,15 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams2.addWidget(colExptimeLabel)
         hBoxColParams2.addWidget(self.exp_time_ledit)
         hBoxColParams3 = QtGui.QHBoxLayout()
-        colEnergyLabel = QtGui.QLabel('Energy (KeV):')
+        colEnergyLabel = QtGui.QLabel('Energy (eV):')
         colEnergyLabel.setFixedWidth(140)
-        colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
-        self.energy_ledit = QtGui.QLineEdit()
-        self.energy_ledit.setFixedWidth(60)
-        self.energy_ledit.textChanged[str].connect(self.energyTextChanged)
+        colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.energyMotorEntry = QtEpicsMotorLabel(daq_utils.motor_dict["energy"],self,70,2)
+#        self.energyMotorEntry = QtEpicsMotorEntry(daq_utils.motor_dict["energy"],self,70,2)        
+        self.energy_ledit = self.energyMotorEntry.getEntry()
+#        self.energyMotorEntry = QtGui.QLineEdit()
+#        self.energyMotorEntry.setFixedWidth(60)
+##        self.energyMotorEntry.getEntry().textChanged[str].connect(self.energyTextChanged)
         colTransmissionLabel = QtGui.QLabel('Transmission (%):')
         colTransmissionLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colTransmissionLabel.setFixedWidth(140)
@@ -1031,6 +1034,7 @@ class controlMain(QtGui.QMainWindow):
         self.detDistMotorEntry.getEntry().textChanged[str].connect(self.detDistTextChanged)        
 #        self.detDistMotorEntry.setFixedWidth(60)
         self.moveDetDistButton = QtGui.QPushButton("Move Detector")
+        self.moveDetDistButton.setEnabled(False)                
         self.moveDetDistButton.clicked.connect(self.moveDetDistCB)
         hBoxColParams5.addWidget(detDistLabel)
         hBoxColParams5.addWidget(detDistRBLabel)
@@ -1373,8 +1377,10 @@ class controlMain(QtGui.QMainWindow):
         self.click3Button.clicked.connect(self.center3LoopCB)
         self.threeClickCount = 0
         saveCenteringButton = QtGui.QPushButton("Save\nCenter")
+        saveCenteringButton.setEnabled(False)        
         saveCenteringButton.clicked.connect(self.saveCenterCB)
         selectAllCenteringButton = QtGui.QPushButton("Select All\nCenterings")
+        selectAllCenteringButton.setEnabled(False)                
         selectAllCenteringButton.clicked.connect(self.selectAllCenterCB)
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
@@ -1498,7 +1504,7 @@ class controlMain(QtGui.QMainWindow):
 
     def albulaCheckCB(self,state):
       if state != QtCore.Qt.Checked:
-        daq_utils.albulaClose()
+        albulaUtils.albulaClose()
 
     def rasterGrainToggledCB(self,identifier):
       if (identifier == "Coarse"):
@@ -2666,17 +2672,15 @@ class controlMain(QtGui.QMainWindow):
         itemData = item.data().toInt()[0]
         if (itemData < -100): #then it's a sample
           self.selectedSampleID = (0-(itemData))-100
-          self.selectedSampleRequest = daq_utils.createDefaultRequest(self.selectedSampleID) #7/21/15  - not sure what this does, b/c I don't pass it, ahhh probably the commented line for prefix
-          if (len(indexes)>1):
-            self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
-            self.dataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
-            self.EScanDataPathGBTool.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
-            self.EScanDataPathGBTool.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
-            self.EScanDataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
-            self.EScanDataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
-            
-            
-          self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+        self.selectedSampleRequest = daq_utils.createDefaultRequest(self.selectedSampleID) #7/21/15  - not sure what this does, b/c I don't pass it, ahhh probably the commented line for prefix
+        if (len(indexes)>1):
+          self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
+          self.dataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+          self.EScanDataPathGBTool.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
+          self.EScanDataPathGBTool.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+          self.EScanDataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
+          self.EScanDataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))                        
+        self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
 #      self.refreshTree()
       self.progressDialog.close()
       self.treeChanged_pv.put(1)
@@ -2959,9 +2963,10 @@ class controlMain(QtGui.QMainWindow):
         self.xia2CheckBox.setChecked(reqObj["xia2"])
       energy_s = str(daq_utils.wave2energy(reqObj["wavelength"]))
 #      energy_s = "%.4f" % (12.3985/selectedSampleRequest["wavelength"])
-      self.energy_ledit.setText(str(energy_s))
+##      self.energy_ledit.setText(str(energy_s))
       self.transmission_ledit.setText(str(reqObj["attenuation"]))
-      dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,reqObj["resolution"],1.1,0))
+      dist_s = str(reqObj["detDist"])
+#      dist_s = "%.2f" % (daq_utils.distance_from_reso(daq_utils.det_radius,reqObj["resolution"],reqObj["wavelength"],0))      
       self.detDistMotorEntry.getEntry().setText(str(dist_s))
       self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))
       self.dataPathGB.setBasePath_ledit(str(reqObj["basePath"]))
@@ -2971,10 +2976,11 @@ class controlMain(QtGui.QMainWindow):
       else:
         prefix_long = str(reqObj["directory"])+"/"+str(reqObj["file_prefix"])
       fnumstart=reqObj["file_number_start"]
-      firstFilename = daq_utils.create_filename(prefix_long,fnumstart)
+
       if (selectedSampleRequest.has_key("priority")):
         if (selectedSampleRequest["priority"] < 0 and self.albulaDispCheckBox.isChecked()):
-          daq_utils.albulaDisp(firstFilename)
+          firstFilename = daq_utils.create_filename(prefix_long,fnumstart)            
+          albulaUtils.albulaDisp(firstFilename)
       self.rasterStepEdit.setText(str(reqObj["gridStep"]))
       rasterStep = int(reqObj["gridStep"])
 #      self.eraseCB()

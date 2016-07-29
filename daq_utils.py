@@ -25,6 +25,8 @@ global beamlineComm #this is the comm_ioc
 beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 global searchParams
 global motor_dict,counter_dict,scan_list,soft_motor_list
+global detector_id
+detector_id = ""
 motor_dict = {}
 counter_dict = {}
 scan_list = []
@@ -173,10 +175,16 @@ def distance_from_reso(det_radius,reso,wave,theta):
 
 
 def energy2wave(e):
-  return float("%.2f" % (12.3985/e))
+  if (float(e)==0.0):
+    return 1.0
+  else:
+    return float("%.2f" % (12398.5/e))
 
 def wave2energy(w):
-  return float("%.2f" % (12.3985/w))
+  if (float(w)==0.0):
+    return 12600.0
+  else:
+    return float("%.2f" % (12398.5/w))
 
 def createDefaultRequest(sample_id):
     """
@@ -207,6 +215,7 @@ def createDefaultRequest(sample_id):
                "img_width": screenWidth,
                "exposure_time": screenExptime,
                "protocol": "standard",
+               "detDist": screenDist,
                "parentReqID": -1,
                "basePath": basePath,
                "file_prefix": sampleName,
@@ -367,7 +376,11 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
   return imageJpegData
 
 def create_filename(prefix,number):
-  tmp_filename = "%s_%06d.cbf" % (prefix,int(number))
+  if (detector_id == "EIGER-16"):  
+#  if (0):
+   tmp_filename = findH5Master(prefix)
+  else:
+    tmp_filename = "%s_%05d.cbf" % (prefix,int(number))
   if (prefix[0] != "/"):
     cwd = os.getcwd()
     filename = "%s/%s" % (cwd,tmp_filename)
@@ -375,6 +388,11 @@ def create_filename(prefix,number):
     filename = tmp_filename
   return filename
 
+def findH5Master(prefix):
+  comm_s = "ls " + prefix + "*_master.h5"
+  masterFilename = os.popen(comm_s).read()[0:-1]
+  return masterFilename
+  
 
 def readPVDesc():
   global motor_dict,soft_motor_list,scan_list,counter_dict

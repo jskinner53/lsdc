@@ -114,22 +114,19 @@ def get_det_pv(pvcode):
 def det_setheader(phist,phiinc,dist,wave,theta,exptime,xbeam,ybeam,rot_ax,omega,kappa,phi):
 
   #maybe phist not used, it picks it from axis
-  set_det_pv("det_distance",dist)
+
   set_det_pv("x_beam",xbeam)
   set_det_pv("y_beam",ybeam)
   set_det_pv("img_width",phiinc)
-  set_det_pv("start_angle",phist)  
+  set_det_pv("start_angle",phist)
+  set_det_pv("wave",wave)  
   if (det_id=="PILATUS-6"):
-    set_det_pv("wave",wave)
     set_det_pv("twotheta",theta)
     set_det_pv("kappa",kappa)
     set_det_pv("phi",phi)
-
-#  if (det_type != "pixel_array"):
-#    set_det_pv("exptime",exptime)  
-#    set_det_pv("axis",rot_ax)
-#    set_det_pv("omega",omega)    
-#  else:
+    set_det_pv("det_distance",dist)    
+  else:
+    set_det_pv("det_distance",dist/1000.0)
 
     
 def det_set_fileprefix(prefix):

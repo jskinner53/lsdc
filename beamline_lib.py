@@ -229,8 +229,8 @@ def get_mono_energy():
   if (daq_utils.has_beamline == 0):
     return 12398.5
   else:
-    mono_mot_code = beamline_support.get_motor_code(beamline_support.motor_code_from_descriptor("monochromator"))
-    return beamline_support.get_motor_pos(mono_mot_code)
+#    mono_mot_code = beamline_support.get_motor_code(beamline_support.motor_code_from_descriptor("monochromator"))
+    return motorPosFromDescriptor("energy")
 
 
 def mono_plot_spectrum():

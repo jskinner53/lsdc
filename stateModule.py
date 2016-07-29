@@ -61,7 +61,7 @@ def gotoState(stateName):
   for i in range(len(machineState["safeTransitions"])):
     if (machineState["safeTransitions"][i]["stateName"] == stateName):
       print("OK to transition")
-      print(machineState["safeTransitions"][i]['transitionProc'])
+#      print(machineState["safeTransitions"][i]['transitionProc'])
       exec(machineState["safeTransitions"][i]['transitionProc']+"()")  
       return 1
   return 1
@@ -118,15 +118,14 @@ def init_var_channels(beamlineComm):
 
 
 def var_list_item_changeCb(value=None, char_value=None, **kw):
-  print("in callback " + char_value + " " + kw["varname"])
-#  print("in callback " + str(epics_args['pv_value']) + " " + user_args[0])  
+##  print("in callback " + char_value + " " + kw["varname"])
 
   #  if (ca.dbf_text(epics_args['type']) == "DBF_CHAR"):
 #    stateVars[user_args[0]] = beamline_support.waveform_to_string(epics_args['pv_value'])
 #  else:
 
   stateVars[kw["varname"]] = value
-  print(stateVars)
+##  print(stateVars)
 
         
 def stateEvalThread(frequency):
