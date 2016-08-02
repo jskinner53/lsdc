@@ -46,6 +46,18 @@ def abortBS():
       RE.abort()
     except super_state_machine.errors.TransitionError:
       print("caught BS")
+
+def changeImageCenterHighMagZoom(x,y):
+  minXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeYRBV")
+  x_click = float(x)
+  y_click = float(y)  
+  new_minX = minXRBV + (x_click-(sizeXRBV/2.0))
+  new_minY = minYRBV + (y_click-(sizeYRBV/2.0))
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY)    
   
 
 def autoRasterLoop(currentRequest):
@@ -318,8 +330,8 @@ def snakeRaster(rasterReqID,grain=""):
   img_width_per_cell = reqObj["img_width"]
 #really should read these two from hardware  
   wave = reqObj["wavelength"]
-  xbeam = daq_utils.xbeam
-  ybeam = daq_utils.ybeam  
+  xbeam = beamline_support.getPvValFromDescriptor("beamCenterX")
+  ybeam = beamline_support.getPvValFromDescriptor("beamCenterY")
   rasterDef = reqObj["rasterDef"]
   stepsize = float(rasterDef["stepsize"])
   omega = float(rasterDef["omega"])
@@ -416,7 +428,7 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
     beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
-    if (daq_utils.detector_id == "EIGER-16" and 0):
+    if (daq_utils.detector_id == "EIGER-16"):
       detectorArmEiger(numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
     vectorWait()

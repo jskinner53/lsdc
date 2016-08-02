@@ -72,15 +72,14 @@ def set_group_name(group_name):
 def set_distance_value(distance):
   set_field("distance",atof(distance))
   
-def set_xbeam(xbeam):
-  daq_utils.setBeamlineConfigParams({"xbeam":float(xbeam)})
-  daq_utils.xbeam = float(xbeam)  
+def set_xbeam(xbeam): #detector center for image header, in pixels
+  beamline_support.setPvValFromDescriptor("beamCenterX",float(xbeam))
 
 def set_ybeam(ybeam):
-  daq_utils.setBeamlineConfigParams({"ybeam":float(ybeam)})
-  daq_utils.xbeam = float(ybeam)  
+  beamline_support.setPvValFromDescriptor("beamCenterY",float(ybeam))  
 
-def set_beamcenter(xbeam,ybeam):
+
+def set_beamcenter(xbeam,ybeam): #detector center for image header, in pixels
   set_xbeam(xbeam)
   set_ybeam(ybeam)
 
@@ -431,7 +430,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
-  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))
+  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),angleStart,angleStart,get_field("kappa"),get_field("phi"))
 #  detector_set_fileheader(angleStart,image_width,get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))  
 #  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))  
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
@@ -491,7 +490,7 @@ def collect_vector_seq(currentRequest):
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
-  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))
+  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),angleStart,angleStart,get_field("kappa"),get_field("phi"))
 #  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))  
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
   detector_start()

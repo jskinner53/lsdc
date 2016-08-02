@@ -1396,7 +1396,11 @@ class controlMain(QtGui.QMainWindow):
         self.vidActionC2CRadio = QtGui.QRadioButton("C2C")
         self.vidActionC2CRadio.setChecked(True)
         self.vidActionC2CRadio.toggled.connect(self.vidActionToggledCB)
-        self.vidActionRadioGroup.addButton(self.vidActionC2CRadio)
+        self.vidActionRadioGroup.addButton(self.vidActionC2CRadio)        
+        self.vidActionDefineCenterRadio = QtGui.QRadioButton("Define\nCenter")
+        self.vidActionDefineCenterRadio.setChecked(False)
+        self.vidActionDefineCenterRadio.toggled.connect(self.vidActionToggledCB)
+        self.vidActionRadioGroup.addButton(self.vidActionDefineCenterRadio)
         self.vidActionRasterExploreRadio = QtGui.QRadioButton("Raster\nExplore")
         self.vidActionRasterExploreRadio.setChecked(False)
         self.vidActionRasterExploreRadio.toggled.connect(self.vidActionToggledCB)
@@ -1422,6 +1426,7 @@ class controlMain(QtGui.QMainWindow):
 #        self.vidActionRasterMoveRadio.toggled.connect(self.vidActionToggledCB)
 #        self.vidActionRadioGroup.addButton(self.vidActionRasterMoveRadio)
         hBoxRadioLayout100.addWidget(self.vidActionC2CRadio)
+        hBoxRadioLayout100.addWidget(self.vidActionDefineCenterRadio)        
         hBoxRadioLayout100.addWidget(self.vidActionRasterExploreRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterSelectRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterDefRadio)
@@ -2569,6 +2574,10 @@ class controlMain(QtGui.QMainWindow):
         y_click = float(event.pos().y())
         penGreen = QtGui.QPen(QtCore.Qt.green)
         penRed = QtGui.QPen(QtCore.Qt.red)
+        if (self.vidActionDefineCenterRadio.isChecked()):
+          comm_s = "changeImageCenterHighMagZoom(" + str(x_click) + "," + str(y_click) + ")"
+          self.send_to_server(comm_s)
+          return
         if (self.vidActionRasterDefRadio.isChecked()):
           self.click_positions.append(event.pos())
           self.polyPointItems.append(self.scene.addEllipse(x_click, y_click, 4, 4, penRed))
