@@ -148,3 +148,5 @@ def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_
 #  return number_of_images
   return
 
+
+

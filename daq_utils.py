@@ -22,11 +22,13 @@ global beamline
 beamline = os.environ["BEAMLINE_ID"]
 #beamline = "john"
 global beamlineComm #this is the comm_ioc
-beamlineComm = "XF:17IDC-ES:FMX{Comm}"
+beamlineComm = ""
+#beamlineComm = "XF:17IDC-ES:FMX{Comm}"
 global searchParams
-global motor_dict,counter_dict,scan_list,soft_motor_list
+global motor_dict,counter_dict,scan_list,soft_motor_list,pvLookupDict
 global detector_id
 detector_id = ""
+pvLookupDict = {}
 motor_dict = {}
 counter_dict = {}
 scan_list = []
@@ -150,8 +152,12 @@ def ObsoletegetCurrentFOVy(camera,zoom): #cam 0 = lowMag,
       return daq_utils.highMagFOVy/2          
 
 
-def calc_reso(det_radius,distance,wave,theta):
+def calc_reso(det_radius,detDistance,wave,theta):
 
+  if (detDistance == 0): #in case distance reads as 0
+    distance = 100.0
+  else:
+    distance = detDistance
   dg2rd = 3.14159265 / 180.0
 #  det_radius = float(diameter)/2
   theta_radians = float(theta) * dg2rd
@@ -393,7 +399,7 @@ def findH5Master(prefix):
   
 
 def readPVDesc():
-  global motor_dict,soft_motor_list,scan_list,counter_dict
+  global beamline_designation,motor_dict,soft_motor_list,scan_list,counter_dict
   
   envname = "EPICS_BEAMLINE_INFO"
   try:
@@ -429,7 +435,7 @@ def readPVDesc():
         break
       else:
         line = line[:-1]
-        if (line == "#scanned motors"):
+        if (line == "#control PVs"):
           break
         else:
           motor_inf = line.split()
@@ -441,12 +447,23 @@ def readPVDesc():
         break
       else:
         line = line[:-1]
+        if (line == "#scanned motors"):
+          break
+        else:
+          inf = line.split()
+          pvLookupDict[inf[1]] = beamline_designation + inf[0]          
+    while(1):
+      line = dbfile.readline()
+      if (line == ""):
+        break
+      else:
+        line = line[:-1]
         if (line == "#counters"):
           break
         else:
           scan_list.append(beamline_designation + line + "scanParms")
     line = dbfile.readline()
-    counter_inf = line.split()    
+    counter_inf = line.split()
     counter_dict[counter_inf[1]] = beamline_designation + counter_inf[0]    
 
 

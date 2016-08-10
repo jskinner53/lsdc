@@ -379,9 +379,11 @@ def collectData(currentRequest):
           fastEPFlag = 1
         else:
           fastEPFlag = 0
-        comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
-#        comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "\"&"        
-#        comm_s = os.environ["CBHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"        
+        if (daq_utils.detector_id == "EIGER-16"):
+          seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
+          comm_s = os.environ["LSDCHOME"] + "/runFastDPH5.py " + data_directory_name + " " + file_prefix + " " + str(seqNum) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
+        else:
+          comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
         print(comm_s)
         os.system(comm_s)
       if (reqObj["xia2"]):
@@ -414,7 +416,10 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #      allow_overwrite = 1
   number_of_images = round(range_degrees/image_width)
   range_seconds = number_of_images*exposure_period
-  exposure_time = exposure_period - .0024
+  if (daq_utils.detector_id == "EIGER-16"):  
+    exposure_time = exposure_period - .00001
+  else:
+    exposure_time = exposure_period - .0024  
   angleStart = beamline_lib.motorPosFromDescriptor("omega")
   if (angleStart>360.0):
     angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
@@ -430,7 +435,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
-  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),angleStart,angleStart,get_field("kappa"),get_field("phi"))
+  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),"omega",angleStart,get_field("kappa"),get_field("phi"))
 #  detector_set_fileheader(angleStart,image_width,get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),exposure_period,daq_utils.xbeam,daq_utils.ybeam,angleStart,angleStart,get_field("kappa"),get_field("phi"))  
 #  detector_set_fileheader(get_field(get_field("scan_axis")),get_field("inc0"),get_field("distance"),12398.5/beamline_lib.get_mono_energy(),get_field("theta"),get_field("exptime0"),daq_utils.xbeam,daq_utils.ybeam,get_field("scan_axis"),get_field("omega"),get_field("kappa"),get_field("phi"))  
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
@@ -441,17 +446,19 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
 #  time.sleep(0.3)  
   set_field("state","Expose")
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  if (daq_utils.beamline == "john"):
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
-  if (daq_utils.beamline == "amx"):
-    pass
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
+#  if (daq_utils.beamline == "john"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+#  if (daq_utils.beamline == "amx"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
   gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  if (daq_utils.beamline == "amx"):
-    pass
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
-  if (daq_utils.beamline == "john"):  
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+#  if (daq_utils.beamline == "amx"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+#  if (daq_utils.beamline == "john"):  
+ #   beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)
+#    pass
   detector_wait()
   image_started = 0        
   set_field("state","Idle")        
@@ -474,7 +481,10 @@ def collect_vector_seq(currentRequest):
   exposure_period = reqObj["exposure_time"]  
   number_of_images = round(range_degrees/image_width)
   range_seconds = number_of_images*exposure_period
-  exposure_time = exposure_period - .0024
+  if (daq_utils.detector_id == "EIGER-16"):  
+    exposure_time = exposure_period - .00001
+  else:
+    exposure_time = exposure_period - .0024  
   angleStart = beamline_lib.motorPosFromDescriptor("omega")
   if (angleStart>360.0):
     angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
@@ -500,24 +510,64 @@ def collect_vector_seq(currentRequest):
 #  time.sleep(0.3)  
   set_field("state","Expose")
 #  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
-  if (daq_utils.beamline == "john"):
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
-  if (daq_utils.beamline == "amx"):
-    pass
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
+#  if (daq_utils.beamline == "john"):
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Opn-Cmd","VAL",1)
+#    pass
+#  if (daq_utils.beamline == "amx"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Opn-Cmd","VAL",1)
 #  gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used
   daq_macros.vectorScan(currentRequest)  
-  if (daq_utils.beamline == "amx"):
-    pass
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
-  if (daq_utils.beamline == "john"):  
-    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+#  if (daq_utils.beamline == "amx"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:AMX{PSh}Cmd:Cls-Cmd","VAL",1)  
+#  if (daq_utils.beamline == "john"):
+#    pass
+#    beamline_support.set_any_epics_pv("XF:17IDA-PPS:FMX{PSh}Cmd:Cls-Cmd","VAL",1)  
   detector_wait()
   image_started = 0        
   set_field("state","Idle")        
 ###  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
   return number_of_images
 
+
+
+def detectorArm(angle_start,image_width,number_of_images,exposure_period,fileprefix,data_directory_name,file_number): #will need some environ info to diff eiger/pilatus
+  global image_started,allow_overwrite,abort_flag
+
+  print("data directory = " + data_directory_name)
+  if (daq_utils.detector_id == "EIGER-16"):    
+    detector_dead_time = .00001     
+  else:
+    detector_dead_time = .0024 #pilatus
+  exposure_time = exposure_period - detector_dead_time
+  file_prefix_minus_directory = str(fileprefix)
+  try:
+    file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
+  except ValueError: 
+    pass
+  detector_set_period(exposure_period)
+  detector_set_exposure_time(exposure_time)
+  detector_set_numimages(number_of_images)
+  detector_set_filepath(data_directory_name)
+  detector_set_fileprefix(file_prefix_minus_directory)
+  detector_set_filenumber(file_number)
+  detector_set_fileheader(angle_start,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),0.0,exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),"omega",angle_start,0.0,0.0) #only a few for eiger
+  
+#  print "collect eiger %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
+  detector_start() #but you need wired or manual trigger
+  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means  
+#  image_started = range_seconds
+#  time.sleep(1.0) #4/15 - why so long?
+#  time.sleep(0.3)  
+#  set_field("state","Expose")
+#  gon_osc(get_field("scan_axis"),0.0,range_degrees,range_seconds) #0.0 is the angle start that's not used
+#  image_started = 0        
+#  detector_wait()
+#  set_field("state","Idle")          
+###  daq_macros.fakeDC(data_directory_name,file_prefix_minus_directory,int(file_number),int(number_of_images))  
+#  return number_of_images
+  return
 
 
 def center_on_click(x,y,fovx,fovy,source="screen",maglevel=0,jog=0): #maglevel=0 means lowmag, high fov, #1 = himag with digizoom option, 

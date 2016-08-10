@@ -44,7 +44,7 @@ def pybass_init():
   if (1):
 #  if (daq_lib.has_beamline): # for now
 #    try:
-    read_db()
+    beamline_lib.read_db()
     print("init mots")
 #      beamline_support.init_motors()
     init_mots()    #for now

@@ -1248,9 +1248,13 @@ class controlMain(QtGui.QMainWindow):
         self.VidFrame = QFrame()
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
-          thread.start_new_thread(self.initVideo2,(.25,)) #highMag
-          thread.start_new_thread(self.initVideo3,(.25,))          #this sets up lowMagDigiZoom
-          thread.start_new_thread(self.initVideo4,(.25,))          #this sets up highMagDigiZoom          
+          if (daq_utils.beamline != "amx"):            
+            thread.start_new_thread(self.initVideo2,(.25,)) #highMag
+            thread.start_new_thread(self.initVideo4,(.25,))          #this sets up highMagDigiZoom
+          else:
+            self.captureHighMag = None
+            self.captureHighMagZoom = None          
+          thread.start_new_thread(self.initVideo3,(.25,))          #this sets up lowMagDigiZoom              
 #          self.captureFull=cv2.VideoCapture("http://xf17id1c-ioc2.cs.nsls2.local:8007/C1ZOOM.MJPG.mjpg")          
           self.captureLowMag=cv2.VideoCapture(daq_utils.lowMagCamURL)
         else:
@@ -1339,6 +1343,8 @@ class controlMain(QtGui.QMainWindow):
         self.cameraRadioGroup.addButton(self.lowMagLevelRadio)
         self.highMagLevelRadio = QtGui.QRadioButton("HighMag")
         self.highMagLevelRadio.setChecked(False)
+        if (daq_utils.beamline == "amx"):
+          self.highMagLevelRadio.setEnabled(False)
         self.cameraRadioGroup.addButton(self.highMagLevelRadio)
         self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
         self.digiZoomCheckBox = QCheckBox("Zoom")
@@ -1760,7 +1766,11 @@ class controlMain(QtGui.QMainWindow):
       else:
         if (self.digiZoomCheckBox.isChecked()):
            self.digiZoomCheckBox.setChecked(False)
-        
+
+
+    def processROIChange(self,posRBV,ID):
+#      print(ID + " changed to " + str(posRBV))
+      pass
 
     def processSampMove(self,posRBV,motID):
 #      print "new " + motID + " pos=" + str(posRBV)
@@ -3121,6 +3131,11 @@ class controlMain(QtGui.QMainWindow):
       motID = kw["motID"]
       self.emit(QtCore.SIGNAL("sampMoveSignal"),posRBV,motID)
 
+    def processROIChangeCB(self,value=None, char_value=None, **kw):
+      posRBV = value
+      ID = kw["ID"]
+      self.emit(QtCore.SIGNAL("roiChangeSignal"),posRBV,ID)
+      
     def processZoomLevelChangeCB(self,value=None, char_value=None, **kw):
       zoomVal = value
 #      userFlag = user_args[0]
@@ -3211,19 +3226,28 @@ class controlMain(QtGui.QMainWindow):
       self.sampx_pv.add_callback(self.processSampMoveCB,motID="x")
       self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".RBV")
 #      self.sampy_pv = PV(daq_utils.motor_dict["sampleY"]+".VAL")
-      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
+##      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampy_pv.add_callback(self.processSampMoveCB,motID="y")
       self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".RBV")
 #      self.sampz_pv = PV(daq_utils.motor_dict["sampleZ"]+".VAL")
-      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
+##      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.sampz_pv.add_callback(self.processSampMoveCB,motID="z")
 
       self.omega_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")
       self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".RBV")
 #      self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")      
-      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
+##      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.omegaRBV_pv.add_callback(self.processSampMoveCB,motID="omega")
-#      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")      
+#      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
+
+      self.highMagZoomMinXRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinXRBV"])
+      self.connect(self, QtCore.SIGNAL("roiChangeSignal"),self.processROIChange)
+      self.highMagZoomMinXRBV_pv.add_callback(self.processROIChangeCB,ID="x")
+
+      self.highMagZoomMinYRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinYRBV"])
+      self.highMagZoomMinYRBV_pv.add_callback(self.processROIChangeCB,ID="y")
+      
+
 
 ##      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
 ##      self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
@@ -3282,7 +3306,7 @@ class controlMain(QtGui.QMainWindow):
 
 def main():
     daq_utils.init_environment()
-    daq_utils.readPVDesc()
+    daq_utils.readPVDesc()    
     app = QtGui.QApplication(sys.argv)
     ex = controlMain()
     sys.exit(app.exec_())

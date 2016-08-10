@@ -257,14 +257,20 @@ def vectorWait():
     time.sleep(0.05)
 
 
-def runDialsThread(pattern,rowIndex,rowCellCount):
+def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
 
-  hdfSampleDataPattern = "/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/insu6_"
-  hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_master.h5"
-#  hdfRowFilepattern = pattern + str(rowIndex) + "_master.h5"  
-  CBF_conversion_pattern = pattern+"_"
-#  CBF_conversion_pattern = pattern+str(rowIndex)+"_"  
+
+  cbfDir = directory+"/cbf"
+  comm_s = "mkdir -p " + cbfDir
+
+  os.system(comm_s)
+#  hdfSampleDataPattern = "/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/insu6_"
+  hdfSampleDataPattern = directory+"/"+prefix+"_" 
+  hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_" + str(int(float(seqNum))) + "_master.h5"
+#  hdfRowFilepattern = prefix + str(rowIndex) + "_master.h5"  
+#  CBF_conversion_pattern = prefix+"_"
+  CBF_conversion_pattern = cbfDir + "/" + prefix+"_" + str(rowIndex)+"_"  
 #normally use the cbf converter to get the frame count here, but we'll just harcode it for now, but we'll call it anyway
   comm_s = "eiger2cbf-linux " + hdfRowFilepattern
 ###  os.system(comm_s)
@@ -287,7 +293,7 @@ def runDialsThread(pattern,rowIndex,rowCellCount):
   lsOut = os.system(comm_s)
   comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
 ###  comm_s = "ls -rt " + CBFpattern + "|/usr/local/crys-local/dials/build/bin/dials.find_spots_client"  
-####  comm_s = "ssh -q cpu-004 \"ls -rt " + pattern + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
+####  comm_s = "ssh -q cpu-004 \"ls -rt " + prefix + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
   print(comm_s)
   retry = 3
   while(1):
@@ -313,7 +319,7 @@ def snakeRaster(rasterReqID,grain=""):
   reqObj = rasterRequest["request_obj"]
   parentReqID = reqObj["parentReqID"]
   parentReqProtocol = ""
-  detDist = 100 # for now, no motor yet
+  
   if (parentReqID != -1):
     parentRequest = db_lib.getRequest(parentReqID)
     parentReqObj = parentRequest["request_obj"]
@@ -325,6 +331,7 @@ def snakeRaster(rasterReqID,grain=""):
   os.system("mkdir -p " + data_directory_name)
   os.system("chmod -R 777 " + data_directory_name)  
   filePrefix = str(reqObj["file_prefix"])
+  file_number_start = reqObj["file_number_start"]  
   dataFilePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]  
   exptimePerCell = reqObj["exposure_time"]
   img_width_per_cell = reqObj["img_width"]
@@ -342,8 +349,8 @@ def snakeRaster(rasterReqID,grain=""):
 #  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
 
 # 2/17/16 - a few things for integrating dials/spotfinding into this routine, this is just to fake the data
-  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")
-  testImgCount = 0
+##  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")
+##  testImgCount = 0
 ##  for i in range(0,len(rasterDef["rowDefs"])):
 ##    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])    
   rowCount = len(rasterDef["rowDefs"])
@@ -428,14 +435,21 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
     beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
-    if (daq_utils.detector_id == "EIGER-16"):
-      detectorArmEiger(numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,wave,xbeam,ybeam,detDist)
+    detectorArm(omega,img_width_per_cell,numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
     vectorWait()
-##    detector_wait()
+    detector_wait()
 # add the threading dials stuff here, and the thread routine elsewhere.
-    _thread.start_new_thread(runDialsThread,(rasterFilePrefix,i,numsteps,))
+    if (daq_utils.detector_id == "EIGER-16"):
+      pass
+    seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
+    _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))
+  rasterTimeout = 120
+  timerCount = 0
   while (1):
+    timerCount +=1
+    if (timerCount>rasterTimeout):
+      break
     time.sleep(1)
     print(processedRasterRowCount)
     if (processedRasterRowCount == rowCount):

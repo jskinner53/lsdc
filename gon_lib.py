@@ -17,11 +17,12 @@ def lib_gon_center_xtal(x,y,angle_omega,angle_phi):
   wait_for_goniohead()
   
 def lib_open_shutter():
-  pass
+  beamline_lib.mvaDescriptor("fastShutter",20.0)  
 
 
 def lib_close_shutter():
-  pass
+  beamline_lib.mvaDescriptor("fastShutter",-20.0)    
+
 
 
 def lib_home():
