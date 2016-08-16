@@ -52,12 +52,63 @@ def changeImageCenterHighMagZoom(x,y):
   minYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinYRBV")
   sizeXRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeXRBV")
   sizeYRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0    
   x_click = float(x)
   y_click = float(y)  
   new_minX = minXRBV + (x_click-(sizeXRBV/2.0))
   new_minY = minYRBV + (y_click-(sizeYRBV/2.0))
+  new_minX_nozoom = new_minX - (sizeXRBV/2.0)
+  new_minY_nozoom = new_minY - (sizeYRBV/2.0)  
   beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX)
-  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY)
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+    return  
+  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX_nozoom)
+  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY_nozoom)    
+
+
+def changeImageCenterLowMagZoom(x,y):
+  minXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0    
+  x_click = float(x)
+  y_click = float(y)  
+  new_minX = minXRBV + (x_click-(sizeXRBV/2.0))
+  new_minY = minYRBV + (y_click-(sizeYRBV/2.0))
+#  new_minX_nozoom = new_minX - (sizeXRBV/2.0)
+#  new_minY_nozoom = new_minY - (sizeYRBV/2.0)  
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minY)
+#  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#    return  
+#  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX_nozoom)
+#  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY_nozoom)    
+
+
+  
+def changeImageCenterHighMag(x,y):
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+    return
+  minXRBV = beamline_support.getPvValFromDescriptor("highMagMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("highMagMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0  
+  x_click = float(x)
+  y_click = float(y)  
+  new_minX = minXRBV + (2.0*(x_click-(sizeXRBV/2.0)))
+  new_minY = minYRBV + (2.0*(y_click-(sizeYRBV/2.0)))
+  new_minX_zoom = new_minX + (sizeXRBV/2.0)
+  new_minY_zoom = new_minY + (sizeYRBV/2.0)  
+  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX_zoom)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY_zoom)    
   
 
 def autoRasterLoop(currentRequest):
@@ -217,8 +268,11 @@ def generateGridMap(rasterRequest):
         xMotCellAbsoluteMove = xMotAbsoluteMove+(j*stepsize)
       else:
         xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
+      if (daq_utils.detector_id == "EIGER-16"):
+        dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+      else:
+        dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
 
-      dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
  ##     comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName      
 ##      os.system(comm_s)
       testImgCount+=1
@@ -230,6 +284,7 @@ def generateGridMap(rasterRequest):
   else:
     parentReqID = -1
   print("RASTER CELL RESULTS")
+  print(rasterCellMap)
   dialsResultLocalList = []
   for i in range (0,len(rasterRowResultsList)):
     for j in range (0,len(rasterRowResultsList[i])):
@@ -261,34 +316,27 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
 
 
-  cbfDir = directory+"/cbf"
-  comm_s = "mkdir -p " + cbfDir
-
-  os.system(comm_s)
-#  hdfSampleDataPattern = "/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/insu6_"
-  hdfSampleDataPattern = directory+"/"+prefix+"_" 
-  hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_" + str(int(float(seqNum))) + "_master.h5"
-#  hdfRowFilepattern = prefix + str(rowIndex) + "_master.h5"  
-#  CBF_conversion_pattern = prefix+"_"
-  CBF_conversion_pattern = cbfDir + "/" + prefix+"_" + str(rowIndex)+"_"  
-#normally use the cbf converter to get the frame count here, but we'll just harcode it for now, but we'll call it anyway
-  comm_s = "eiger2cbf-linux " + hdfRowFilepattern
-###  os.system(comm_s)
-#some stuff to pull different images from the hdf container, No, b/c it uses those indices in the output filenames
-#  startIndex = randint(1,700)
-#  endIndex = startIndex + rowCellCount - 1
   if (rowIndex%2 == 0):
     node = "cpu-004"
   else:
     node = "cpu-005"    
-  if (rowCellCount==1): #account for bug in converter
-    comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
+  if (seqNum>-1): #eiger
+    cbfDir = directory+"/cbf"
+    comm_s = "mkdir -p " + cbfDir
+    os.system(comm_s)
+    hdfSampleDataPattern = directory+"/"+prefix+"_" 
+    hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_" + str(int(float(seqNum))) + "_master.h5"
+    CBF_conversion_pattern = cbfDir + "/" + prefix+"_" + str(rowIndex)+"_"  
+    comm_s = "eiger2cbf-linux " + hdfRowFilepattern
+    if (rowCellCount==1): #account for bug in converter
+      comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
+    else:
+      comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
+    print(comm_s)
+    os.system(comm_s)
+    CBFpattern = CBF_conversion_pattern + "*.cbf"
   else:
-    comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
-  print(comm_s)
-#  comm_s = "ssh -q cpu-004 \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " " + str(startIndex) + ":" + str(endIndex) + " " + CBF_conversion_pattern + "\""  
-  os.system(comm_s)
-  CBFpattern = CBF_conversion_pattern + "*.cbf"
+    CBFpattern = directory + "/" + prefix+"_" + str(rowIndex) + "_" + "*.cbf"
   comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + ">>/dev/null\""
   lsOut = os.system(comm_s)
   comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
@@ -396,7 +444,7 @@ def snakeRaster(rasterReqID,grain=""):
 
     yzRelativeMove = startY*sin(omegaRad)
     yyRelativeMove = startY*cos(omegaRad)
-
+    print("x rel move = " + str(xRelativeMove))
     xMotAbsoluteMove = rasterStartX+xRelativeMove #note we convert relative to absolute moves, using the raster center that was saved in x,y,z
     yMotAbsoluteMove = rasterStartY-yyRelativeMove
     zMotAbsoluteMove = rasterStartZ-yzRelativeMove
@@ -433,7 +481,8 @@ def snakeRaster(rasterReqID,grain=""):
     beamline_support.setPvValFromDescriptor("vectorEndY",yEnd)  
     beamline_support.setPvValFromDescriptor("vectorEndZ",zEnd)  
     beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell)
-    beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)
+    beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps)
+#    beamline_support.setPvValFromDescriptor("vectorNumFrames",numsteps-1)    
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
     detectorArm(omega,img_width_per_cell,numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
@@ -441,9 +490,10 @@ def snakeRaster(rasterReqID,grain=""):
     detector_wait()
 # add the threading dials stuff here, and the thread routine elsewhere.
     if (daq_utils.detector_id == "EIGER-16"):
-      pass
-    seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
-    _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))
+      seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
+    else:
+      seqNum = -1
+    _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))      
   rasterTimeout = 120
   timerCount = 0
   while (1):
@@ -514,7 +564,12 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
   else:
     scoreOption = "total_intensity"
   for i in range (0,len(cellResults)):
-    scoreVal = float(cellResults[i][scoreOption])
+#    print(cellResults[i])
+#    print("\n")
+    try:
+      scoreVal = float(cellResults[i][scoreOption])
+    except TypeError:
+      continue
     if (multiColThreshold>0):
       if (scoreVal > multiColThreshold):
         hitFile = cellResults[i]["image"]

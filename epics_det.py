@@ -210,7 +210,7 @@ def det_waitArmed(): #not even sure what this means.
     return  
   if (det_type == "pixel_array"):
     print("armed = " + str(get_det_pv("armed_state")))
-    time.sleep(0.5)      
+##    time.sleep(0.5)      
     while (get_det_pv("armed_state") == 0):
 #      print(get_det_pv("armed_state"))
       time.sleep(.01)

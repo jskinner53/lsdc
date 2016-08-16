@@ -702,6 +702,7 @@ class DataLocInfo(QtGui.QGroupBox):
         self.hBoxDPathParams2 = QtGui.QHBoxLayout()
         self.dataPrefixLabel = QtGui.QLabel('Data Prefix:')
         self.prefix_ledit = QtGui.QLineEdit()
+        self.prefix_ledit.textChanged[str].connect(self.prefixTextChanged)
         self.hBoxDPathParams2.addWidget(self.dataPrefixLabel)
         self.hBoxDPathParams2.addWidget(self.prefix_ledit)
         self.dataNumstartLabel = QtGui.QLabel('File Number Start:')
@@ -725,6 +726,11 @@ class DataLocInfo(QtGui.QGroupBox):
 #      runNum = db_lib.getSampleRequestCount(self.selectedSampleID)
       self.setDataPath_ledit(text+"/projID/"+prefix+"/#/")
 
+    def prefixTextChanged(self,text):
+      prefix = self.prefix_ledit.text()
+      runNum = db_lib.getSampleRequestCount(self.parent.selectedSampleID)
+      self.setDataPath_ledit(self.base_path_ledit.text()+"/projID/"+prefix+"/"+str(runNum+1)+"/")
+      
 
     def setFileNumstart_ledit(self,s):
       self.file_numstart_ledit.setText(s)
@@ -1265,7 +1271,7 @@ class controlMain(QtGui.QMainWindow):
         time.sleep(5)
         self.capture = self.captureLowMag
         if (daq_utils.has_xtalview):
-          self.timerId = self.startTimer(40) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
+          self.timerId = self.startTimer(0) #allegedly does this when window event loop is done if this = 0, otherwise milliseconds, but seems to suspend anyway if use milliseconds (confirmed)
         self.centeringMarksList = []
         self.rasterList = []
         self.rasterDefList = []
@@ -2205,8 +2211,13 @@ class controlMain(QtGui.QMainWindow):
         numsteps = rasterDef["rowDefs"][i]["numsteps"]
         for j in xrange(numsteps):
           cellResult = cellResults[spotLineCounter]
-          spotcount = cellResult["spot_count"]
-          filename =  cellResult["image"]
+          try:
+            spotcount = cellResult["spot_count"]
+            filename =  cellResult["image"]            
+          except TypeError:
+            spotcount = 0
+            filename = "empty"
+
           if (i%2 == 0): #this is trying to figure out row direction
             cellIndex = spotLineCounter
           else:
@@ -2230,10 +2241,17 @@ class controlMain(QtGui.QMainWindow):
 ##          spotcount = int(my_array[cellCounter])
 ##          cellResultsArrayIndex = cellCounter
           cellResult = cellResults_array[cellCounter]
-          spotcount = int(cellResult["spot_count"])
-          cellFilename = cellResult["image"]
-          d_min =  float(cellResult["d_min"])
-          total_intensity =  int(cellResult["total_intensity"])
+          try:
+            spotcount = int(cellResult["spot_count"])
+            cellFilename = cellResult["image"]
+            d_min =  float(cellResult["d_min"])
+            total_intensity =  int(cellResult["total_intensity"])
+          except TypeError:
+            spotcount = 0
+            cellFilename = "empty"
+            d_min =  50.0
+            total_intensity = 0
+              
           if (rasterEvalOption == "Spot Count"):
             param = spotcount 
           elif (rasterEvalOption == "Intensity"):
@@ -2585,7 +2603,10 @@ class controlMain(QtGui.QMainWindow):
         penGreen = QtGui.QPen(QtCore.Qt.green)
         penRed = QtGui.QPen(QtCore.Qt.red)
         if (self.vidActionDefineCenterRadio.isChecked()):
-          comm_s = "changeImageCenterHighMagZoom(" + str(x_click) + "," + str(y_click) + ")"
+          if(self.digiZoomCheckBox.isChecked()):
+            comm_s = "changeImageCenterHighMagZoom(" + str(x_click) + "," + str(y_click) + ")"
+          else:
+            comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ")"              
           self.send_to_server(comm_s)
           return
         if (self.vidActionRasterDefRadio.isChecked()):
@@ -2829,7 +2850,7 @@ class controlMain(QtGui.QMainWindow):
         reqObj["exposure_time"] = float(self.exp_time_ledit.text())
         reqObj["resolution"] = float(self.resolution_ledit.text())
 #        reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
-        reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+        reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+str(self.dataPathGB.prefix_ledit.text())+"/" + str(runNum) + "/")
         reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
         reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
