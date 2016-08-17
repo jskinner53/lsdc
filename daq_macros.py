@@ -5,6 +5,7 @@ import daq_lib
 from daq_lib import *
 import daq_utils
 import db_lib
+import det_lib
 #import string
 import math
 import robot_lib
@@ -284,7 +285,7 @@ def generateGridMap(rasterRequest):
   else:
     parentReqID = -1
   print("RASTER CELL RESULTS")
-  print(rasterCellMap)
+#  print(rasterCellMap)
   dialsResultLocalList = []
   for i in range (0,len(rasterRowResultsList)):
     for j in range (0,len(rasterRowResultsList[i])):
@@ -300,6 +301,12 @@ def generateGridMap(rasterRequest):
   rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
   return rasterResult
 
+
+def setVectorDelay(delayVal):
+  beamline_support.setPvValFromDescriptor("vectorDelay",float(delayVal))
+
+def getVectorDelay():
+  return beamline_support.getPvValFromDescriptor("vectorDelay")
 
 def rasterWait():
   time.sleep(0.2)
@@ -353,9 +360,9 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
     else:
       break
   rasterRowResultsList[rowIndex] = localDialsResultDict["data"]["response"]
-  print("\n")
-  print(rasterRowResultsList[rowIndex])
-  print("\n")
+#  print("\n")
+#  print(rasterRowResultsList[rowIndex])
+#  print("\n")
   processedRasterRowCount+=1
 
 
@@ -473,10 +480,12 @@ def snakeRaster(rasterReqID,grain=""):
       yMotAbsoluteMove = yEndSave
       zMotAbsoluteMove = zEndSave            
     beamline_support.setPvValFromDescriptor("vectorStartOmega",omega)
+    mvaDescriptor("omega",omega)
     beamline_support.setPvValFromDescriptor("vectorStepOmega",img_width_per_cell)
     beamline_support.setPvValFromDescriptor("vectorStartX",xMotAbsoluteMove)
     beamline_support.setPvValFromDescriptor("vectorStartY",yMotAbsoluteMove)  
-    beamline_support.setPvValFromDescriptor("vectorStartZ",zMotAbsoluteMove)  
+    beamline_support.setPvValFromDescriptor("vectorStartZ",zMotAbsoluteMove)
+    mvaDescriptor("sampleX",xMotAbsoluteMove,"sampleY",yMotAbsoluteMove,"sampleZ",zMotAbsoluteMove)
     beamline_support.setPvValFromDescriptor("vectorEndX",xEnd)
     beamline_support.setPvValFromDescriptor("vectorEndY",yEnd)  
     beamline_support.setPvValFromDescriptor("vectorEndZ",zEnd)  
@@ -486,6 +495,10 @@ def snakeRaster(rasterReqID,grain=""):
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
     detectorArm(omega,img_width_per_cell,numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
+    if (daq_utils.detector_id == "EIGER-16"):
+      if (det_lib.detector_is_manual_trigger()):
+        time.sleep(getVectorDelay())
+        det_lib.detector_trigger()
     vectorWait()
     detector_wait()
 # add the threading dials stuff here, and the thread routine elsewhere.
@@ -494,7 +507,7 @@ def snakeRaster(rasterReqID,grain=""):
     else:
       seqNum = -1
     _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))      
-  rasterTimeout = 120
+  rasterTimeout = 60
   timerCount = 0
   while (1):
     timerCount +=1

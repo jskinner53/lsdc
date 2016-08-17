@@ -52,6 +52,16 @@ def detector_start():
   print("start detector")  
   epics_det.det_start()
 
+def detector_trigger():
+  print("trigger detector")  
+  epics_det.det_trigger()
+
+def get_trigger_mode():
+  return epics_det.det_get_trigger_mode()
+  
+def detector_is_manual_trigger():
+  return epics_det.det_is_manual_trigger()
+  
 def detector_stop():
   print("stop detector")  
   epics_det.det_stop()  

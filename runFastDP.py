@@ -57,7 +57,9 @@ resultObj = xmltodict.parse(fd.read())
 db_lib.addResultforRequest("fastDP",request_id,resultObj)
 print("finished fast_dp")
 if (runFastEP):
-  os.system("fast_ep")
+  comm_s = "ssh  -q " + node + " \"cd " + runningDir +";source /nfs/skinner/wrappers/fastDPWrap;fast_ep"
+  print("running fast_ep")
+  os.system(comm_s)
 
 
 

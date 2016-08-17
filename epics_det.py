@@ -247,6 +247,15 @@ def det_stop():
 def det_set_trigger_mode(mode): #0=internal, 1=external - cbass uses 1
   set_det_pv("det_trigger_mode",mode)
 
+def det_get_trigger_mode():
+  return get_det_pv("det_trigger_mode")
+
+def det_is_manual_trigger():
+  return get_det_pv("manual_trigger")  
+
+def det_trigger(): 
+  set_det_pv("det_trigger",1)
+
   
 def det_set_bin(binval):
   set_det_pv("bin_x",binval)

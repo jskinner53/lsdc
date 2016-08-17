@@ -441,6 +441,9 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
   detector_start()
   detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
+  if (daq_utils.detector_id == "EIGER-16"):
+    if (detector_is_manual_trigger()):
+      detector_trigger()  
   image_started = range_seconds
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
@@ -505,6 +508,10 @@ def collect_vector_seq(currentRequest):
   print("collect pilatus %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
   detector_start()
   detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
+  if (daq_utils.detector_id == "EIGER-16"):
+    if (detector_is_manual_trigger()):
+      detector_trigger()
+  
   image_started = range_seconds
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
@@ -556,7 +563,11 @@ def detectorArm(angle_start,image_width,number_of_images,exposure_period,filepre
   
 #  print "collect eiger %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time)
   detector_start() #but you need wired or manual trigger
-  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means  
+  startArm = time.time()
+  detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
+  endArm = time.time()
+  armTime = endArm-startArm
+  print("\narm time = " + str(armTime) +"\n")
 #  image_started = range_seconds
 #  time.sleep(1.0) #4/15 - why so long?
 #  time.sleep(0.3)  
