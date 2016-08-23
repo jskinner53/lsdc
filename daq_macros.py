@@ -54,19 +54,81 @@ def changeImageCenterHighMagZoom(x,y):
   sizeXRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeXRBV")
   sizeYRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeYRBV")
   sizeXRBV = 640.0
-  sizeYRBV = 512.0    
+  sizeYRBV = 512.0
+  roiSizeXRBV = beamline_support.getPvValFromDescriptor("highMagROISizeXRBV")
+  roiSizeYRBV = beamline_support.getPvValFromDescriptor("highMagROISizeYRBV")  
+  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeXRBV")
+  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeYRBV")
+  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeXRBV")
+  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeYRBV")      
+  inputSizeXRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeXRBV")
+  inputSizeYRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeYRBV")      
   x_click = float(x)
   y_click = float(y)  
-  new_minX = minXRBV + (x_click-(sizeXRBV/2.0))
-  new_minY = minYRBV + (y_click-(sizeYRBV/2.0))
-  new_minX_nozoom = new_minX - (sizeXRBV/2.0)
-  new_minY_nozoom = new_minY - (sizeYRBV/2.0)  
-  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX)
-  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY)
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+  new_minXZoom = minXRBV + (x_click-(sizeXRBV/2.0))
+  new_minYZoom = minYRBV + (y_click-(sizeYRBV/2.0))
+  new_minX = new_minXZoom - (sizeXRBV/2.0)
+  new_minY = new_minYZoom - (sizeYRBV/2.0)
+  if (new_minXZoom < 0 or new_minYZoom < 0):
     return  
-  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX_nozoom)
-  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY_nozoom)    
+  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+    return
+  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+    return
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (1): #sloppy short circuit until fix up amx    
+    return
+  if (new_minX < 0 or new_minY < 0):
+    return
+  if (new_minX+roiSizeXRBV>inputSizeXRBV):
+    return
+  if (new_minY+roiSizeYRBV>inputSizeYRBV):
+    return
+  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
+
+
+def changeImageCenterHighMag(x,y):
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (1): #sloppy short circuit until fix up amx    
+    return
+  minXRBV = beamline_support.getPvValFromDescriptor("highMagMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("highMagMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0
+  roiSizeXRBV = beamline_support.getPvValFromDescriptor("highMagROISizeXRBV")
+  roiSizeYRBV = beamline_support.getPvValFromDescriptor("highMagROISizeYRBV")  
+  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeXRBV")
+  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeYRBV")
+  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeXRBV")
+  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeYRBV")      
+  inputSizeXRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeXRBV")
+  inputSizeYRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeYRBV")      
+  
+  x_click = float(x)
+  y_click = float(y)  
+  new_minX = minXRBV + (2.0*(x_click-(sizeXRBV/2.0)))
+  new_minY = minYRBV + (2.0*(y_click-(sizeYRBV/2.0)))
+  new_minXZoom = new_minX + (sizeXRBV/2.0)
+  new_minYZoom = new_minY + (sizeYRBV/2.0)    
+  if (new_minX < 0 or new_minY < 0):
+    return
+  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+    return
+  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+    return
+  if (new_minX+roiSizeXRBV>inputSizeXRBV):
+    return
+  if (new_minY+roiSizeYRBV>inputSizeYRBV):
+    return
+  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)    
 
 
 def changeImageCenterLowMagZoom(x,y):
@@ -91,25 +153,6 @@ def changeImageCenterLowMagZoom(x,y):
 
 
   
-def changeImageCenterHighMag(x,y):
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
-    return
-  minXRBV = beamline_support.getPvValFromDescriptor("highMagMinXRBV")
-  minYRBV = beamline_support.getPvValFromDescriptor("highMagMinYRBV")
-  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagSizeXRBV")
-  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagSizeYRBV")
-  sizeXRBV = 640.0
-  sizeYRBV = 512.0  
-  x_click = float(x)
-  y_click = float(y)  
-  new_minX = minXRBV + (2.0*(x_click-(sizeXRBV/2.0)))
-  new_minY = minYRBV + (2.0*(y_click-(sizeYRBV/2.0)))
-  new_minX_zoom = new_minX + (sizeXRBV/2.0)
-  new_minY_zoom = new_minY + (sizeYRBV/2.0)  
-  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
-  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
-  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX_zoom)
-  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY_zoom)    
   
 
 def autoRasterLoop(currentRequest):
@@ -1017,13 +1060,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
-######### BECAUSE I FAKE IT    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
-    if (i==0):
-      commFake = "ln -sf /nfs/skinner/testdata/johnPil6/data/B1GGTApo_9_00001.cbf " + filename
-    else:
-      commFake = "ln -sf /nfs/skinner/testdata/johnPil6/data/B1GGTApo_9_00181.cbf " + filename
-    os.system(commFake)
-    print(commFake)
+    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()
@@ -1048,8 +1085,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   aimed_resolution = characterizationParams['aimed_resolution']
   aimed_ISig = characterizationParams['aimed_ISig']
   timeout_check = 0;
-#####  while(not os.path.exists(dna_filename_list[len(dna_filename_list)-1])): #this waits for edna images
-  if (0):
+  while(not os.path.exists(dna_filename_list[len(dna_filename_list)-1])): #this waits for edna images
     timeout_check = timeout_check + 1
     time.sleep(1.0)
     if (timeout_check > 10):
