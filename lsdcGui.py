@@ -760,7 +760,8 @@ class rasterCell(QtGui.QGraphicsRectItem):
           d_min = self.data(2).toDouble()[0]
           intensity = self.data(3).toInt()[0]
           if (self.topParent.albulaDispCheckBox.isChecked()):
-            albulaUtils.albulaDisp(str(self.data(1).toString()))
+            if (str(self.data(1).toString()) != "empty"):
+              albulaUtils.albulaDisp(str(self.data(1).toString()))
           if not (self.topParent.rasterExploreDialog.isVisible()):
             self.topParent.rasterExploreDialog.show()
           self.topParent.rasterExploreDialog.setSpotCount(spotcount)

@@ -1094,7 +1094,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   flux = 600000000.0  #for now
   edna_input_filename = dna_directory + "/adsc1_in.xml"
   
-  comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["request_id"]) + "\""
+  comm_s = "ssh -q xf17id1-srv1 \"source /nfs/skinner/wrappers/ednaWrap;" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["request_id"]) + "\""
   print(comm_s)
   os.system(comm_s)
 
