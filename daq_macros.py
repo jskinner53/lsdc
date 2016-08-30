@@ -1060,7 +1060,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
-    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number) 
+    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()

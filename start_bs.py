@@ -35,6 +35,7 @@ from databroker import (DataBroker as db, get_events, get_images,
                                                 get_table, get_fields, restream, process)
 from time import sleep
 import numpy as np
+import os
 ###from mercury import *
 
 RE = gs.RE  # convenience alias
@@ -42,9 +43,9 @@ RE = gs.RE  # convenience alias
 abort = RE.abort
 resume = RE.resume
 stop = RE.stop
-
-RE.md['group'] = 'amx'
-RE.md['beamline_id'] = 'AMX'
+beamline = os.environ["BEAMLINE_ID"]
+RE.md['group'] = beamline
+RE.md['beamline_id'] = beamline.upper()
 #RE.ignore_callback_exceptions = False
 
 loop = asyncio.get_event_loop()
@@ -91,7 +92,7 @@ def filter_camera_data(camera):
 ###cam_7 = StandardProsilica('XF:17IDC-ES:FMX{Cam:7}', name='cam_7')
 ###filter_camera_data(cam_7)
 
-omega = EpicsMotor("XF:17IDC-ES:FMX{Gon:1-Ax:O}Mtr",name="omega")
+#####omega = EpicsMotor("XF:17IDC-ES:FMX{Gon:1-Ax:O}Mtr",name="omega")
 #gs.DETS=[cam_7,mercury]
 ###gs.DETS=[mercury]
 ###mercury.count_time.set(1.0)

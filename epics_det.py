@@ -170,30 +170,6 @@ def det_start():
   if (det_type == "pixel_array"):
     set_det_pv("start",1)
     return
-  else:
-    set_det_pv("acquire",1) #I don't know why everytime
-#  print "IN START after acquire set"
-  while (1):
-    if (get_det_pv("det_state") == "Error"): #6=error
-      os.system("killall -KILL tkmessage")
-      os.system("tkmessage Detector error. Restart CBASS to recover.&")
-      os.system("kill_detector")
-      while (1):
-        time.sleep(1.0)
-    expose_ok = get_det_pv("expose_ok")
-#    print "after get expose ok = " + str(expose_ok)
-    if (expose_ok == "Yes"): #0=no,1=yes,2=error
-      set_det_pv("det_control",1) #start
-#      print "after start"          
-      break
-    elif (expose_ok == "Error"): #0=no,1=yes,2=error
-      os.system("killall -KILL tkmessage")
-      os.system("tkmessage Detector error. Restart CBASS to recover.&")
-      os.system("kill_detector")
-      while (1):
-        time.sleep(1.0)
-    else:
-      time.sleep(0.05)
   
 def det_wait():
   if (offline):
@@ -221,27 +197,6 @@ def det_stop():
   if (det_type == "pixel_array"):
     set_det_pv("start",0)
     return
-  set_det_pv("det_control",0) #stop
-#  print "after stop"            
-  while (1):
-    if (get_det_pv("det_state") == "Error"): #6=error
-      os.system("killall -KILL tkmessage")
-      os.system("tkmessage Detector error. Restart CBASS to recover.&")
-      os.system("kill_detector")
-      while (1):
-        time.sleep(1.0)
-    stop_ok = get_det_pv("det_control_RBV")
-#    print "after get control rbv"              
-    if (stop_ok == "OK"): #0=stop,1=start,2=ok,3=again
-      break
-    elif (stop_ok == "Again"): #0=stop,1=start,2=ok,3=again
-      os.system("killall -KILL tkmessage")
-      os.system("tkmessage Detector error. Restart CBASS to recover.&")
-      os.system("kill_detector")
-      while (1):
-        time.sleep(1.0)
-    else:
-      time.sleep(0.05)
   
 
 def det_set_trigger_mode(mode): #0=internal, 1=external - cbass uses 1

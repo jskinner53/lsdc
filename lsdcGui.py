@@ -890,13 +890,14 @@ class controlMain(QtGui.QMainWindow):
         hBoxRadioLayout1= QtGui.QHBoxLayout()   
         self.viewRadioGroup=QtGui.QButtonGroup()
         self.priorityViewRadio = QtGui.QRadioButton("PriorityView")
-        self.priorityViewRadio.setChecked(True)
+#        self.priorityViewRadio.setChecked(True)
         self.priorityViewRadio.toggled.connect(functools.partial(self.dewarViewToggledCB,"priorityView"))
         self.viewRadioGroup.addButton(self.priorityViewRadio)
         self.dewarViewRadio = QtGui.QRadioButton("DewarView")
+        self.dewarViewRadio.setChecked(True)        
         self.dewarViewRadio.toggled.connect(functools.partial(self.dewarViewToggledCB,"dewarView"))
+        hBoxRadioLayout1.addWidget(self.dewarViewRadio)        
         hBoxRadioLayout1.addWidget(self.priorityViewRadio)
-        hBoxRadioLayout1.addWidget(self.dewarViewRadio)
         self.viewRadioGroup.addButton(self.dewarViewRadio)
         vBoxDFlayout.addLayout(hBoxRadioLayout1)
         vBoxDFlayout.addWidget(self.dewarTree)
@@ -1253,6 +1254,7 @@ class controlMain(QtGui.QMainWindow):
         vBoxMainSetup.addWidget(editScreenParamsButton)
         self.mainSetupFrame.setLayout(vBoxMainSetup)
         self.VidFrame = QFrame()
+        self.VidFrame.setFixedWidth(680)
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
           if (daq_utils.beamline != "amx"):            
@@ -1311,8 +1313,9 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout = QtGui.QHBoxLayout()
         omegaLabel = QtGui.QLabel("Omega")
         omegaRBLabel = QtGui.QLabel("Readback:")
-#        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70) #creates a video lag
-        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!        
+        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70) #creates a video lag
+#        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70,highlight_on_change=False) #creates a video lag        
+#        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!        
         omegaSPLabel = QtGui.QLabel("SetPoint:")
         self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.motor_dict["omega"] + ".VAL",self,70,2)
         moveOmegaButton = QtGui.QPushButton("Move")
@@ -1492,8 +1495,8 @@ class controlMain(QtGui.QMainWindow):
 #        splitter11.addWidget(self.colTabs)
         splitter1.addWidget(self.colTabs)
 ###        splitter1.addWidget(splitter11)
-#        splitterSizes = [300,300,300]
-#        splitter1.setSizes(splitterSizes)
+#        splitterSizes = [500,700]
+#        splitter11.setSizes(splitterSizes)
         vBoxlayout.addWidget(splitter1)
         self.lastFileLabel2 = QtGui.QLabel('Last File:')
         self.lastFileLabel2.setFixedWidth(70)
@@ -1616,8 +1619,8 @@ class controlMain(QtGui.QMainWindow):
         if (self.digiZoomCheckBox.isChecked()):
           self.flushBuffer(self.captureLowMagZoom)
           self.capture = self.captureLowMagZoom
-          fov["x"] = daq_utils.lowMagFOVx/3.0
-          fov["y"] = daq_utils.lowMagFOVy/3.0      
+          fov["x"] = daq_utils.lowMagFOVx/2.0
+          fov["y"] = daq_utils.lowMagFOVy/2.0      
         else:
           self.flushBuffer(self.captureLowMag)
           self.capture = self.captureLowMag
@@ -1707,8 +1710,8 @@ class controlMain(QtGui.QMainWindow):
       if state == QtCore.Qt.Checked:
         self.flushBuffer(self.captureLowMagZoom)
         self.capture = self.captureLowMagZoom          
-        fov["x"] = daq_utils.lowMagFOVx/3.0
-        fov["y"] = daq_utils.lowMagFOVy/3.0
+        fov["x"] = daq_utils.lowMagFOVx/2.0
+        fov["y"] = daq_utils.lowMagFOVy/2.0
       else:
         if (self.lowMagLevelRadio.isChecked()):
           self.flushBuffer(self.captureLowMag)          
@@ -1952,6 +1955,7 @@ class controlMain(QtGui.QMainWindow):
         self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
       elif (protocol == "vector"):
         self.vectorParamsFrame.show()
+        self.processingOptionsFrame.show()        
       elif (protocol == "characterize" or protocol == "ednaCol"):
         self.characterizeParamsFrame.show()
       elif (protocol == "standard"):
@@ -3207,7 +3211,7 @@ class controlMain(QtGui.QMainWindow):
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(exitAction)
-        self.setGeometry(300, 300, 300, 970) #width and height here. 
+        self.setGeometry(300, 300, 1550, 1000) #width and height here. 
         self.setWindowTitle('LSDC')    
         self.show()
 

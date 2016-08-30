@@ -5,7 +5,7 @@ import os
 import string
 
 newBeamlineConfig = {}
-tmpConfigFile = open("/nfs/skinner/projects/bnlpx_config/blConfigs/amxBLConfig.txt","r")
+tmpConfigFile = open("/nfs/skinner/projects/bnlpx_config/BLConfigsTemp/configJohnFmx.txt","r")
 for line in tmpConfigFile.readlines():
   print line
   (key,val) = string.split(line)

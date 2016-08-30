@@ -109,7 +109,7 @@ def detector_set_filekind(flag):
 #    adsc_setfilekind(5)
 
 
-def detectorArmEiger(number_of_images,exposure_period,fileprefix,data_directory_name,wave,xbeam,ybeam,detDist): #will need some environ info to diff eiger/pilatus
+def detectorArmEigerObsolete(number_of_images,exposure_period,fileprefix,data_directory_name,wave,xbeam,ybeam,detDist): #will need some environ info to diff eiger/pilatus
   global image_started,allow_overwrite,abort_flag
 
   print("data directory = " + data_directory_name)
