@@ -845,8 +845,14 @@ class controlMain(QtGui.QMainWindow):
         self.vectorEnd = None
         self.currentRasterCellList = []
         self.initUI()
+        self.lowMagCursorX_pv = PV(daq_utils.pvLookupDict["lowMagCursorX"])
+        self.lowMagCursorY_pv = PV(daq_utils.pvLookupDict["lowMagCursorY"])
+        self.highMagCursorX_pv = PV(daq_utils.pvLookupDict["highMagCursorX"])
+        self.highMagCursorY_pv = PV(daq_utils.pvLookupDict["highMagCursorY"])        
+        
         self.createSampleTab()
-        self.initCallbacks()
+        
+        self.initCallbacks()        
         self.dewarTree.refreshTreeDewarView()
         self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}
         if (self.mountedPin_pv.get() == 0):
@@ -1292,7 +1298,13 @@ class controlMain(QtGui.QMainWindow):
         centerMarkBrush = QtGui.QBrush(QtCore.Qt.red)        
         centerMarkPen = QtGui.QPen(centerMarkBrush,2.0)
         
-        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)      
+#        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)
+        self.centerMarker = QtGui.QGraphicsEllipseItem(0,0,6,6)
+        self.centerMarker.setPen(centerMarkPen)
+        self.centerMarker.setBrush(centerMarkBrush)
+        self.scene.addItem(self.centerMarker)
+        self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)
+#        self.centerMarker.setPos(317.0,253.0)
 
         scaleBrush = QtGui.QBrush(QtCore.Qt.blue)        
         scalePen = QtGui.QPen(scaleBrush,2.0)
@@ -1500,7 +1512,10 @@ class controlMain(QtGui.QMainWindow):
         vBoxlayout.addWidget(splitter1)
         self.lastFileLabel2 = QtGui.QLabel('Last File:')
         self.lastFileLabel2.setFixedWidth(70)
-        self.lastFileRBV2 = QtEpicsPVLabel("XF:AMXFMX:det1:FullFileName_RBV",self,0)
+        if (daq_utils.beamline == "amx"):                    
+          self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDB-ES:AMX{Det:Pil6M}cam1:FullFileName_RBV",self,0)            
+        else:
+          self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDC-ES:FMX{Det:Eig16M}cam1:FullFileName_RBV",self,0)            
         fileHBoxLayout = QtGui.QHBoxLayout()
         self.statusLabel = QtEpicsPVLabel(daq_utils.beamlineComm+"program_state",self,300,highlight_on_change=False)
         fileHBoxLayout.addWidget(self.statusLabel.getEntry())
@@ -1620,24 +1635,43 @@ class controlMain(QtGui.QMainWindow):
           self.flushBuffer(self.captureLowMagZoom)
           self.capture = self.captureLowMagZoom
           fov["x"] = daq_utils.lowMagFOVx/2.0
-          fov["y"] = daq_utils.lowMagFOVy/2.0      
+          fov["y"] = daq_utils.lowMagFOVy/2.0
+          zoomedCursorX = daq_utils.screenPixCenterX-3
+          zoomedCursorY = daq_utils.screenPixCenterY-3          
+          unzoomedCursorX = self.lowMagCursorX_pv.get()-3
+          unzoomedCursorY = self.lowMagCursorY_pv.get()-3
+          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+            zoomedCursorX = unzoomedCursorX*2.0
+          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+            zoomedCursorY = unzoomedCursorY*2.0
+          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
+            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
         else:
           self.flushBuffer(self.captureLowMag)
           self.capture = self.captureLowMag
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
+          if (daq_utils.beamline != "amx"):
+            self.centerMarker.setPos(self.lowMagCursorX_pv.get()-3,self.lowMagCursorY_pv.get()-3)
       else:
         if (self.digiZoomCheckBox.isChecked()):
           self.flushBuffer(self.captureHighMagZoom)
           self.capture = self.captureHighMagZoom
           fov["x"] = daq_utils.highMagFOVx/2.0
-          fov["y"] = daq_utils.highMagFOVy/2.0      
+          fov["y"] = daq_utils.highMagFOVy/2.0
+          self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)          
         else:
 #        self.digiZoomCheckBox.setEnabled(False)          
           self.flushBuffer(self.captureHighMag)
           self.capture = self.captureHighMag
           fov["x"] = daq_utils.highMagFOVx
           fov["y"] = daq_utils.highMagFOVy
+          if (daq_utils.beamline != "amx"):
+            self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)
+          
       self.adjustGraphics4ZoomChange(fov)
 
 
@@ -1781,6 +1815,31 @@ class controlMain(QtGui.QMainWindow):
     def processROIChange(self,posRBV,ID):
 #      print(ID + " changed to " + str(posRBV))
       pass
+
+    def processHighMagCursorChange(self,posRBV,ID):
+      if (self.highMagLevelRadio.isChecked() and not self.digiZoomCheckBox.isChecked()):
+        self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)        
+
+
+    def processLowMagCursorChange(self,posRBV,ID):
+      zoomedCursorX = daq_utils.screenPixCenterX-3
+      zoomedCursorY = daq_utils.screenPixCenterY-3          
+      if (self.lowMagLevelRadio.isChecked()):
+        if (self.digiZoomCheckBox.isChecked()):
+          unzoomedCursorX = self.lowMagCursorX_pv.get()-3
+          unzoomedCursorY = self.lowMagCursorY_pv.get()-3
+          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+            zoomedCursorX = unzoomedCursorX*2.0
+          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+            zoomedCursorY = unzoomedCursorY*2.0
+          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
+            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        else:
+          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-3,self.lowMagCursorY_pv.get()-3)        
+
 
     def processSampMove(self,posRBV,motID):
 #      print "new " + motID + " pos=" + str(posRBV)
@@ -2608,23 +2667,35 @@ class controlMain(QtGui.QMainWindow):
         penGreen = QtGui.QPen(QtCore.Qt.green)
         penRed = QtGui.QPen(QtCore.Qt.red)
         if (self.vidActionDefineCenterRadio.isChecked()):
-          if(self.digiZoomCheckBox.isChecked()):
-            comm_s = "changeImageCenterHighMagZoom(" + str(x_click) + "," + str(y_click) + ")"
-          else:
-            comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ")"              
-          self.send_to_server(comm_s)
-          return
+          if(self.highMagLevelRadio.isChecked()):
+            if(self.digiZoomCheckBox.isChecked()):
+              comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",1)"
+            else:
+              comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",0)"              
+            self.send_to_server(comm_s)
+            return
+          if(self.lowMagLevelRadio.isChecked()):
+            if(self.digiZoomCheckBox.isChecked()):
+              comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",1)"
+            else:
+              comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",0)"              
+            self.send_to_server(comm_s)
+            return
         if (self.vidActionRasterDefRadio.isChecked()):
           self.click_positions.append(event.pos())
           self.polyPointItems.append(self.scene.addEllipse(x_click, y_click, 4, 4, penRed))
           return
-        fov = self.getCurrentFOV()      
+        fov = self.getCurrentFOV()
+        correctedC2C_x = daq_utils.screenPixCenterX + (x_click - (self.centerMarker.x()+3))
+        correctedC2C_y = daq_utils.screenPixCenterY + (y_click - (self.centerMarker.y()+3))        
+        print(correctedC2C_x)
+        print(correctedC2C_y)        
         if (self.threeClickCount > 0): #3-click centering
           self.threeClickCount = self.threeClickCount + 1
           comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'
         else:
-          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
-#          comm_s = "center_on_click(" + str(x_click) + "," + str(y_click) + "," + str(maglevel) + ",screen 0)"
+          comm_s = 'center_on_click(' + str(correctedC2C_x) + "," + str(correctedC2C_y) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
+#          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
         self.send_to_server(comm_s)
         if (self.threeClickCount == 4):
           self.threeClickCount = 0
@@ -3162,6 +3233,18 @@ class controlMain(QtGui.QMainWindow):
       ID = kw["ID"]
       self.emit(QtCore.SIGNAL("roiChangeSignal"),posRBV,ID)
       
+
+    def processHighMagCursorChangeCB(self,value=None, char_value=None, **kw):
+      posRBV = value
+      ID = kw["ID"]
+      self.emit(QtCore.SIGNAL("highMagCursorChangeSignal"),posRBV,ID)
+      
+    def processLowMagCursorChangeCB(self,value=None, char_value=None, **kw):
+      posRBV = value
+      ID = kw["ID"]
+      self.emit(QtCore.SIGNAL("lowMagCursorChangeSignal"),posRBV,ID)
+      
+
     def processZoomLevelChangeCB(self,value=None, char_value=None, **kw):
       zoomVal = value
 #      userFlag = user_args[0]
@@ -3266,14 +3349,24 @@ class controlMain(QtGui.QMainWindow):
       self.omegaRBV_pv.add_callback(self.processSampMoveCB,motID="omega")
 #      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
-      self.highMagZoomMinXRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinXRBV"])
-      self.connect(self, QtCore.SIGNAL("roiChangeSignal"),self.processROIChange)
-      self.highMagZoomMinXRBV_pv.add_callback(self.processROIChangeCB,ID="x")
-
-      self.highMagZoomMinYRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinYRBV"])
-      self.highMagZoomMinYRBV_pv.add_callback(self.processROIChangeCB,ID="y")
+      if (daq_utils.beamline != "amx"):
+              
+#        self.highMagZoomMinXRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinXRBV"])
+#        self.connect(self, QtCore.SIGNAL("roiChangeSignal"),self.processROIChange)
+#        self.highMagZoomMinXRBV_pv.add_callback(self.processROIChangeCB,ID="x")
+#        self.highMagZoomMinYRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinYRBV"])
+#        self.highMagZoomMinYRBV_pv.add_callback(self.processROIChangeCB,ID="y")
       
 
+        self.connect(self, QtCore.SIGNAL("highMagCursorChangeSignal"),self.processHighMagCursorChange)
+        self.highMagCursorX_pv.add_callback(self.processHighMagCursorChangeCB,ID="x")
+        self.highMagCursorY_pv.add_callback(self.processHighMagCursorChangeCB,ID="y")      
+
+
+        self.connect(self, QtCore.SIGNAL("lowMagCursorChangeSignal"),self.processLowMagCursorChange)
+        self.lowMagCursorX_pv.add_callback(self.processLowMagCursorChangeCB,ID="x")
+        self.lowMagCursorY_pv.add_callback(self.processLowMagCursorChangeCB,ID="y")      
+        
 
 ##      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
 ##      self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)

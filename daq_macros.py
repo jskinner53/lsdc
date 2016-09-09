@@ -48,9 +48,94 @@ def abortBS():
     except super_state_machine.errors.TransitionError:
       print("caught BS")
 
-def changeImageCenterHighMagZoom(x,y):
-  minXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinXRBV")
-  minYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinYRBV")
+def changeImageCenterLowMag(x,y,czoom):
+  zoom = int(czoom)
+  zoomMinXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinXRBV")
+  zoomMinYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinYRBV")
+  minXRBV = beamline_support.getPvValFromDescriptor("lowMagMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("lowMagMinYRBV")
+  
+  sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0
+  roiSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeXRBV")
+  roiSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeYRBV")  
+  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeXRBV")
+  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeYRBV")
+  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeXRBV")
+  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeYRBV")      
+  inputSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeXRBV")
+  inputSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeYRBV")      
+  x_click = float(x)
+  y_click = float(y)
+  binningFactor = 2.0  
+  if (zoom):
+    xclickFullFOV = x_click + zoomMinXRBV
+    yclickFullFOV = y_click + zoomMinYRBV
+  else:
+    binningFactor = 2.0
+    xclickFullFOV = (x_click * binningFactor) + minXRBV
+    yclickFullFOV = (y_click * binningFactor) + minYRBV    
+  new_minXZoom = xclickFullFOV-(sizeXRBV/2.0)
+  new_minYZoom = yclickFullFOV-(sizeYRBV/2.0)
+  new_minX = new_minXZoom - (sizeXRBV/2.0)
+  new_minY = new_minYZoom - (sizeYRBV/2.0)
+#  if (new_minXZoom < 0):
+#    return
+#    new_minXZoom = 0
+#  if (new_minYZoom < 0):
+#    return    
+#    new_minYZoom = 0
+#  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+#    return
+#  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+#    return
+  noZoomCenterX = sizeXRBV/2.0
+  noZoomCenterY = sizeYRBV/2.0  
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (1): #sloppy short circuit until fix up amx    
+    return
+  if (new_minX < 0):
+    print("1")
+    new_minX = 0
+    noZoomCenterX = (new_minXZoom+(sizeXRBV/2.0))/binningFactor
+  if (new_minY < 0):
+    print("2")    
+    new_minY = 0    
+    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
+  if (new_minX+roiSizeXRBV>inputSizeXRBV):
+    print("3")    
+    new_minX = inputSizeXRBV-roiSizeXRBV    
+    noZoomCenterX = ((new_minXZoom+(sizeXRBV/2.0)) - new_minX)/binningFactor
+  if (new_minY+roiSizeYRBV>inputSizeYRBV):
+    print("4")    
+    new_minY = inputSizeYRBV-roiSizeYRBV
+    noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
+#    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
+  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+    new_minXZoom = inputSizeZoomXRBV-roiSizeZoomXRBV
+  if (new_minXZoom < 0):
+    new_minXZoom = 0
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinX",new_minXZoom)    
+  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+    new_minYZoom = inputSizeZoomYRBV-roiSizeZoomYRBV
+  if (new_minYZoom < 0):
+    new_minYZoom = 0
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minYZoom)        
+  beamline_support.setPvValFromDescriptor("lowMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("lowMagMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("lowMagCursorX",noZoomCenterX)
+  beamline_support.setPvValFromDescriptor("lowMagCursorY",noZoomCenterY)  
+      
+
+def changeImageCenterHighMag(x,y,czoom):
+  zoom = int(czoom)
+  zoomMinXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinXRBV")
+  zoomMinYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinYRBV")
+  minXRBV = beamline_support.getPvValFromDescriptor("highMagMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("highMagMinYRBV")
+  
   sizeXRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeXRBV")
   sizeYRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeYRBV")
   sizeXRBV = 640.0
@@ -64,9 +149,17 @@ def changeImageCenterHighMagZoom(x,y):
   inputSizeXRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeXRBV")
   inputSizeYRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeYRBV")      
   x_click = float(x)
-  y_click = float(y)  
-  new_minXZoom = minXRBV + (x_click-(sizeXRBV/2.0))
-  new_minYZoom = minYRBV + (y_click-(sizeYRBV/2.0))
+  y_click = float(y)
+  binningFactor = 2.0  
+  if (zoom):
+    xclickFullFOV = x_click + zoomMinXRBV
+    yclickFullFOV = y_click + zoomMinYRBV
+  else:
+    binningFactor = 2.0
+    xclickFullFOV = (x_click * binningFactor) + minXRBV
+    yclickFullFOV = (y_click * binningFactor) + minYRBV    
+  new_minXZoom = xclickFullFOV-(sizeXRBV/2.0)
+  new_minYZoom = yclickFullFOV-(sizeYRBV/2.0)
   new_minX = new_minXZoom - (sizeXRBV/2.0)
   new_minY = new_minYZoom - (sizeYRBV/2.0)
   if (new_minXZoom < 0 or new_minYZoom < 0):
@@ -77,37 +170,52 @@ def changeImageCenterHighMagZoom(x,y):
     return
   beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
   beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)
+  noZoomCenterX = sizeXRBV/2.0
+  noZoomCenterY = sizeYRBV/2.0  
   if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
     return
-  if (new_minX < 0 or new_minY < 0):
-    return
+  if (new_minX < 0):
+    print("1")
+    new_minX = 0
+    noZoomCenterX = (new_minXZoom+(sizeXRBV/2.0))/binningFactor
+  if (new_minY < 0):
+    print("2")    
+    new_minY = 0    
+    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
   if (new_minX+roiSizeXRBV>inputSizeXRBV):
-    return
+    print("3")    
+    new_minX = inputSizeXRBV-roiSizeXRBV    
+    noZoomCenterX = ((new_minXZoom+(sizeXRBV/2.0)) - new_minX)/binningFactor
   if (new_minY+roiSizeYRBV>inputSizeYRBV):
-    return
+    print("4")    
+    new_minY = inputSizeYRBV-roiSizeYRBV
+    noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
+#    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
   beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
   beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
-
-
-def changeImageCenterHighMag(x,y):
+  beamline_support.setPvValFromDescriptor("highMagCursorX",noZoomCenterX)
+  beamline_support.setPvValFromDescriptor("highMagCursorY",noZoomCenterY)  
+      
+  
+def changeImageCenterLowMagObsolete(x,y):
   if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
     return
-  minXRBV = beamline_support.getPvValFromDescriptor("highMagMinXRBV")
-  minYRBV = beamline_support.getPvValFromDescriptor("highMagMinYRBV")
-  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagSizeXRBV")
-  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagSizeYRBV")
+  minXRBV = beamline_support.getPvValFromDescriptor("lowMagMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("lowMagMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("lowMagSizeYRBV")
   sizeXRBV = 640.0
   sizeYRBV = 512.0
-  roiSizeXRBV = beamline_support.getPvValFromDescriptor("highMagROISizeXRBV")
-  roiSizeYRBV = beamline_support.getPvValFromDescriptor("highMagROISizeYRBV")  
-  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeXRBV")
-  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomROISizeYRBV")
-  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeXRBV")
-  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMaxSizeYRBV")      
-  inputSizeXRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeXRBV")
-  inputSizeYRBV = beamline_support.getPvValFromDescriptor("highMagMaxSizeYRBV")      
+  roiSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeXRBV")
+  roiSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeYRBV")  
+  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeXRBV")
+  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeYRBV")
+  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeXRBV")
+  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeYRBV")      
+  inputSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeXRBV")
+  inputSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeYRBV")      
   
   x_click = float(x)
   y_click = float(y)  
@@ -125,17 +233,17 @@ def changeImageCenterHighMag(x,y):
     return
   if (new_minY+roiSizeYRBV>inputSizeYRBV):
     return
-  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
-  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
-  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
-  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)    
+  beamline_support.setPvValFromDescriptor("lowMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("lowMagMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinX",new_minXZoom)
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minYZoom)    
 
 
-def changeImageCenterLowMagZoom(x,y):
-  minXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinXRBV")
-  minYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinYRBV")
-  sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeXRBV")
-  sizeYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeYRBV")
+def changeImageCenterHighMagZoomObsolete(x,y):
+  minXRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("highMagZoomMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("highMagZoomSizeYRBV")
   sizeXRBV = 640.0
   sizeYRBV = 512.0    
   x_click = float(x)
@@ -144,13 +252,69 @@ def changeImageCenterLowMagZoom(x,y):
   new_minY = minYRBV + (y_click-(sizeYRBV/2.0))
 #  new_minX_nozoom = new_minX - (sizeXRBV/2.0)
 #  new_minY_nozoom = new_minY - (sizeYRBV/2.0)  
-  beamline_support.setPvValFromDescriptor("lowMagZoomMinX",new_minX)
-  beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minY)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minY)
 #  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #    return  
 #  beamline_support.setPvValFromDescriptor("highMagMinX",new_minX_nozoom)
 #  beamline_support.setPvValFromDescriptor("highMagMinY",new_minY_nozoom)    
 
+def changeImageCenterLowMagZoomObsolete(x,y):
+  minXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinXRBV")
+  minYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMinYRBV")
+  sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeXRBV")
+  sizeYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomSizeYRBV")
+  sizeXRBV = 640.0
+  sizeYRBV = 512.0
+  roiSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeXRBV")
+  roiSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagROISizeYRBV")  
+  roiSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeXRBV")
+  roiSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomROISizeYRBV")
+  inputSizeZoomXRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeXRBV")
+  inputSizeZoomYRBV = beamline_support.getPvValFromDescriptor("lowMagZoomMaxSizeYRBV")      
+  inputSizeXRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeXRBV")
+  inputSizeYRBV = beamline_support.getPvValFromDescriptor("lowMagMaxSizeYRBV")      
+  x_click = float(x)
+  y_click = float(y)  
+  new_minXZoom = minXRBV + (x_click-(sizeXRBV/2.0))
+  new_minYZoom = minYRBV + (y_click-(sizeYRBV/2.0))
+  new_minX = new_minXZoom - (sizeXRBV/2.0)
+  new_minY = new_minYZoom - (sizeYRBV/2.0)
+  if (new_minXZoom < 0 or new_minYZoom < 0):
+    return  
+  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+    return
+  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+    return
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinX",new_minXZoom)
+  beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minYZoom)
+  noZoomCenterX = sizeXRBV/2.0
+  noZoomCenterY = sizeYRBV/2.0  
+  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (1): #sloppy short circuit until fix up amx    
+    return
+  binningFactor = 2.0
+  if (new_minX < 0):
+    print("1")
+    new_minX = 0
+    noZoomCenterX = (new_minXZoom+(sizeXRBV/2.0))/binningFactor
+  if (new_minY < 0):
+    print("2")    
+    new_minY = 0    
+    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
+  if (new_minX+roiSizeXRBV>inputSizeXRBV):
+    print("3")    
+    new_minX = inputSizeXRBV-roiSizeXRBV    
+    noZoomCenterX = ((new_minXZoom+(sizeXRBV/2.0)) - new_minX)/binningFactor
+  if (new_minY+roiSizeYRBV>inputSizeYRBV):
+    print("4")    
+    new_minY = inputSizeYRBV-roiSizeYRBV
+    noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
+#    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
+  beamline_support.setPvValFromDescriptor("lowMagMinX",new_minX)
+  beamline_support.setPvValFromDescriptor("lowMagMinY",new_minY)    
+  beamline_support.setPvValFromDescriptor("lowMagCursorX",noZoomCenterX)
+  beamline_support.setPvValFromDescriptor("lowMagCursorY",noZoomCenterY)  
 
   
   
