@@ -162,14 +162,12 @@ def changeImageCenterHighMag(x,y,czoom):
   new_minYZoom = yclickFullFOV-(sizeYRBV/2.0)
   new_minX = new_minXZoom - (sizeXRBV/2.0)
   new_minY = new_minYZoom - (sizeYRBV/2.0)
-  if (new_minXZoom < 0 or new_minYZoom < 0):
-    return  
-  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
-    return
-  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
-    return
-  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
-  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)
+#  if (new_minXZoom < 0 or new_minYZoom < 0):
+#    return  
+#  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+#    return
+#  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+#    return
   noZoomCenterX = sizeXRBV/2.0
   noZoomCenterY = sizeYRBV/2.0  
   if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
@@ -192,11 +190,24 @@ def changeImageCenterHighMag(x,y,czoom):
     new_minY = inputSizeYRBV-roiSizeYRBV
     noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
 #    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
+
+  if (new_minXZoom+roiSizeZoomXRBV>inputSizeZoomXRBV):
+    new_minXZoom = inputSizeZoomXRBV-roiSizeZoomXRBV
+  if (new_minXZoom < 0):
+    new_minXZoom = 0
+  if (new_minYZoom+roiSizeZoomYRBV>inputSizeZoomYRBV):
+    new_minYZoom = inputSizeZoomYRBV-roiSizeZoomYRBV
+  if (new_minYZoom < 0):
+    new_minYZoom = 0
+  beamline_support.setPvValFromDescriptor("highMagZoomMinX",new_minXZoom)
+  beamline_support.setPvValFromDescriptor("highMagZoomMinY",new_minYZoom)
   beamline_support.setPvValFromDescriptor("highMagMinX",new_minX)
   beamline_support.setPvValFromDescriptor("highMagMinY",new_minY)    
   beamline_support.setPvValFromDescriptor("highMagCursorX",noZoomCenterX)
-  beamline_support.setPvValFromDescriptor("highMagCursorY",noZoomCenterY)  
-      
+  beamline_support.setPvValFromDescriptor("highMagCursorY",noZoomCenterY)
+  
+
+  
   
 def changeImageCenterLowMagObsolete(x,y):
   if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx

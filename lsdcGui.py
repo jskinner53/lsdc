@@ -1629,6 +1629,8 @@ class controlMain(QtGui.QMainWindow):
       if (identifier == "HighMag" and not self.highMagLevelRadio.isChecked()):
         return
       fov = {}
+      zoomedCursorX = daq_utils.screenPixCenterX-3
+      zoomedCursorY = daq_utils.screenPixCenterY-3                
       if (self.lowMagLevelRadio.isChecked()):
 #        self.digiZoomCheckBox.setEnabled(True)          
         if (self.digiZoomCheckBox.isChecked()):
@@ -1636,8 +1638,6 @@ class controlMain(QtGui.QMainWindow):
           self.capture = self.captureLowMagZoom
           fov["x"] = daq_utils.lowMagFOVx/2.0
           fov["y"] = daq_utils.lowMagFOVy/2.0
-          zoomedCursorX = daq_utils.screenPixCenterX-3
-          zoomedCursorY = daq_utils.screenPixCenterY-3          
           unzoomedCursorX = self.lowMagCursorX_pv.get()-3
           unzoomedCursorY = self.lowMagCursorY_pv.get()-3
           if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
@@ -1662,7 +1662,18 @@ class controlMain(QtGui.QMainWindow):
           self.capture = self.captureHighMagZoom
           fov["x"] = daq_utils.highMagFOVx/2.0
           fov["y"] = daq_utils.highMagFOVy/2.0
-          self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)          
+          unzoomedCursorX = self.highMagCursorX_pv.get()-3
+          unzoomedCursorY = self.highMagCursorY_pv.get()-3
+          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+            zoomedCursorX = unzoomedCursorX*2.0
+          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+            zoomedCursorY = unzoomedCursorY*2.0
+          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
+            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)          
+#          self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)          
         else:
 #        self.digiZoomCheckBox.setEnabled(False)          
           self.flushBuffer(self.captureHighMag)
@@ -1816,7 +1827,7 @@ class controlMain(QtGui.QMainWindow):
 #      print(ID + " changed to " + str(posRBV))
       pass
 
-    def processHighMagCursorChange(self,posRBV,ID):
+    def processHighMagCursorChangeObsolete(self,posRBV,ID):
       if (self.highMagLevelRadio.isChecked() and not self.digiZoomCheckBox.isChecked()):
         self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)        
 
@@ -1841,6 +1852,26 @@ class controlMain(QtGui.QMainWindow):
           self.centerMarker.setPos(self.lowMagCursorX_pv.get()-3,self.lowMagCursorY_pv.get()-3)        
 
 
+    def processHighMagCursorChange(self,posRBV,ID):
+      zoomedCursorX = daq_utils.screenPixCenterX-3
+      zoomedCursorY = daq_utils.screenPixCenterY-3          
+      if (self.highMagLevelRadio.isChecked()):
+        if (self.digiZoomCheckBox.isChecked()):
+          unzoomedCursorX = self.highMagCursorX_pv.get()-3
+          unzoomedCursorY = self.highMagCursorY_pv.get()-3
+          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+            zoomedCursorX = unzoomedCursorX*2.0
+          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+            zoomedCursorY = unzoomedCursorY*2.0
+          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
+            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        else:
+          self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)        
+
+          
     def processSampMove(self,posRBV,motID):
 #      print "new " + motID + " pos=" + str(posRBV)
       self.motPos[motID] = posRBV
