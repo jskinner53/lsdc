@@ -1405,10 +1405,10 @@ class controlMain(QtGui.QMainWindow):
         self.click3Button.clicked.connect(self.center3LoopCB)
         self.threeClickCount = 0
         saveCenteringButton = QtGui.QPushButton("Save\nCenter")
-        saveCenteringButton.setEnabled(False)        
+#        saveCenteringButton.setEnabled(False)        
         saveCenteringButton.clicked.connect(self.saveCenterCB)
         selectAllCenteringButton = QtGui.QPushButton("Select All\nCenterings")
-        selectAllCenteringButton.setEnabled(False)                
+#        selectAllCenteringButton.setEnabled(False)                
         selectAllCenteringButton.clicked.connect(self.selectAllCenterCB)
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
@@ -1601,14 +1601,30 @@ class controlMain(QtGui.QMainWindow):
             self.rasterXmicrons = rasterXPixels * (fov["x"]/daq_utils.screenPixX)
             self.rasterYmicrons = rasterYPixels * (fov["y"]/daq_utils.screenPixY)
 #            print saveRasterList[i]
-            self.drawPolyRaster(db_lib.getRequest(saveRasterList[i]["request_id"]))
+            self.drawPolyRaster(db_lib.getRequest(saveRasterList[i]["request_id"]),saveRasterList[i]["coords"]["x"],saveRasterList[i]["coords"]["y"],saveRasterList[i]["coords"]["z"])
 
 #            self.drawPolyRaster(self.rasterDefList[i])
-            self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
+###########what about this>>>>>            self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
+            self.processSampMove(self.sampx_pv.get(),"x")
+            self.processSampMove(self.sampy_pv.get(),"y")
+            self.processSampMove(self.sampz_pv.get(),"z")
+            
       if (self.vectorStart != None):
         self.processSampMove(self.sampx_pv.get(),"x")
         self.processSampMove(self.sampy_pv.get(),"y")
         self.processSampMove(self.sampz_pv.get(),"z")
+      if (self.centeringMarksList != []):          
+        self.processSampMove(self.sampx_pv.get(),"x")
+        self.processSampMove(self.sampy_pv.get(),"y")
+        self.processSampMove(self.sampz_pv.get(),"z")
+#      if (self.centeringMarksList != []):        
+      if (0):#this is not needed b/c processSampMove takes care of it
+        for i in range (0,len(self.centeringMarksList)):
+          markerXPixels = float(self.centeringMarksList[i]["graphicsItem"].x())
+          markerYPixels = float(self.centeringMarksList[i]["graphicsItem"].y())
+          markerXmicrons = markerXPixels * (fov["x"]/daq_utils.screenPixX)
+          markerYmicrons = markerYPixels * (fov["y"]/daq_utils.screenPixY)
+          self.centeringMarksList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(markerXmicrons)-daq_utils.screenPixCenterX-self.centerMarker.x()-3,self.screenYmicrons2pixels(markerYmicrons)-daq_utils.screenPixCenterY-self.centerMarker.y()-3)
 
     def flushBuffer(self,vidStream):
       if (vidStream == None):
@@ -1625,8 +1641,10 @@ class controlMain(QtGui.QMainWindow):
 
     def vidSourceToggledCB(self,identifier):
       if (identifier == "LowMag" and not self.lowMagLevelRadio.isChecked()):
+#        print("how did I get here?") #it does happen
         return
       if (identifier == "HighMag" and not self.highMagLevelRadio.isChecked()):
+#        print("how did I get here?")          
         return
       fov = {}
       zoomedCursorX = daq_utils.screenPixCenterX-3
@@ -1751,24 +1769,24 @@ class controlMain(QtGui.QMainWindow):
       else:
         self.vidSourceToggledCB("HighMag")
       return #short circuit
-      fov = {}      
-      if state == QtCore.Qt.Checked:
-        self.flushBuffer(self.captureLowMagZoom)
-        self.capture = self.captureLowMagZoom          
-        fov["x"] = daq_utils.lowMagFOVx/2.0
-        fov["y"] = daq_utils.lowMagFOVy/2.0
-      else:
-        if (self.lowMagLevelRadio.isChecked()):
-          self.flushBuffer(self.captureLowMag)          
-          self.capture = self.captureLowMag
-          fov["x"] = daq_utils.lowMagFOVx
-          fov["y"] = daq_utils.lowMagFOVy
-        else:
-          self.flushBuffer(self.captureHighMag)                      
-          self.capture = self.captureHighMag       
-          fov["x"] = daq_utils.highMagFOVx
-          fov["y"] = daq_utils.highMagFOVy
-      self.adjustGraphics4ZoomChange(fov)
+#      fov = {}      
+#      if state == QtCore.Qt.Checked:
+#        self.flushBuffer(self.captureLowMagZoom)
+#        self.capture = self.captureLowMagZoom          
+#        fov["x"] = daq_utils.lowMagFOVx/2.0
+#        fov["y"] = daq_utils.lowMagFOVy/2.0
+#      else:
+#        if (self.lowMagLevelRadio.isChecked()):
+#          self.flushBuffer(self.captureLowMag)          
+#          self.capture = self.captureLowMag
+#          fov["x"] = daq_utils.lowMagFOVx
+#          fov["y"] = daq_utils.lowMagFOVy
+#        else:
+#          self.flushBuffer(self.captureHighMag)                      
+#          self.capture = self.captureHighMag       
+#          fov["x"] = daq_utils.highMagFOVx
+#          fov["y"] = daq_utils.highMagFOVy
+#      self.adjustGraphics4ZoomChange(fov)
 
 
     def calculateNewYCoordPosOld(self,startYX,startYY):
@@ -1877,25 +1895,27 @@ class controlMain(QtGui.QMainWindow):
       self.motPos[motID] = posRBV
       if (len(self.centeringMarksList)>0):
         for i in xrange(len(self.centeringMarksList)):
+          centerMarkerOffsetX = self.centeringMarksList[i]["centerCursorX"]-self.centerMarker.x()
+          centerMarkerOffsetY = self.centeringMarksList[i]["centerCursorY"]-self.centerMarker.y()
           if (motID == "x"):
             startX = self.centeringMarksList[i]["sampCoords"]["x"]
-            startX_pixels = 0
             delta = startX-posRBV
-            newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
-            self.centeringMarksList[i]["graphicsItem"].setPos(newX,self.centeringMarksList[i]["graphicsItem"].y())
+            newX = float(self.screenXmicrons2pixels(delta))
+            self.centeringMarksList[i]["graphicsItem"].setPos(newX-centerMarkerOffsetX,self.centeringMarksList[i]["graphicsItem"].y())
+#            self.centeringMarksList[i]["graphicsItem"].setPos(newX,self.centeringMarksList[i]["graphicsItem"].y())
           if (motID == "y" or motID == "z" or motID == "omega"):
             startYY = self.centeringMarksList[i]["sampCoords"]["z"]
             startYX = self.centeringMarksList[i]["sampCoords"]["y"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
-            self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)
+            self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY-centerMarkerOffsetY)
+#            self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)            
       if (len(self.rasterList)>0):
         for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             if (motID == "x"):
               startX = self.rasterList[i]["coords"]["x"]
-              startX_pixels = 0
               delta = startX-posRBV
-              newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
+              newX = float(self.screenXmicrons2pixels(delta))
               self.rasterList[i]["graphicsItem"].setPos(newX,self.rasterList[i]["graphicsItem"].y())
             if (motID == "y" or motID == "z"):
               startYY = self.rasterList[i]["coords"]["z"]
@@ -1903,42 +1923,45 @@ class controlMain(QtGui.QMainWindow):
               newY = self.calculateNewYCoordPos(startYX,startYY)
               self.rasterList[i]["graphicsItem"].setPos(self.rasterList[i]["graphicsItem"].x(),newY)
       if (self.vectorStart != None):
+        centerMarkerOffsetX = self.vectorStart["centerCursorX"]-self.centerMarker.x()
+        centerMarkerOffsetY = self.vectorStart["centerCursorY"]-self.centerMarker.y()
+          
         if (motID == "omega"):
           startYY = self.vectorStart["coords"]["z"]
           startYX = self.vectorStart["coords"]["y"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
-          self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
+          self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY-centerMarkerOffsetY)
           if (self.vectorEnd != None):
             startYX = self.vectorEnd["coords"]["y"]
             startYY = self.vectorEnd["coords"]["z"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
-            self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
+            self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY-centerMarkerOffsetY)
         if (motID == "x"):
           startX = self.vectorStart["coords"]["x"]
-          startX_pixels = 0
           delta = startX-posRBV
-          newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
-#                    newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
-          self.vectorStart["graphicsitem"].setPos(newX,self.vectorStart["graphicsitem"].y())
+          newX = float(self.screenXmicrons2pixels(delta))
+#                    newX = float(0-(self.screenXmicrons2pixels(delta)))
+          self.vectorStart["graphicsitem"].setPos(newX-centerMarkerOffsetX,self.vectorStart["graphicsitem"].y())
           if (self.vectorEnd != None):
             startX = self.vectorEnd["coords"]["x"]
-            startX_pixels = 0
             delta = startX-posRBV
-            newX = float(startX_pixels+(self.screenXmicrons2pixels(delta)))
-#                        newX = float(startX_pixels-(self.screenXmicrons2pixels(delta)))
-            self.vectorEnd["graphicsitem"].setPos(newX,self.vectorEnd["graphicsitem"].y())
+            newX = float(self.screenXmicrons2pixels(delta))
+#                        newX = float(0-(self.screenXmicrons2pixels(delta)))
+            self.vectorEnd["graphicsitem"].setPos(newX-centerMarkerOffsetX,self.vectorEnd["graphicsitem"].y())
         if (motID == "y" or motID == "z"):
           startYX = self.vectorStart["coords"]["y"]
           startYY = self.vectorStart["coords"]["z"]
           newY = self.calculateNewYCoordPos(startYX,startYY)
-          self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY)
+          self.vectorStart["graphicsitem"].setPos(self.vectorStart["graphicsitem"].x(),newY-centerMarkerOffsetY)
           if (self.vectorEnd != None):
             startYX = self.vectorEnd["coords"]["y"]
             startYY = self.vectorEnd["coords"]["z"]
             newY = self.calculateNewYCoordPos(startYX,startYY)
-            self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY)
+            self.vectorEnd["graphicsitem"].setPos(self.vectorEnd["graphicsitem"].x(),newY-centerMarkerOffsetY)
         if (self.vectorEnd != None):
-            self.vecLine.setLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+self.vectorEnd["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorEnd["graphicsitem"].y())
+#            self.vecLine.setLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+self.vectorEnd["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorEnd["graphicsitem"].y())
+#####            self.vecLine.setLine(self.centerMarker.x()+self.vectorStart["graphicsitem"].x(),self.centerMarker.y()+self.vectorStart["graphicsitem"].y(),self.centerMarker.x()+self.vectorEnd["graphicsitem"].x(),self.centerMarker.y()+self.vectorEnd["graphicsitem"].y())
+          self.vecLine.setLine(self.vectorStart["graphicsitem"].x()+self.vectorStart["centerCursorX"],self.vectorStart["graphicsitem"].y()+self.vectorStart["centerCursorY"],self.vectorEnd["graphicsitem"].x()+self.vectorStart["centerCursorX"],self.vectorEnd["graphicsitem"].y()+self.vectorStart["centerCursorY"])                        
 
 
     def queueEnScanCB(self):
@@ -2414,9 +2437,10 @@ class controlMain(QtGui.QMainWindow):
       pen = QtGui.QPen(QtCore.Qt.magenta)
       brush = QtGui.QBrush(QtCore.Qt.magenta)
       markWidth = 10
-      marker = self.scene.addEllipse(daq_utils.screenPixCenterX-(markWidth/2),daq_utils.screenPixCenterY-(markWidth/2),markWidth,markWidth,pen,brush)
+      marker = self.scene.addEllipse(self.centerMarker.x()-(markWidth/2),self.centerMarker.y()-(markWidth/2),markWidth,markWidth,pen,brush)
+#      marker = self.scene.addEllipse(daq_utils.screenPixCenterX-(markWidth/2),daq_utils.screenPixCenterY-(markWidth/2),markWidth,markWidth,pen,brush)      
       marker.setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            
-      self.centeringMark = {"sampCoords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":marker}
+      self.centeringMark = {"sampCoords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":marker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
       self.centeringMarksList.append(self.centeringMark)
  
 
@@ -2544,9 +2568,9 @@ class controlMain(QtGui.QMainWindow):
                 rowStartY = newCellY
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #test for no points in this row of the bounding rect are in the poly?
-            vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x())
             vectorEndX = vectorStartX 
-            vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y())
             vectorEndY = vectorStartY + self.screenYPixels2microns(rowCellCount*stepsizeYPix)
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
             rasterDef["rowDefs"].append(newRowDef)
@@ -2563,12 +2587,12 @@ class controlMain(QtGui.QMainWindow):
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
             print("rowStartX =" + str(rowStartX))
-            vectorStartX = self.screenXPixels2microns(rowStartX-daq_utils.screenPixCenterX)
+            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x())
             print("vectorStartX = " + str(vectorStartX))
-#            vectorEndX = vectorStartX + (rowCellCount*stepsize) #this is the correct definition, but the next one accounts for any scaling issues on the video image and looks better!!
+####            vectorEndX = vectorStartX + (rowCellCount*stepsize) #this is the correct definition, but the next one accounts for any scaling issues on the video image and looks better!!
             vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix) #this looks better
             print("vectorEndX = " + str(vectorEndX))
-            vectorStartY = self.screenYPixels2microns(rowStartY-daq_utils.screenPixCenterY)
+            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y())
             vectorEndY = vectorStartY
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
             rasterDef["rowDefs"].append(newRowDef)
@@ -2585,7 +2609,7 @@ class controlMain(QtGui.QMainWindow):
           
 
 
-    def drawPolyRaster(self,rasterReq): #rasterDef in microns,offset from center, need to convert to pixels to draw, mainly this is for displaying autoRasters
+    def drawPolyRaster(self,rasterReq,x=-1,y=-1,z=-1): #rasterDef in microns,offset from center, need to convert to pixels to draw, mainly this is for displaying autoRasters, but also called in zoom change
       try:
         rasterDef = rasterReq["request_obj"]["rasterDef"]
       except KeyError:
@@ -2609,11 +2633,11 @@ class controlMain(QtGui.QMainWindow):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           if (rasterDir == "horizontal"):
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+daq_utils.screenPixCenterX
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+daq_utils.screenPixCenterY
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+3
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+3
           else:
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+daq_utils.screenPixCenterX
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+daq_utils.screenPixCenterY
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+3
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+3
 #          print str(newCellX) + "  " + str(newCellY)
           if (rowCellCount == 0): #start of a new row
             rowStartX = newCellX
@@ -2629,10 +2653,61 @@ class controlMain(QtGui.QMainWindow):
       self.scene.addItem(newItemGroup)
       for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
-      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}
+      if (x==-1):
+        newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}          
+      else:    
+        newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
+    def reDrawPolyRasterObsolete(self,rasterReq,x,y,z): #rasterDef in microns,offset from center, need to convert to pixels to draw, mainly this is for displaying autoRasters, but also called in zoom change
+      try:
+        rasterDef = rasterReq["request_obj"]["rasterDef"]
+      except KeyError:
+        return
+      beamSize = self.screenXmicrons2pixels(rasterDef["beamWidth"])
+      stepsizeX = self.screenXmicrons2pixels(rasterDef["stepsize"])
+      stepsizeY = self.screenYmicrons2pixels(rasterDef["stepsize"])      
+      pen = QtGui.QPen(QtCore.Qt.green)
+      if (rasterDef["stepsize"]>20):      
+        pen = QtGui.QPen(QtCore.Qt.green)
+      else:
+        pen = QtGui.QPen(QtCore.Qt.red)
+#      pen = QtGui.QPen(QtCore.Qt.green)
+##      pen.setStyle(QtCore.Qt.NoPen) #I think this is why we don't see the square!
+      newRasterCellList = []
+      if (rasterDef["rowDefs"][0]["start"]["y"] == rasterDef["rowDefs"][0]["end"]["y"]): #this is a horizontal raster
+        rasterDir = "horizontal"
+      else:
+        rasterDir = "vertical"          
+      for i in xrange(len(rasterDef["rowDefs"])):
+        rowCellCount = 0
+        for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
+          if (rasterDir == "horizontal"):
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+3
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+3
+          else:
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+3
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+3
+#          print str(newCellX) + "  " + str(newCellY)
+          if (rowCellCount == 0): #start of a new row
+            rowStartX = newCellX
+            rowStartY = newCellY
+          newCell = rasterCell(newCellX,newCellY,stepsizeX, stepsizeY, self,self.scene)
+          newRasterCellList.append(newCell)
+##          newCellBeam = QtGui.QGraphicsEllipseItem(newCellX+((stepsize-beamSize)/2.0),newCellY+((stepsize-beamSize)/2.0),beamSize, beamSize, None,self.scene)
+##          newRasterCellList.append(newCellBeam)
+          newCell.setPen(pen)
+#          newCellBeam.setPen(penBeam)
+          rowCellCount = rowCellCount+1 #really just for test of new row
+      newItemGroup = rasterGroup(self)
+      self.scene.addItem(newItemGroup)
+      for i in xrange(len(newRasterCellList)):
+        newItemGroup.addToGroup(newRasterCellList[i])
+      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
+      self.rasterList.append(newRasterGraphicsDesc)
+
+      
 
 #    def rasterItemMoveEvent(self, event): #crap?????
 ##      super(QtGui.QGraphicsRectItem, self).mouseMoveEvent(e)
@@ -3032,9 +3107,10 @@ class controlMain(QtGui.QMainWindow):
       print "set vector start"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
-      vecStartMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)      
+      vecStartMarker = self.scene.addEllipse(self.centerMarker.x()-5,self.centerMarker.y()-5,10, 10, pen,brush)
+#      vecStartMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)            
       vectorStartcoords = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()}
-      self.vectorStart = {"coords":vectorStartcoords,"graphicsitem":vecStartMarker}
+      self.vectorStart = {"coords":vectorStartcoords,"graphicsitem":vecStartMarker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
 ######      self.send_to_server("set_vector_start()")
 #      print self.vectorStartcoords
 #      self.vectorStartFlag = 1
@@ -3044,10 +3120,12 @@ class controlMain(QtGui.QMainWindow):
       print "set vector end"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
-      vecEndMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)      
+      vecEndMarker = self.scene.addEllipse(self.centerMarker.x()-5,self.centerMarker.y()-5,10, 10, pen,brush)
+#      vecEndMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)            
       vectorEndcoords = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()}
-      self.vectorEnd = {"coords":vectorEndcoords,"graphicsitem":vecEndMarker}
-      self.vecLine = self.scene.addLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+vecEndMarker.x(),daq_utils.screenPixCenterY+vecEndMarker.y(), pen)
+      self.vectorEnd = {"coords":vectorEndcoords,"graphicsitem":vecEndMarker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
+      self.vecLine = self.scene.addLine(self.centerMarker.x()+self.vectorStart["graphicsitem"].x(),self.centerMarker.y()+self.vectorStart["graphicsitem"].y(),self.centerMarker.x()+vecEndMarker.x(),self.centerMarker.y()+vecEndMarker.y(), pen)
+#      self.vecLine = self.scene.addLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+vecEndMarker.x(),daq_utils.screenPixCenterY+vecEndMarker.y(), pen)      
       self.vecLine.setFlag(QtGui.QGraphicsItem.ItemIsMovable, True)
 #####      self.send_to_server("set_vector_end()")
 #      self.vecLine = self.scene.addLine(self.vecStartMarker.scenePos().x(),self.vecStartMarker.scenePos().y(),self.vecEndMarker.scenePos().x(),self.vecEndMarker.scenePos().y(), pen)
