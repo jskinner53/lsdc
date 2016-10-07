@@ -843,13 +843,16 @@ class controlMain(QtGui.QMainWindow):
         self.groupName = "skinner"        
         self.vectorStart = None
         self.vectorEnd = None
+        self.centerMarkerCharSize = 20
+        self.centerMarkerCharOffsetX = 12
+        self.centerMarkerCharOffsetY = 18    
         self.currentRasterCellList = []
         self.initUI()
         self.lowMagCursorX_pv = PV(daq_utils.pvLookupDict["lowMagCursorX"])
         self.lowMagCursorY_pv = PV(daq_utils.pvLookupDict["lowMagCursorY"])
         self.highMagCursorX_pv = PV(daq_utils.pvLookupDict["highMagCursorX"])
         self.highMagCursorY_pv = PV(daq_utils.pvLookupDict["highMagCursorY"])        
-        
+        self.rasterStepDefs = {"Coarse":30.0,"Fine":10.0}
         self.createSampleTab()
         
         self.initCallbacks()        
@@ -1100,7 +1103,7 @@ class controlMain(QtGui.QMainWindow):
         self.hBoxRasterLayout1.setAlignment(QtCore.Qt.AlignLeft) 
         rasterStepLabel = QtGui.QLabel('Raster Step')
         rasterStepLabel.setFixedWidth(110)
-        self.rasterStepEdit = QtGui.QLineEdit("30")
+        self.rasterStepEdit = QtGui.QLineEdit(str(self.rasterStepDefs["Coarse"]))
         self.rasterStepEdit.textChanged[str].connect(self.rasterStepChanged)        
         self.rasterStepEdit.setFixedWidth(60)
 
@@ -1298,12 +1301,16 @@ class controlMain(QtGui.QMainWindow):
         centerMarkBrush = QtGui.QBrush(QtCore.Qt.red)        
         centerMarkPen = QtGui.QPen(centerMarkBrush,2.0)
         
-#        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)
-        self.centerMarker = QtGui.QGraphicsEllipseItem(0,0,6,6)
-        self.centerMarker.setPen(centerMarkPen)
+#old        self.centerMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3,6, 6, centerMarkPen,centerMarkBrush)
+###        self.centerMarker = QtGui.QGraphicsEllipseItem(0,0,6,6)
+        self.centerMarker = QtGui.QGraphicsSimpleTextItem("+")
+###        self.centerMarker.setPen(centerMarkPen)#don't use the pen for thin '+'
         self.centerMarker.setBrush(centerMarkBrush)
+#        font = QtGui.QFont('Serif', 50,weight=0)
+        font = QtGui.QFont('DejaVu Sans Light', self.centerMarkerCharSize,weight=0)
+        self.centerMarker.setFont(font)        
         self.scene.addItem(self.centerMarker)
-        self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)
+        self.centerMarker.setPos(daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX,daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY)
 #        self.centerMarker.setPos(317.0,253.0)
 
         scaleBrush = QtGui.QBrush(QtCore.Qt.blue)        
@@ -1316,7 +1323,7 @@ class controlMain(QtGui.QMainWindow):
         self.imageScaleText = self.scene.addSimpleText("50 microns",font=QtGui.QFont("Times", 13))        
         self.imageScaleText.setPen(scaleTextPen)
 #        self.imageScaleText.setBrush(scaleBrush)
-        self.imageScaleText.setPos(10,425)
+        self.imageScaleText.setPos(10,450)
 
         self.click_positions = []
         self.vectorStartFlag = 0
@@ -1374,6 +1381,7 @@ class controlMain(QtGui.QMainWindow):
         self.digiZoomCheckBox.stateChanged.connect(self.changeZoomCB)
         snapshotButton = QtGui.QPushButton("Snapshot")
         snapshotButton.clicked.connect(self.saveVidSnapshotButtonCB)
+        snapshotButton.setEnabled(False)
 #        zoomInButton = QtGui.QPushButton("+")
 #        zoomInButton.clicked.connect(self.zoomInCB)
 #        zoomOutButton = QtGui.QPushButton("-")
@@ -1391,6 +1399,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout = QtGui.QHBoxLayout()
         centerLoopButton = QtGui.QPushButton("Center\nLoop")
         centerLoopButton.clicked.connect(self.autoCenterLoopCB)
+        centerLoopButton.setEnabled(False)                        
 ##        rasterLoopButton = QtGui.QPushButton("Raster\nLoop")
 ##        rasterLoopButton.clicked.connect(self.autoRasterLoopCB)
         measureButton = QtGui.QPushButton("Measure")
@@ -1405,10 +1414,10 @@ class controlMain(QtGui.QMainWindow):
         self.click3Button.clicked.connect(self.center3LoopCB)
         self.threeClickCount = 0
         saveCenteringButton = QtGui.QPushButton("Save\nCenter")
-#        saveCenteringButton.setEnabled(False)        
+        saveCenteringButton.setEnabled(False)        
         saveCenteringButton.clicked.connect(self.saveCenterCB)
         selectAllCenteringButton = QtGui.QPushButton("Select All\nCenterings")
-#        selectAllCenteringButton.setEnabled(False)                
+        selectAllCenteringButton.setEnabled(False)                
         selectAllCenteringButton.clicked.connect(self.selectAllCenterCB)
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
@@ -1517,12 +1526,15 @@ class controlMain(QtGui.QMainWindow):
         else:
           self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDC-ES:FMX{Det:Eig16M}cam1:FullFileName_RBV",self,0)            
         fileHBoxLayout = QtGui.QHBoxLayout()
-        self.statusLabel = QtEpicsPVLabel(daq_utils.beamlineComm+"program_state",self,300,highlight_on_change=False)
-        fileHBoxLayout.addWidget(self.statusLabel.getEntry())
         self.controlMasterCheckBox = QCheckBox("Control Master")
         self.controlMasterCheckBox.stateChanged.connect(self.changeControlMasterCB)
         self.controlMasterCheckBox.setChecked(False)
-        fileHBoxLayout.addWidget(self.controlMasterCheckBox)
+        fileHBoxLayout.addWidget(self.controlMasterCheckBox)        
+        self.statusLabel = QtEpicsPVLabel(daq_utils.beamlineComm+"program_state",self,300,highlight_on_change=False)
+        fileHBoxLayout.addWidget(self.statusLabel.getEntry())
+        self.shutterStateLabel = QtGui.QLabel('Shutter State:')
+        self.shutterStateLabel.setFixedWidth(200)
+        fileHBoxLayout.addWidget(self.shutterStateLabel)
         fileHBoxLayout.addWidget(self.lastFileLabel2)
         fileHBoxLayout.addWidget(self.lastFileRBV2.getEntry())
         vBoxlayout.addLayout(fileHBoxLayout)
@@ -1543,20 +1555,13 @@ class controlMain(QtGui.QMainWindow):
         albulaUtils.albulaClose()
 
     def rasterGrainToggledCB(self,identifier):
-      if (identifier == "Coarse"):
-        if (self.rasterGrainCoarseRadio.isChecked()):
-          cellSize = 30
+      if (identifier == "Coarse" or identifier == "Fine"):
+        cellSize = self.rasterStepDefs[identifier]                  
+        if (1):
+#        if (self.rasterGrainCoarseRadio.isChecked()):            
           self.rasterStepEdit.setText(str(cellSize))
           self.beamWidth_ledit.setText(str(cellSize))
           self.beamHeight_ledit.setText(str(cellSize))          
-      elif (identifier == "Fine"):
-        if (self.rasterGrainFineRadio.isChecked()):
-          cellSize = 10
-          self.rasterStepEdit.setText(str(cellSize))
-          self.beamWidth_ledit.setText(str(cellSize))
-          self.beamHeight_ledit.setText(str(cellSize))                    
-      else:
-        pass
 
 
 
@@ -1624,7 +1629,7 @@ class controlMain(QtGui.QMainWindow):
           markerYPixels = float(self.centeringMarksList[i]["graphicsItem"].y())
           markerXmicrons = markerXPixels * (fov["x"]/daq_utils.screenPixX)
           markerYmicrons = markerYPixels * (fov["y"]/daq_utils.screenPixY)
-          self.centeringMarksList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(markerXmicrons)-daq_utils.screenPixCenterX-self.centerMarker.x()-3,self.screenYmicrons2pixels(markerYmicrons)-daq_utils.screenPixCenterY-self.centerMarker.y()-3)
+          self.centeringMarksList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(markerXmicrons)-daq_utils.screenPixCenterX-self.centerMarker.x()-self.centerMarkerCharOffsetX,self.screenYmicrons2pixels(markerYmicrons)-daq_utils.screenPixCenterY-self.centerMarker.y()-self.centerMarkerCharOffsetY)
 
     def flushBuffer(self,vidStream):
       if (vidStream == None):
@@ -1647,8 +1652,8 @@ class controlMain(QtGui.QMainWindow):
 #        print("how did I get here?")          
         return
       fov = {}
-      zoomedCursorX = daq_utils.screenPixCenterX-3
-      zoomedCursorY = daq_utils.screenPixCenterY-3                
+      zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
+      zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
       if (self.lowMagLevelRadio.isChecked()):
 #        self.digiZoomCheckBox.setEnabled(True)          
         if (self.digiZoomCheckBox.isChecked()):
@@ -1656,8 +1661,8 @@ class controlMain(QtGui.QMainWindow):
           self.capture = self.captureLowMagZoom
           fov["x"] = daq_utils.lowMagFOVx/2.0
           fov["y"] = daq_utils.lowMagFOVy/2.0
-          unzoomedCursorX = self.lowMagCursorX_pv.get()-3
-          unzoomedCursorY = self.lowMagCursorY_pv.get()-3
+          unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+          unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
           if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
             zoomedCursorX = unzoomedCursorX*2.0
           if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
@@ -1673,15 +1678,15 @@ class controlMain(QtGui.QMainWindow):
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
           if (daq_utils.beamline != "amx"):
-            self.centerMarker.setPos(self.lowMagCursorX_pv.get()-3,self.lowMagCursorY_pv.get()-3)
+            self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
       else:
         if (self.digiZoomCheckBox.isChecked()):
           self.flushBuffer(self.captureHighMagZoom)
           self.capture = self.captureHighMagZoom
           fov["x"] = daq_utils.highMagFOVx/2.0
           fov["y"] = daq_utils.highMagFOVy/2.0
-          unzoomedCursorX = self.highMagCursorX_pv.get()-3
-          unzoomedCursorY = self.highMagCursorY_pv.get()-3
+          unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+          unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
           if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
             zoomedCursorX = unzoomedCursorX*2.0
           if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
@@ -1699,7 +1704,7 @@ class controlMain(QtGui.QMainWindow):
           fov["x"] = daq_utils.highMagFOVx
           fov["y"] = daq_utils.highMagFOVy
           if (daq_utils.beamline != "amx"):
-            self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)
+            self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
           
       self.adjustGraphics4ZoomChange(fov)
 
@@ -1851,12 +1856,12 @@ class controlMain(QtGui.QMainWindow):
 
 
     def processLowMagCursorChange(self,posRBV,ID):
-      zoomedCursorX = daq_utils.screenPixCenterX-3
-      zoomedCursorY = daq_utils.screenPixCenterY-3          
+      zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
+      zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
       if (self.lowMagLevelRadio.isChecked()):
         if (self.digiZoomCheckBox.isChecked()):
-          unzoomedCursorX = self.lowMagCursorX_pv.get()-3
-          unzoomedCursorY = self.lowMagCursorY_pv.get()-3
+          unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+          unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
           if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
             zoomedCursorX = unzoomedCursorX*2.0
           if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
@@ -1867,16 +1872,16 @@ class controlMain(QtGui.QMainWindow):
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
           self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
         else:
-          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-3,self.lowMagCursorY_pv.get()-3)        
+          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)        
 
 
     def processHighMagCursorChange(self,posRBV,ID):
-      zoomedCursorX = daq_utils.screenPixCenterX-3
-      zoomedCursorY = daq_utils.screenPixCenterY-3          
+      zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
+      zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
       if (self.highMagLevelRadio.isChecked()):
         if (self.digiZoomCheckBox.isChecked()):
-          unzoomedCursorX = self.highMagCursorX_pv.get()-3
-          unzoomedCursorY = self.highMagCursorY_pv.get()-3
+          unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+          unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
           if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
             zoomedCursorX = unzoomedCursorX*2.0
           if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
@@ -1887,7 +1892,7 @@ class controlMain(QtGui.QMainWindow):
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
           self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
         else:
-          self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)        
+          self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY) 
 
           
     def processSampMove(self,posRBV,motID):
@@ -1996,6 +2001,18 @@ class controlMain(QtGui.QMainWindow):
     def processMountedPin(self,mountedPinPos):
       print "in callback mounted pin = " + str(mountedPinPos)
       self.treeChanged_pv.put(1)
+
+    def processFastShutter(self,shutterVal):
+#      print "in callback shutterVal = " + str(shutterVal)
+      if (shutterVal>10):
+        self.shutterStateLabel.setText("Shutter State:Open")
+        self.shutterStateLabel.setStyleSheet("background-color: red;")        
+      else:
+        self.shutterStateLabel.setText("Shutter State:Closed")
+#        self.shutterStateLabel.setStyleSheet("background-color: green;")
+        self.shutterStateLabel.setStyleSheet("background-color: #99FF66;")        
+
+
 
     def processControlMaster(self,controlPID):
 #      print "in callback controlPID = " + str(controlPID)
@@ -2437,7 +2454,7 @@ class controlMain(QtGui.QMainWindow):
       pen = QtGui.QPen(QtCore.Qt.magenta)
       brush = QtGui.QBrush(QtCore.Qt.magenta)
       markWidth = 10
-      marker = self.scene.addEllipse(self.centerMarker.x()-(markWidth/2),self.centerMarker.y()-(markWidth/2),markWidth,markWidth,pen,brush)
+      marker = self.scene.addEllipse(self.centerMarker.x()-(markWidth/2.0)-1+self.centerMarkerCharOffsetX,self.centerMarker.y()-(markWidth/2.0)-1+self.centerMarkerCharOffsetY,markWidth,markWidth,pen,brush)
 #      marker = self.scene.addEllipse(daq_utils.screenPixCenterX-(markWidth/2),daq_utils.screenPixCenterY-(markWidth/2),markWidth,markWidth,pen,brush)      
       marker.setFlag(QtGui.QGraphicsItem.ItemIsSelectable, True)            
       self.centeringMark = {"sampCoords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":marker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
@@ -2568,9 +2585,9 @@ class controlMain(QtGui.QMainWindow):
                 rowStartY = newCellY
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #test for no points in this row of the bounding rect are in the poly?
-            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x())
+            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x()-self.centerMarkerCharOffsetX)
             vectorEndX = vectorStartX 
-            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y())
+            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y()-self.centerMarkerCharOffsetY)
             vectorEndY = vectorStartY + self.screenYPixels2microns(rowCellCount*stepsizeYPix)
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
             rasterDef["rowDefs"].append(newRowDef)
@@ -2587,12 +2604,12 @@ class controlMain(QtGui.QMainWindow):
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
             print("rowStartX =" + str(rowStartX))
-            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x())
+            vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x()-self.centerMarkerCharOffsetX)
             print("vectorStartX = " + str(vectorStartX))
 ####            vectorEndX = vectorStartX + (rowCellCount*stepsize) #this is the correct definition, but the next one accounts for any scaling issues on the video image and looks better!!
             vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix) #this looks better
             print("vectorEndX = " + str(vectorEndX))
-            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y())
+            vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y()-self.centerMarkerCharOffsetY)
             vectorEndY = vectorStartY
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
             rasterDef["rowDefs"].append(newRowDef)
@@ -2633,11 +2650,11 @@ class controlMain(QtGui.QMainWindow):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           if (rasterDir == "horizontal"):
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+3
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+3
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+self.centerMarkerCharOffsetX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+self.centerMarkerCharOffsetY
           else:
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+3
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+3
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+self.centerMarkerCharOffsetX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+self.centerMarkerCharOffsetY
 #          print str(newCellX) + "  " + str(newCellY)
           if (rowCellCount == 0): #start of a new row
             rowStartX = newCellX
@@ -2684,11 +2701,11 @@ class controlMain(QtGui.QMainWindow):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
           if (rasterDir == "horizontal"):
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+3
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+3
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+(j*stepsizeX)+self.centerMarker.x()+self.centerMarkerCharOffsetX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+self.centerMarker.y()+self.centerMarkerCharOffsetY
           else:
-            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+3
-            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+3
+            newCellX = self.screenXmicrons2pixels(rasterDef["rowDefs"][i]["start"]["x"])+self.centerMarker.x()+self.centerMarkerCharOffsetX
+            newCellY = self.screenYmicrons2pixels(rasterDef["rowDefs"][i]["start"]["y"])+(j*stepsizeY)+self.centerMarker.y()+self.centerMarkerCharOffsetY
 #          print str(newCellX) + "  " + str(newCellY)
           if (rowCellCount == 0): #start of a new row
             rowStartX = newCellX
@@ -2792,8 +2809,8 @@ class controlMain(QtGui.QMainWindow):
           self.polyPointItems.append(self.scene.addEllipse(x_click, y_click, 4, 4, penRed))
           return
         fov = self.getCurrentFOV()
-        correctedC2C_x = daq_utils.screenPixCenterX + (x_click - (self.centerMarker.x()+3))
-        correctedC2C_y = daq_utils.screenPixCenterY + (y_click - (self.centerMarker.y()+3))        
+        correctedC2C_x = daq_utils.screenPixCenterX + (x_click - (self.centerMarker.x()+self.centerMarkerCharOffsetX))
+        correctedC2C_y = daq_utils.screenPixCenterY + (y_click - (self.centerMarker.y()+self.centerMarkerCharOffsetY))        
         print(correctedC2C_x)
         print(correctedC2C_y)        
         if (self.threeClickCount > 0): #3-click centering
@@ -3107,7 +3124,8 @@ class controlMain(QtGui.QMainWindow):
       print "set vector start"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
-      vecStartMarker = self.scene.addEllipse(self.centerMarker.x()-5,self.centerMarker.y()-5,10, 10, pen,brush)
+      markWidth = 10      
+      vecStartMarker = self.scene.addEllipse(self.centerMarker.x()-(markWidth/2.0)-1+self.centerMarkerCharOffsetX,self.centerMarker.y()-(markWidth/2.0)-1+self.centerMarkerCharOffsetY,markWidth,markWidth,pen,brush)
 #      vecStartMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)            
       vectorStartcoords = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()}
       self.vectorStart = {"coords":vectorStartcoords,"graphicsitem":vecStartMarker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
@@ -3120,7 +3138,8 @@ class controlMain(QtGui.QMainWindow):
       print "set vector end"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
-      vecEndMarker = self.scene.addEllipse(self.centerMarker.x()-5,self.centerMarker.y()-5,10, 10, pen,brush)
+      markWidth = 10            
+      vecEndMarker = self.scene.addEllipse(self.centerMarker.x()-(markWidth/2.0)-1+self.centerMarkerCharOffsetX,self.centerMarker.y()-(markWidth/2.0)-1+self.centerMarkerCharOffsetY,markWidth,markWidth,pen,brush)
 #      vecEndMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)            
       vectorEndcoords = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()}
       self.vectorEnd = {"coords":vectorEndcoords,"graphicsitem":vecEndMarker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
@@ -3207,6 +3226,12 @@ class controlMain(QtGui.QMainWindow):
           firstFilename = daq_utils.create_filename(prefix_long,fnumstart)            
           albulaUtils.albulaDisp(firstFilename)
       self.rasterStepEdit.setText(str(reqObj["gridStep"]))
+      if (reqObj["gridStep"] == self.rasterStepDefs["Coarse"]):
+        self.rasterGrainCoarseRadio.setChecked(True)
+      elif (reqObj["gridStep"] == self.rasterStepDefs["Fine"]):
+        self.rasterGrainFineRadio.setChecked(True)
+      else:
+        self.rasterGrainCustomRadio.setChecked(True)          
       rasterStep = int(reqObj["gridStep"])
 #      self.eraseCB()
       if (str(reqObj["protocol"])== "raster"):
@@ -3332,6 +3357,10 @@ class controlMain(QtGui.QMainWindow):
       controlMasterPID = value
       self.emit(QtCore.SIGNAL("controlMasterSignal"),controlMasterPID)
       
+    def shutterChangedCB(self,value=None, char_value=None, **kw):
+      shutterVal = value        
+      self.emit(QtCore.SIGNAL("fastShutterSignal"),shutterVal)
+      
     def processSampMoveCB(self,value=None, char_value=None, **kw):
       posRBV = value
       motID = kw["motID"]
@@ -3456,6 +3485,9 @@ class controlMain(QtGui.QMainWindow):
 #      self.omegaRBV_pv = PV(daq_utils.motor_dict["omega"] + ".VAL")      
 ##      self.connect(self, QtCore.SIGNAL("sampMoveSignal"),self.processSampMove)
       self.omegaRBV_pv.add_callback(self.processSampMoveCB,motID="omega")
+      self.fastShutterRBV_pv = PV(daq_utils.motor_dict["fastShutter"] + ".RBV")
+      self.connect(self, QtCore.SIGNAL("fastShutterSignal"),self.processFastShutter)      
+      self.fastShutterRBV_pv.add_callback(self.shutterChangedCB)
 #      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
       if (daq_utils.beamline != "amx"):
@@ -3509,7 +3541,8 @@ class controlMain(QtGui.QMainWindow):
       if (string.find(programState_s,"Ready") == -1):
         self.statusLabel.setColor("yellow")
       else:
-        self.statusLabel.setColor("green")
+#        self.statusLabel.setColor("green")
+        self.statusLabel.setColor("#99FF66")        
 #        self.statusLabel.setColor("None")
         self.text_output.newPrompt()
 
