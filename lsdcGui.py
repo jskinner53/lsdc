@@ -464,6 +464,7 @@ class DewarTree(QtGui.QTreeView):
                   if (sampleRequestList[k]["priority"] == 99999):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('green'))
+                    selectedIndex = self.model.indexFromItem(col_item) ##attempt to leave it on the request after collection                    
                     collectionRunning = True
                     self.parent.refreshCollectionParams(sampleRequestList[k])
 
@@ -517,8 +518,9 @@ class DewarTree(QtGui.QTreeView):
           self.parent.row_clicked(selectedIndex)
         if (collectionRunning == True):
           if (mountedIndex != None):
-            self.setCurrentIndex(mountedIndex)
-            self.parent.row_clicked(mountedIndex)
+            pass
+##            self.setCurrentIndex(mountedIndex)
+##            self.parent.row_clicked(mountedIndex)
 
         if (self.isExpanded):
           self.expandAll()
@@ -851,7 +853,8 @@ class controlMain(QtGui.QMainWindow):
         self.lowMagCursorX_pv = PV(daq_utils.pvLookupDict["lowMagCursorX"])
         self.lowMagCursorY_pv = PV(daq_utils.pvLookupDict["lowMagCursorY"])
         self.highMagCursorX_pv = PV(daq_utils.pvLookupDict["highMagCursorX"])
-        self.highMagCursorY_pv = PV(daq_utils.pvLookupDict["highMagCursorY"])        
+        self.highMagCursorY_pv = PV(daq_utils.pvLookupDict["highMagCursorY"])
+        self.fastShutterOpenPos_pv = PV(daq_utils.pvLookupDict["fastShutterOpenPos"])                
         self.rasterStepDefs = {"Coarse":30.0,"Fine":10.0}
         self.createSampleTab()
         
@@ -914,9 +917,11 @@ class controlMain(QtGui.QMainWindow):
         queueSelectedButton.clicked.connect(self.dewarTree.queueAllSelectedCB)
         deQueueSelectedButton = QtGui.QPushButton("deQueue All Selected")        
         deQueueSelectedButton.clicked.connect(self.dewarTree.deQueueAllSelectedCB)
-        runQueueButton = QtGui.QPushButton("Collect Queue")        
+        runQueueButton = QtGui.QPushButton("Collect Queue")
+        runQueueButton.setStyleSheet("background-color: yellow")
         runQueueButton.clicked.connect(self.collectQueueCB)
-        stopRunButton = QtGui.QPushButton("Stop Collection")        
+        stopRunButton = QtGui.QPushButton("Stop Collection")
+        stopRunButton.setStyleSheet("background-color: red")
         stopRunButton.clicked.connect(self.stopRunCB) #immediate stop everything
         puckToDewarButton = QtGui.QPushButton("Puck to Dewar...")        
         mountSampleButton = QtGui.QPushButton("Mount Sample")        
@@ -1266,7 +1271,8 @@ class controlMain(QtGui.QMainWindow):
         self.VidFrame.setFixedWidth(680)
         vBoxVidLayout= QtGui.QVBoxLayout()
         if (daq_utils.has_xtalview):
-          if (daq_utils.beamline != "amx"):            
+          if (1):
+#          if (daq_utils.beamline != "amx"):                          
             thread.start_new_thread(self.initVideo2,(.25,)) #highMag
             thread.start_new_thread(self.initVideo4,(.25,))          #this sets up highMagDigiZoom
           else:
@@ -1372,7 +1378,8 @@ class controlMain(QtGui.QMainWindow):
         self.cameraRadioGroup.addButton(self.lowMagLevelRadio)
         self.highMagLevelRadio = QtGui.QRadioButton("HighMag")
         self.highMagLevelRadio.setChecked(False)
-        if (daq_utils.beamline == "amx"):
+        if (0):
+#        if (daq_utils.beamline == "amx"):            
           self.highMagLevelRadio.setEnabled(False)
         self.cameraRadioGroup.addButton(self.highMagLevelRadio)
         self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
@@ -1677,7 +1684,8 @@ class controlMain(QtGui.QMainWindow):
           self.capture = self.captureLowMag
           fov["x"] = daq_utils.lowMagFOVx
           fov["y"] = daq_utils.lowMagFOVy
-          if (daq_utils.beamline != "amx"):
+          if (1):
+#          if (daq_utils.beamline != "amx"):              
             self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
       else:
         if (self.digiZoomCheckBox.isChecked()):
@@ -1703,7 +1711,8 @@ class controlMain(QtGui.QMainWindow):
           self.capture = self.captureHighMag
           fov["x"] = daq_utils.highMagFOVx
           fov["y"] = daq_utils.highMagFOVy
-          if (daq_utils.beamline != "amx"):
+          if (1):
+#          if (daq_utils.beamline != "amx"):              
             self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
           
       self.adjustGraphics4ZoomChange(fov)
@@ -1966,8 +1975,7 @@ class controlMain(QtGui.QMainWindow):
         if (self.vectorEnd != None):
 #            self.vecLine.setLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+self.vectorEnd["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorEnd["graphicsitem"].y())
 #####            self.vecLine.setLine(self.centerMarker.x()+self.vectorStart["graphicsitem"].x(),self.centerMarker.y()+self.vectorStart["graphicsitem"].y(),self.centerMarker.x()+self.vectorEnd["graphicsitem"].x(),self.centerMarker.y()+self.vectorEnd["graphicsitem"].y())
-          self.vecLine.setLine(self.vectorStart["graphicsitem"].x()+self.vectorStart["centerCursorX"],self.vectorStart["graphicsitem"].y()+self.vectorStart["centerCursorY"],self.vectorEnd["graphicsitem"].x()+self.vectorStart["centerCursorX"],self.vectorEnd["graphicsitem"].y()+self.vectorStart["centerCursorY"])                        
-
+          self.vecLine.setLine(self.vectorStart["graphicsitem"].x()+self.vectorStart["centerCursorX"]+self.centerMarkerCharOffsetX,self.vectorStart["graphicsitem"].y()+self.vectorStart["centerCursorY"]+self.centerMarkerCharOffsetY,self.vectorEnd["graphicsitem"].x()+self.vectorStart["centerCursorX"]+self.centerMarkerCharOffsetX,self.vectorEnd["graphicsitem"].y()+self.vectorStart["centerCursorY"]+self.centerMarkerCharOffsetY)
 
     def queueEnScanCB(self):
 #      self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
@@ -2003,8 +2011,8 @@ class controlMain(QtGui.QMainWindow):
       self.treeChanged_pv.put(1)
 
     def processFastShutter(self,shutterVal):
-#      print "in callback shutterVal = " + str(shutterVal)
-      if (shutterVal>10):
+#      print "in callback shutterVal = " + str(shutterVal) + " " + str(self.fastShutterOpenPos_pv.get())
+      if (round(shutterVal)==self.fastShutterOpenPos_pv.get()):
         self.shutterStateLabel.setText("Shutter State:Open")
         self.shutterStateLabel.setStyleSheet("background-color: red;")        
       else:
@@ -2063,10 +2071,14 @@ class controlMain(QtGui.QMainWindow):
       self.vectorParamsFrame.hide()
       self.characterizeParamsFrame.hide()
       self.processingOptionsFrame.hide()
-      self.multiColParamsFrame.hide()      
-
+      self.multiColParamsFrame.hide()
+      self.osc_start_ledit.setEnabled(True)
+      self.osc_end_ledit.setEnabled(True)
       if (protocol == "raster"):
         self.rasterParamsFrame.show()
+        self.osc_start_ledit.setEnabled(False)
+        self.osc_end_ledit.setEnabled(False)
+        
       elif (protocol == "multiCol"):
         self.rasterParamsFrame.show()
         self.multiColParamsFrame.show()
@@ -2790,6 +2802,7 @@ class controlMain(QtGui.QMainWindow):
         penGreen = QtGui.QPen(QtCore.Qt.green)
         penRed = QtGui.QPen(QtCore.Qt.red)
         if (self.vidActionDefineCenterRadio.isChecked()):
+          self.vidActionC2CRadio.setChecked(True) #because it's easy to forget defineCenter is on
           if(self.highMagLevelRadio.isChecked()):
             if(self.digiZoomCheckBox.isChecked()):
               comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",1)"
@@ -3143,7 +3156,7 @@ class controlMain(QtGui.QMainWindow):
 #      vecEndMarker = self.scene.addEllipse(daq_utils.screenPixCenterX-5,daq_utils.screenPixCenterY-5,10, 10, pen,brush)            
       vectorEndcoords = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()}
       self.vectorEnd = {"coords":vectorEndcoords,"graphicsitem":vecEndMarker,"centerCursorX":self.centerMarker.x(),"centerCursorY":self.centerMarker.y()}
-      self.vecLine = self.scene.addLine(self.centerMarker.x()+self.vectorStart["graphicsitem"].x(),self.centerMarker.y()+self.vectorStart["graphicsitem"].y(),self.centerMarker.x()+vecEndMarker.x(),self.centerMarker.y()+vecEndMarker.y(), pen)
+      self.vecLine = self.scene.addLine(self.centerMarker.x()+self.vectorStart["graphicsitem"].x()+self.centerMarkerCharOffsetX,self.centerMarker.y()+self.vectorStart["graphicsitem"].y()+self.centerMarkerCharOffsetY,self.centerMarker.x()+vecEndMarker.x()+self.centerMarkerCharOffsetX,self.centerMarker.y()+vecEndMarker.y()+self.centerMarkerCharOffsetY, pen)
 #      self.vecLine = self.scene.addLine(daq_utils.screenPixCenterX+self.vectorStart["graphicsitem"].x(),daq_utils.screenPixCenterY+self.vectorStart["graphicsitem"].y(),daq_utils.screenPixCenterX+vecEndMarker.x(),daq_utils.screenPixCenterY+vecEndMarker.y(), pen)      
       self.vecLine.setFlag(QtGui.QGraphicsItem.ItemIsMovable, True)
 #####      self.send_to_server("set_vector_end()")
@@ -3490,7 +3503,8 @@ class controlMain(QtGui.QMainWindow):
       self.fastShutterRBV_pv.add_callback(self.shutterChangedCB)
 #      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
-      if (daq_utils.beamline != "amx"):
+      if (1):
+#      if (daq_utils.beamline != "amx"):          
               
 #        self.highMagZoomMinXRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinXRBV"])
 #        self.connect(self, QtCore.SIGNAL("roiChangeSignal"),self.processROIChange)

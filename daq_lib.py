@@ -439,7 +439,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   image_started = range_seconds
 #  time.sleep(0.3)  
   set_field("state","Expose")
-  if (protocol == "standard"):
+  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol"):
     gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used    
   else:
     daq_macros.vectorScan(currentRequest)  

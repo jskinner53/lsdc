@@ -24,6 +24,8 @@ import subprocess
 import super_state_machine
 import _thread
 
+import attenCalc
+
 global dialsResultDict, rasterRowResultsList, processedRasterRowCount
 
 dialsResultDict = {}
@@ -93,9 +95,9 @@ def changeImageCenterLowMag(x,y,czoom):
 #    return
   noZoomCenterX = sizeXRBV/2.0
   noZoomCenterY = sizeYRBV/2.0  
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
-    return
+#    return
   if (new_minX < 0):
     print("1")
     new_minX = 0
@@ -170,9 +172,9 @@ def changeImageCenterHighMag(x,y,czoom):
 #    return
   noZoomCenterX = sizeXRBV/2.0
   noZoomCenterY = sizeYRBV/2.0  
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
-    return
+#    return
   if (new_minX < 0):
     print("1")
     new_minX = 0
@@ -210,9 +212,9 @@ def changeImageCenterHighMag(x,y,czoom):
   
   
 def changeImageCenterLowMagObsolete(x,y):
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
-    return
+#    return
   minXRBV = beamline_support.getPvValFromDescriptor("lowMagMinXRBV")
   minYRBV = beamline_support.getPvValFromDescriptor("lowMagMinYRBV")
   sizeXRBV = beamline_support.getPvValFromDescriptor("lowMagSizeXRBV")
@@ -301,9 +303,9 @@ def changeImageCenterLowMagZoomObsolete(x,y):
   beamline_support.setPvValFromDescriptor("lowMagZoomMinY",new_minYZoom)
   noZoomCenterX = sizeXRBV/2.0
   noZoomCenterY = sizeYRBV/2.0  
-  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
+#  if (daq_utils.detector_id != "EIGER-16"): #sloppy short circuit until fix up amx
 #  if (1): #sloppy short circuit until fix up amx    
-    return
+#    return
   binningFactor = 2.0
   if (new_minX < 0):
     print("1")
@@ -540,11 +542,16 @@ def vectorWait():
 def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
 
-
-  if (rowIndex%2 == 0):
-    node = "cpu-004"
+  if (daq_utils.detector_id == "EIGER-16"):  
+    if (rowIndex%2 == 0):
+      node = "cpu-009"
+    else:
+      node = "cpu-010"
   else:
-    node = "cpu-005"    
+    if (rowIndex%2 == 0):
+      node = "cpu-004"
+    else:
+      node = "cpu-005"
   if (seqNum>-1): #eiger
     cbfDir = directory+"/cbf"
     comm_s = "mkdir -p " + cbfDir
@@ -1276,3 +1283,12 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   return 1
 
 
+def setAttens(transmission): #where transmission = 0.0-1.0
+  attenValList = []
+  attenValList = attenCalc.RIfoils(beamline_lib.get_mono_energy(),transmission)
+# attenValList = [0,1,0,1,0,1,0,1,0,1,0,1]
+  for i in range (0,len(attenValList)):
+    pvVal = attenValList[i]
+    pvKeyName = "Atten%02d-%d" % (i+1,pvVal)    
+    beamline_support.setPvValFromDescriptor(pvKeyName,1)
+    print (pvKeyName)
