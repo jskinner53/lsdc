@@ -291,8 +291,10 @@ def collectData(currentRequest):
   prot = str(reqObj["protocol"])
   sweep_start = reqObj["sweep_start"]
   sweep_end = reqObj["sweep_end"]
+  range_degrees = abs(sweep_end-sweep_start)  
+  sweep_start = reqObj["sweep_start"]%360.0
   file_number_start = reqObj["file_number_start"]
-  range_degrees = abs(sweep_end-sweep_start)
+
     
   status = 1
   if not (os.path.isdir(data_directory_name)):
@@ -406,7 +408,7 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   print("data directory = " + data_directory_name)
   reqObj = currentRequest["request_obj"]
   protocol = str(reqObj["protocol"])
-  sweep_start = reqObj["sweep_start"]
+  sweep_start = reqObj["sweep_start"]%360.0
   if (protocol == "vector"):
     beamline_lib.mvaDescriptor("omega",sweep_start)    
   number_of_images = round(range_degrees/image_width)
@@ -415,9 +417,10 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
     exposure_time = exposure_period - .00001
   else:
     exposure_time = exposure_period - .0024  
-  angleStart = beamline_lib.motorPosFromDescriptor("omega")
-  if (angleStart>360.0):
-    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
+  angleStart = sweep_start
+#  angleStart = beamline_lib.motorPosFromDescriptor("omega")  
+###  if (angleStart>360.0):
+###    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
   file_prefix_minus_directory = str(fileprefix)
   try:
     file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]

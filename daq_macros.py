@@ -542,7 +542,7 @@ def vectorWait():
 def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
 
-  if (daq_utils.detector_id == "EIGER-16"):  
+  if (daq_utils.detector_id == "EIGER-16"):
     if (rowIndex%2 == 0):
       node = "cpu-009"
     else:
@@ -720,8 +720,10 @@ def snakeRaster(rasterReqID,grain=""):
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
     detectorArm(omega,img_width_per_cell,numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start)
     beamline_support.setPvValFromDescriptor("vectorGo",1)
-    if (daq_utils.detector_id == "EIGER-16"):
+#    if (1):
+    if (daq_utils.detector_id == "EIGER-16"):      
       if (det_lib.detector_is_manual_trigger()):
+#        print("vector delay")
         time.sleep(getVectorDelay())
         det_lib.detector_trigger()
     vectorWait()

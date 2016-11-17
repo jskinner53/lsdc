@@ -226,7 +226,8 @@ def move_mono(energy):  # for now, not sure if this should go in macros
 
 
 def get_mono_energy():
-  if (daq_utils.has_beamline == 0):
+  if (0):
+#  if (daq_utils.has_beamline == 0):    
     return 12398.5
   else:
 #    mono_mot_code = beamline_support.get_motor_code(beamline_support.motor_code_from_descriptor("monochromator"))

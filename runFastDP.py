@@ -44,7 +44,7 @@ while(not os.path.exists(expectedFilenameList[len(expectedFilenameList)-1])): #t
   if (timeout_check > timeoutLimit):
     break
 node = "cpu-004"
-comm_s = "ssh  -q " + node + " \"cd " + runningDir +";source /nfs/skinner/wrappers/fastDPWrap;fast_dp " + expectedFilenameList[0] + "\""  
+comm_s = "ssh  -q " + node + " \"cd " + runningDir +";source /nfs/skinner/wrappers/fastDPWrap;fast_dp -1 3 " + expectedFilenameList[0] + "\""  
 #comm_s = "fast_dp " + expectedFilenameList[0] #note this the first image
 print(comm_s)
 os.system(comm_s)

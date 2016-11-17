@@ -479,7 +479,7 @@ class DewarTree(QtGui.QTreeView):
                     col_item.setCheckState(Qt.Unchecked)
                     col_item.setBackground(QtGui.QColor('white'))
                   item.appendRow(col_item)
-                  if (sampleRequestList[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item
+                  if (sampleRequestList[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item, this is a request
                     selectedIndex = self.model.indexFromItem(col_item)
               else : #this is an empty spot, no sample
                 position_s = str(j+1)
@@ -1030,11 +1030,13 @@ class controlMain(QtGui.QMainWindow):
         colBeamWLabel.setFixedWidth(140)
         colBeamWLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamWidth_ledit = QtGui.QLineEdit()
+#        self.beamWidth_ledit.textChanged[str].connect(self.beamWidthChangedCB)
         self.beamWidth_ledit.setFixedWidth(60)
         colBeamHLabel = QtGui.QLabel('Beam Height:')
         colBeamHLabel.setFixedWidth(140)
         colBeamHLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamHeight_ledit = QtGui.QLineEdit()
+#        self.beamHeight_ledit.textChanged[str].connect(self.beamHeightChangedCB)        
         self.beamHeight_ledit.setFixedWidth(60)
         hBoxColParams4.addWidget(colBeamWLabel)
         hBoxColParams4.addWidget(self.beamWidth_ledit)
@@ -1317,6 +1319,36 @@ class controlMain(QtGui.QMainWindow):
         self.centerMarker.setFont(font)        
         self.scene.addItem(self.centerMarker)
         self.centerMarker.setPos(daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX,daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY)
+#I moved this block here so that fov could calculate
+        self.cameraRadioGroup=QtGui.QButtonGroup()
+        self.lowMagLevelRadio = QtGui.QRadioButton("LowMag")
+        self.lowMagLevelRadio.setChecked(True)
+        self.lowMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"LowMag"))
+        self.cameraRadioGroup.addButton(self.lowMagLevelRadio)
+        self.highMagLevelRadio = QtGui.QRadioButton("HighMag")
+        self.highMagLevelRadio.setChecked(False)
+        if (0):
+#        if (daq_utils.beamline == "amx"):            
+          self.highMagLevelRadio.setEnabled(False)
+        self.cameraRadioGroup.addButton(self.highMagLevelRadio)
+        self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
+        self.digiZoomCheckBox = QCheckBox("Zoom")
+#        self.digiZoomCheckBox.setEnabled(False)
+        self.digiZoomCheckBox.stateChanged.connect(self.changeZoomCB)
+
+        beamOverlayPen = QtGui.QPen(QtCore.Qt.red)
+        self.tempBeamSizeXMicrons = 30
+        self.tempBeamSizeYMicrons = 30        
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.overlayPosOffsetX = self.centerMarkerCharOffsetX-1
+        self.overlayPosOffsetY = self.centerMarkerCharOffsetY-1     
+        self.beamSizeOverlay = QtGui.QGraphicsRectItem(self.centerMarker.x()-self.overlayPosOffsetX,self.centerMarker.y()-self.overlayPosOffsetY,self.beamSizeXPixels,self.beamSizeYPixels)
+        self.beamSizeOverlay.setPen(beamOverlayPen)
+        self.scene.addItem(self.beamSizeOverlay)
+        self.beamSizeOverlay.setVisible(False)
+        print(self.centerMarker.x())
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 #        self.centerMarker.setPos(317.0,253.0)
 
         scaleBrush = QtGui.QBrush(QtCore.Qt.blue)        
@@ -1371,21 +1403,6 @@ class controlMain(QtGui.QMainWindow):
 #        sampleDimmerButton = QtGui.QPushButton("-")
 #        sampleDimmerButton.clicked.connect(self.lightDimCB)
         magLevelLabel = QtGui.QLabel("Video Source:")
-        self.cameraRadioGroup=QtGui.QButtonGroup()
-        self.lowMagLevelRadio = QtGui.QRadioButton("LowMag")
-        self.lowMagLevelRadio.setChecked(True)
-        self.lowMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"LowMag"))
-        self.cameraRadioGroup.addButton(self.lowMagLevelRadio)
-        self.highMagLevelRadio = QtGui.QRadioButton("HighMag")
-        self.highMagLevelRadio.setChecked(False)
-        if (0):
-#        if (daq_utils.beamline == "amx"):            
-          self.highMagLevelRadio.setEnabled(False)
-        self.cameraRadioGroup.addButton(self.highMagLevelRadio)
-        self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
-        self.digiZoomCheckBox = QCheckBox("Zoom")
-#        self.digiZoomCheckBox.setEnabled(False)
-        self.digiZoomCheckBox.stateChanged.connect(self.changeZoomCB)
         snapshotButton = QtGui.QPushButton("Snapshot")
         snapshotButton.clicked.connect(self.saveVidSnapshotButtonCB)
         snapshotButton.setEnabled(False)
@@ -1421,10 +1438,10 @@ class controlMain(QtGui.QMainWindow):
         self.click3Button.clicked.connect(self.center3LoopCB)
         self.threeClickCount = 0
         saveCenteringButton = QtGui.QPushButton("Save\nCenter")
-        saveCenteringButton.setEnabled(False)        
+#        saveCenteringButton.setEnabled(False)        
         saveCenteringButton.clicked.connect(self.saveCenterCB)
         selectAllCenteringButton = QtGui.QPushButton("Select All\nCenterings")
-        selectAllCenteringButton.setEnabled(False)                
+#        selectAllCenteringButton.setEnabled(False)                
         selectAllCenteringButton.clicked.connect(self.selectAllCenterCB)
         hBoxSampleAlignLayout.addWidget(centerLoopButton)
 #        hBoxSampleAlignLayout.addWidget(rasterLoopButton)
@@ -1679,6 +1696,9 @@ class controlMain(QtGui.QMainWindow):
           if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
           self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)          
         else:
           self.flushBuffer(self.captureLowMag)
           self.capture = self.captureLowMag
@@ -1687,6 +1707,9 @@ class controlMain(QtGui.QMainWindow):
           if (1):
 #          if (daq_utils.beamline != "amx"):              
             self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+            self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+            self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+            self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
       else:
         if (self.digiZoomCheckBox.isChecked()):
           self.flushBuffer(self.captureHighMagZoom)
@@ -1703,7 +1726,10 @@ class controlMain(QtGui.QMainWindow):
             zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
           if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
-          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)          
+          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 #          self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)          
         else:
 #        self.digiZoomCheckBox.setEnabled(False)          
@@ -1714,7 +1740,9 @@ class controlMain(QtGui.QMainWindow):
           if (1):
 #          if (daq_utils.beamline != "amx"):              
             self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
-          
+            self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+            self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+            self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
       self.adjustGraphics4ZoomChange(fov)
 
 
@@ -1861,7 +1889,10 @@ class controlMain(QtGui.QMainWindow):
 
     def processHighMagCursorChangeObsolete(self,posRBV,ID):
       if (self.highMagLevelRadio.isChecked() and not self.digiZoomCheckBox.isChecked()):
-        self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)        
+        self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
 
     def processLowMagCursorChange(self,posRBV,ID):
@@ -1880,8 +1911,14 @@ class controlMain(QtGui.QMainWindow):
           if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
           self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
         else:
-          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)        
+          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
 
     def processHighMagCursorChange(self,posRBV,ID):
@@ -1900,8 +1937,14 @@ class controlMain(QtGui.QMainWindow):
           if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
             zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
           self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
         else:
-          self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY) 
+          self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
           
     def processSampMove(self,posRBV,motID):
@@ -2012,7 +2055,7 @@ class controlMain(QtGui.QMainWindow):
 
     def processFastShutter(self,shutterVal):
 #      print "in callback shutterVal = " + str(shutterVal) + " " + str(self.fastShutterOpenPos_pv.get())
-      if (round(shutterVal)==self.fastShutterOpenPos_pv.get()):
+      if (round(shutterVal)==round(self.fastShutterOpenPos_pv.get())):
         self.shutterStateLabel.setText("Shutter State:Open")
         self.shutterStateLabel.setStyleSheet("background-color: red;")        
       else:
@@ -2143,7 +2186,8 @@ class controlMain(QtGui.QMainWindow):
 
 
     def  popBaseDirectoryDialogCB(self):
-      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '/home')
+#      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '/home')
+      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '')      
       if (fname != ""):
         self.dataPathGB.setBasePath_ledit(fname)
 
@@ -2963,6 +3007,9 @@ class controlMain(QtGui.QMainWindow):
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
           newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+#attempt here to select a newly created request.        
+          self.SelectedItemData = newSampleRequest["request_id"]
+          
           if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
             self.treeChanged_pv.put(1)
         else:
@@ -2992,6 +3039,9 @@ class controlMain(QtGui.QMainWindow):
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
           newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+#attempt here to select a newly created request.        
+          self.SelectedItemData = newSampleRequest["request_id"]
+          
           if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
             self.treeChanged_pv.put(1)
         else:
@@ -3044,6 +3094,9 @@ class controlMain(QtGui.QMainWindow):
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
              newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+#attempt here to select a newly created request.        
+             self.SelectedItemData = newSampleRequest["request_id"]
+             
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
         if (selectedCenteringFound == 0):
@@ -3106,6 +3159,9 @@ class controlMain(QtGui.QMainWindow):
           reqObj["vectorParams"] = vectorParams
         colRequest["request_obj"] = reqObj
         newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+#attempt here to select a newly created request.        
+        self.SelectedItemData = newSampleRequest["request_id"]
+        
 #        if (rasterDef != False):
         if (rasterDef != None):
           self.rasterDefList.append(newSampleRequest)
