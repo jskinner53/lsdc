@@ -43,6 +43,7 @@ edna_execution_status = os.system( "%s > edna.log 2> edna.err" % command_string)
 fEdnaLogFile = open("./edna.log", "r" )
 ednaLogLines = fEdnaLogFile.readlines()
 fEdnaLogFile.close()
+collect_and_characterize_success = 0
 for outline in ednaLogLines: 
   if (outline.find("EdnaDir")!= -1):
     (param,dirname) = outline.split('=')

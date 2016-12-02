@@ -114,7 +114,8 @@ def process_commands(frequency):
       process_input(command_list.pop(0))
 #      daq_utils.broadcast_output("Command> ")            
 ##      print "Command> "
-    time.sleep(frequency)      
+######    time.sleep(frequency)
+    plt.pause(frequency)    
 
     
 def print_status_thread(frequency):

@@ -1078,13 +1078,20 @@ def getXrecLoopShape(currentRequest):
 
 
 def eScan(energyScanRequest):
+  plt.clf()
   sampleID = energyScanRequest["sample_id"]
   reqObj = energyScanRequest["request_obj"]
   exptime = reqObj['exposure_time']
-  print("energy scan for " + str(reqObj['scanEnergy']))
+  targetEnergy = reqObj['scanEnergy'] *1000.0
+  print("energy scan for " + str(targetEnergy))
   scan_element = "Se"
-  scanID = RE(dscan(omega,-20,20,10,exptime))
-  scanData = db[scanID]
+  mvaDescriptor("energy",targetEnergy)
+  open_shutter()
+  scanID = RE(relative_scan([mercury],vdcm.e,-20,20,41),[LivePlot("mercury_mca_rois_roi0_count")])
+#  scanID = RE(relative_scan([mercury],vdcm.e,-40,40,80),[LivePlot("mercury_mca_rois_roi0_count")])  
+#  scanID = RE(relative_scan([mercury],vdcm.e,-60,60,40))  
+  close_shutter()
+  scanData = db[scanID[0]]
   for ev in get_events(scanData):
     if ('mercury_mca_spectrum' in ev['data']):
       print(ev['seq_num'], ev['data']['mercury_mca_spectrum'].sum())
@@ -1092,9 +1099,13 @@ def eScan(energyScanRequest):
   scanDataTable = get_table(scanData)
 #these next lines only make sense for the mca
   specFile = open("spectrumData.txt","w+")
-  for i in range (0,len(scanDataTable.mercury_mca_spectrum.values)):
-    for j in range (0,len(scanDataTable.mercury_mca_spectrum.values[i])):
-      specFile.write(str(scanDataTable.mercury_mca_spectrum.values[i][j]) + ",")
+  #mercury.mca.rois.roi0.count.value
+##  for i in range (0,len(scanDataTable.mercury_mca_spectrum.values)):
+##    for j in range (0,len(scanDataTable.mercury_mca_spectrum.values[i])):
+#  specFile.write("From LSDC\n")
+  specFile.write(str(len(scanDataTable.mercury_mca_rois_roi0_count)) + "\n")
+  for i in range (0,len(scanDataTable.mercury_mca_rois_roi0_count)):
+    specFile.write(str(scanDataTable.vdcm_e[i+1]) + " " + str(scanDataTable.mercury_mca_rois_roi0_count[i+1]))
     specFile.write("\n")
   specFile.close()
 #  scanDataTable = get_table(scanData,["omega","cam_7_stats1_total"])  
@@ -1106,12 +1117,19 @@ def eScan(energyScanRequest):
   if (reqObj["runChooch"]):
     chooch_prefix = "choochData1"
     choochOutfileName = chooch_prefix+".efs"
-    choochInputFileName = "/nfs/skinner/temp/choochData1.raw"
+    choochInputFileName = "spectrumData.txt"
+#    choochInputFileName = "/nfs/skinner/temp/choochData1.raw"    
     comm_s = "chooch -e %s -o %s %s" % (scan_element, choochOutfileName,choochInputFileName)
 #  comm_s = "chooch -e %s -o %s -p %s %s" % (scan_element,chooch_prefix+".efs",chooch_prefix+".ps",chooch_prefix+".raw")
     print(comm_s)
     choochInputData_x = []
     choochInputData_y = []
+    infl = 0
+    peak = 0
+    f2prime_infl = 0
+    fprime_infl = 0
+    f2prime_peak = 0
+    fprime_peak = 0
     choochInputFile = open(choochInputFileName,"r")
     for outputLine in choochInputFile.readlines():
       tokens = outputLine.split()
@@ -1233,7 +1251,8 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
         time.sleep(float(dna_number_of_images*float(dna_exptime)))        
         break
   #skinner roi - maybe I can measure and use that for dna_start so that first image is face on.
-    dna_start = daq_lib.get_field("datum_omega")
+#    dna_start = motorPosFromDescriptor("omega")    
+#    dna_start = daq_lib.get_field("datum_omega")    
     colstart = float(dna_start) + (i*(abs(overlap)+float(dna_range)))
     dna_prefix = "ref-"+prefix
 #12/15 not sure why dna_run_num in prefix    dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
@@ -1244,6 +1263,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
+    charRequest["request_obj"]["sweep_start"] = colstart
     imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
@@ -1274,8 +1294,8 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     time.sleep(1.0)
     if (timeout_check > 10):
       break
-#####  flux = 10000000000 * beamline_lib.get_epics_pv("flux","VAL")
-  flux = 600000000.0  #for now
+  flux = beamline_support.getPvValFromDescriptor("flux")
+#  flux = 600000000.0  #for now
   edna_input_filename = dna_directory + "/adsc1_in.xml"
   
   comm_s = "ssh -q xf17id1-srv1 \"source /nfs/skinner/wrappers/ednaWrap;" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["request_id"]) + "\""

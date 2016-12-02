@@ -2,6 +2,9 @@
 import asyncio
 #from ophyd import setup_ophyd
 from ophyd import *
+from ophyd.mca import (EpicsMCA, EpicsDXP, Mercury1, SoftDXPTrigger)
+from ophyd import Device, Component as Cpt, EpicsMotor, EpicsSignalRO
+
 setup_ophyd()
 
 # Subscribe metadatastore to documents.
@@ -64,6 +67,18 @@ from ophyd.areadetector.filestore_mixins import (FileStoreTIFFIterativeWrite,
 
 from ophyd import Component as Cpt
 
+class AMXMercury(Mercury1, SoftDXPTrigger):
+        pass
+class VerticalDCM(Device):
+    b = Cpt(EpicsMotor, '-Ax:B}Mtr')
+    g = Cpt(EpicsMotor, '-Ax:G}Mtr')
+    p = Cpt(EpicsMotor, '-Ax:P}Mtr')
+    r = Cpt(EpicsMotor, '-Ax:R}Mtr')
+    e = Cpt(EpicsMotor, '-Ax:E}Mtr')
+    w = Cpt(EpicsMotor, '-Ax:W}Mtr')
+
+                    
+
 class StandardProsilica(SingleTrigger, ProsilicaDetector):
     #tiff = Cpt(TIFFPluginWithFileStore,
     #           suffix='TIFF1:',
@@ -88,6 +103,10 @@ def filter_camera_data(camera):
     #camera.stats4.read_attrs = ['total', 'centroid']
     camera.stats5.read_attrs = ['total', 'centroid']
 
+mercury = AMXMercury('XF:17IDB-ES:AMX{Det:Mer}', name='mercury')
+mercury.read_attrs = ['mca.spectrum', 'mca.preset_live_time', 'mca.rois.roi0.count',
+                                            'mca.rois.roi1.count', 'mca.rois.roi2.count', 'mca.rois.roi3.count']
+vdcm = VerticalDCM('XF:17IDA-OP:AMX{Mono:DCM', name='vdcm')
 
 ###cam_7 = StandardProsilica('XF:17IDC-ES:FMX{Cam:7}', name='cam_7')
 ###filter_camera_data(cam_7)

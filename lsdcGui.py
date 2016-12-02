@@ -1368,6 +1368,8 @@ class controlMain(QtGui.QMainWindow):
 #        self.vectorPointsList = []
         vBoxVidLayout.addWidget(self.view)
         hBoxSampleOrientationLayout = QtGui.QHBoxLayout()
+        setDC2CPButton = QtGui.QPushButton("Set DC\nStart")
+        setDC2CPButton.clicked.connect(self.setDCStartCB)        
         omegaLabel = QtGui.QLabel("Omega")
         omegaRBLabel = QtGui.QLabel("Readback:")
         self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70) #creates a video lag
@@ -1384,6 +1386,7 @@ class controlMain(QtGui.QMainWindow):
         self.omegaTweakVal_ledit.setText("90.0")         
         omegaTweakPosButton = QtGui.QPushButton(">")
         omegaTweakPosButton.clicked.connect(self.omegaTweakPosCB)
+        hBoxSampleOrientationLayout.addWidget(setDC2CPButton)
         hBoxSampleOrientationLayout.addWidget(omegaLabel)
         hBoxSampleOrientationLayout.addWidget(omegaRBLabel)
         hBoxSampleOrientationLayout.addWidget(self.sampleOmegaRBVLedit.getEntry())
@@ -1391,7 +1394,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout.addWidget(self.sampleOmegaMoveLedit.getEntry())
         hBoxSampleOrientationLayout.addWidget(moveOmegaButton)
         spacerItem = QtGui.QSpacerItem(50, 1, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-        hBoxSampleOrientationLayout.addItem(spacerItem)
+##        hBoxSampleOrientationLayout.addItem(spacerItem)
         hBoxSampleOrientationLayout.addWidget(omegaTweakNegButton)
         hBoxSampleOrientationLayout.addWidget(self.omegaTweakVal_ledit)
         hBoxSampleOrientationLayout.addWidget(omegaTweakPosButton)
@@ -2187,7 +2190,7 @@ class controlMain(QtGui.QMainWindow):
 
     def  popBaseDirectoryDialogCB(self):
 #      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '/home')
-      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '')      
+      fname = QtGui.QFileDialog.getExistingDirectory(self, 'Choose Directory', '',QtGui.QFileDialog.DontUseNativeDialog)      
       if (fname != ""):
         self.dataPathGB.setBasePath_ledit(fname)
 
@@ -2271,6 +2274,16 @@ class controlMain(QtGui.QMainWindow):
       comm_s = "mvaDescriptor(\"omega\"," + str(self.sampleOmegaMoveLedit.getEntry().text()) + ")"
       self.send_to_server(comm_s)
 
+    def setDCStartCB(self):
+      currentPos = float(self.sampleOmegaRBVLedit.getEntry().text())%360.0
+      sweepStart = float(self.osc_start_ledit.text())
+      sweepEnd = float(self.osc_end_ledit.text())
+      sweepRange = sweepEnd-sweepStart
+      newSweepEnd = currentPos + sweepRange
+      self.osc_start_ledit.setText(str(currentPos))
+      self.osc_end_ledit.setText(str(newSweepEnd))
+      
+      
     def moveDetDistCB(self):
       comm_s = "mvaDescriptor(\"detectorDist\"," + str(self.detDistMotorEntry.getEntry().text()) + ")"
       print(comm_s)
@@ -3190,7 +3203,11 @@ class controlMain(QtGui.QMainWindow):
 ##        self.dewarTree.refreshTree()
 
     def setVectorStartCB(self): #save sample x,y,z
-      print "set vector start"        
+      print "set vector start"
+      if (self.vectorStart != None):
+        self.scene.removeItem(self.vectorStart["graphicsitem"])
+        self.vectorStart = None
+      
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
       markWidth = 10      
@@ -3204,6 +3221,11 @@ class controlMain(QtGui.QMainWindow):
 
 
     def setVectorEndCB(self): #save sample x,y,z
+      if (self.vectorEnd != None):
+        self.scene.removeItem(self.vectorEnd["graphicsitem"])
+        self.scene.removeItem(self.vecLine)
+        self.vectorEnd = None
+        
       print "set vector end"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
