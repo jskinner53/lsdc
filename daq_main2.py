@@ -6,6 +6,7 @@ import sys
 import os
 import time
 import _thread
+import db_lib
 import daq_macros
 from daq_macros import *
 import daq_lib
@@ -16,7 +17,7 @@ import det_lib
 import beamline_support
 import beamline_lib
 from beamline_lib import *
-import stateModule
+#import stateModule
 import atexit
 
 sitefilename = ""
@@ -35,6 +36,7 @@ def execute_command(command_s):
 def pybass_init():
   global message_string_pv
 
+#  db_lib.db_connect()
   daq_utils.init_environment()
   init_var_channels()
 #  init_diffractometer()
@@ -209,12 +211,13 @@ def run_server():
 
 def main(mode):
   pybass_init()
-  stateModule.initStateControl(daq_utils.beamlineComm)
+#  stateModule.initStateControl(daq_utils.beamlineComm)
   if (mode=="gui"):
     run_server()
   else:
 #    pass
-    os.system("/nfs/skinner/projects/lsdcPy3/daq_main2.py gui&")    
+    lsdcHome = os.environ["LSDCHOME"]
+    os.system(lsdcHome+"/daq_main2.py gui&")    
 
 if (len(sys.argv)>1):
   if (sys.argv[1] == "gui"):

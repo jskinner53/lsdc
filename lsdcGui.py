@@ -6,6 +6,7 @@ import string
 import math
 from epics import PV
 
+
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 from PyQt4.QtCore import * 
@@ -129,13 +130,13 @@ class screenDefaultsDialog(QDialog):
         colStartLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_start_ledit = QtGui.QLineEdit()
         self.osc_start_ledit.setFixedWidth(60)
-        self.osc_start_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phist")))
+        self.osc_start_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phist")))
         colEndLabel = QtGui.QLabel('Oscillation End:')
         colEndLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colEndLabel.setFixedWidth(120)
         self.osc_end_ledit = QtGui.QLineEdit()
         self.osc_end_ledit.setFixedWidth(60)
-        self.osc_end_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phi_end")))
+        self.osc_end_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phi_end")))
         hBoxColParams1.addWidget(colStartLabel)
         hBoxColParams1.addWidget(self.osc_start_ledit)
         hBoxColParams1.addWidget(colEndLabel)
@@ -146,13 +147,13 @@ class screenDefaultsDialog(QDialog):
         colRangeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_range_ledit = QtGui.QLineEdit()
         self.osc_range_ledit.setFixedWidth(60)
-        self.osc_range_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_width")))
+        self.osc_range_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_width")))
         colExptimeLabel = QtGui.QLabel('ExposureTime:')
         colExptimeLabel.setFixedWidth(120)
         colExptimeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.exp_time_ledit = QtGui.QLineEdit()
         self.exp_time_ledit.setFixedWidth(60)
-        self.exp_time_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_time")))
+        self.exp_time_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_time")))
         hBoxColParams2.addWidget(colRangeLabel)
         hBoxColParams2.addWidget(self.osc_range_ledit)
         hBoxColParams2.addWidget(colExptimeLabel)
@@ -163,13 +164,13 @@ class screenDefaultsDialog(QDialog):
         colEnergyLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.energy_ledit = QtGui.QLineEdit()
         self.energy_ledit.setFixedWidth(60)
-        self.energy_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_energy")))
+        self.energy_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_energy")))
         colTransmissionLabel = QtGui.QLabel('Transmission (%):')
         colTransmissionLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colTransmissionLabel.setFixedWidth(120)
         self.transmission_ledit = QtGui.QLineEdit()
         self.transmission_ledit.setFixedWidth(60)
-        self.transmission_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_transmission_percent")))
+        self.transmission_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_transmission_percent")))
         hBoxColParams3.addWidget(colTransmissionLabel)
         hBoxColParams3.addWidget(self.transmission_ledit)
         hBoxColParams3.addWidget(colEnergyLabel)
@@ -179,13 +180,13 @@ class screenDefaultsDialog(QDialog):
         colBeamWLabel.setFixedWidth(120)
         colBeamWLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamWidth_ledit = QtGui.QLineEdit()
-        self.beamWidth_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamWidth")))
+        self.beamWidth_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamWidth")))
         self.beamWidth_ledit.setFixedWidth(60)
         colBeamHLabel = QtGui.QLabel('Beam Height:')
         colBeamHLabel.setFixedWidth(120)
         colBeamHLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.beamHeight_ledit = QtGui.QLineEdit()
-        self.beamHeight_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamHeight")))
+        self.beamHeight_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamHeight")))
         self.beamHeight_ledit.setFixedWidth(60)
         hBoxColParams4.addWidget(colBeamWLabel)
         hBoxColParams4.addWidget(self.beamWidth_ledit)
@@ -197,7 +198,7 @@ class screenDefaultsDialog(QDialog):
         colResoLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.resolution_ledit = QtGui.QLineEdit()
         self.resolution_ledit.setFixedWidth(60)
-        self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
+        self.resolution_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_reso")))
         colResoDistLabel = QtGui.QLabel('Detector Distance') #note - this is in screen defaults
         colResoDistLabel.setFixedWidth(120)
         colResoDistLabel.setAlignment(QtCore.Qt.AlignCenter) 
@@ -229,7 +230,15 @@ class screenDefaultsDialog(QDialog):
       self.done(QDialog.Rejected)
 
     def screenDefaultsOKCB(self):
-      daq_utils.setBeamlineConfigParams({"screen_default_phist":float(self.osc_start_ledit.text()),"screen_default_phi_end":float(self.osc_end_ledit.text()),"screen_default_width":float(self.osc_range_ledit.text()),"screen_default_time":float(self.exp_time_ledit.text()),"screen_default_reso":float(self.resolution_ledit.text()),"screen_default_energy":float(self.energy_ledit.text()),"screen_transmission_percent":float(self.transmission_ledit.text()),"screen_default_beamWidth":float(self.beamWidth_ledit.text()),"screen_default_beamHeight":float(self.beamHeight_ledit.text())})
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_phist",float(self.osc_start_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_phi_end",float(self.osc_end_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_width",float(self.osc_range_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_time",float(self.exp_time_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_reso",float(self.resolution_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_energy",float(self.energy_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_transmission_percent",float(self.transmission_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_beamWidth",float(self.beamWidth_ledit.text()))
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"screen_default_beamHeight",float(self.beamHeight_ledit.text()))
       self.done(QDialog.Accepted)
     
 
@@ -242,15 +251,15 @@ class PuckDialog(QtGui.QDialog):
 
 
     def initData(self):
-        puckList = db_lib.getAllPucks()
-        dewarObj = db_lib.getPrimaryDewar()
-        pucksInDewar = dewarObj["item_list"]
+        puckList = db_lib.getAllPucks(daq_utils.owner)
+        dewarObj = db_lib.getPrimaryDewar(daq_utils.beamline)
+        pucksInDewar = dewarObj['content']
 
         data = []
 #if you have to, you could store the puck_id in the item data
         for i in xrange(len(puckList)):
-          if (puckList[i]["container_id"] not in pucksInDewar):
-            data.append(puckList[i]["containerName"])
+          if (puckList[i]["uid"] not in pucksInDewar):
+            data.append(puckList[i]["name"])
         self.model = QtGui.QStandardItemModel()
         labels = QtCore.QStringList(("Name"))
         self.model.setHorizontalHeaderLabels(labels)
@@ -326,14 +335,15 @@ class DewarDialog(QtGui.QDialog):
         self.initUI()
 
     def initData(self):
-      dewarObj = db_lib.getPrimaryDewar()
-      puckLocs = dewarObj["item_list"]
+      dewarObj = db_lib.getPrimaryDewar(daq_utils.beamline)
+      puckLocs = dewarObj['content']
       self.data = []
       for i in xrange(len(puckLocs)):
-        if (puckLocs[i] != None):
+        if (puckLocs[i] != ""):
           self.data.append(db_lib.getContainerNameByID(puckLocs[i]))
         else:
           self.data.append("Empty")
+
 
     def initUI(self):
         layout = QtGui.QVBoxLayout()
@@ -353,14 +363,12 @@ class DewarDialog(QtGui.QDialog):
           rowLayout = QtGui.QHBoxLayout()
           numLabel = QtGui.QLabel(str(i+1))
           rowLayout.addWidget(numLabel)
-#          numLabel.setFixedWidth(
           self.buttons = QDialogButtonBox(Qt.Horizontal, self)
-#          for j in range (0,self.pucksPerDewarSector):
-          for j in range (self.pucksPerDewarSector,0,-1):
-            dataIndex = (i*self.pucksPerDewarSector)+j-1
+          for j in range (0,self.pucksPerDewarSector):
+            dataIndex = (i*self.pucksPerDewarSector)+j            
 #            print dataIndex
             self.allButtonList[dataIndex] = self.buttons.addButton(str(self.data[dataIndex]),0)
-            self.buttons.buttons()[self.pucksPerDewarSector-j].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
+            self.buttons.buttons()[j].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
           rowLayout.addWidget(self.buttons)
           layout.addLayout(rowLayout)
         cancelButton = QtGui.QPushButton("Done")        
@@ -372,7 +380,7 @@ class DewarDialog(QtGui.QDialog):
       if (self.action == "remove"):
         self.dewarPos = n
 #        print "delete puck " + str(n)
-        db_lib.removePuckFromDewar(int(n))
+        db_lib.removePuckFromDewar(daq_utils.beamline,int(n))
         self.allButtonList[int(n)].setText("Empty")
         self.parent.treeChanged_pv.put(1)
       else:
@@ -414,33 +422,43 @@ class DewarTree(QtGui.QTreeView):
       self.parent.dewarViewToggleCheckCB()
 
     def refreshTreeDewarView(self):
+        startTime = time.time()
         selectedIndex = None
         mountedIndex = None
         selectedSampleIndex = None
-        puck = None
+        puck = ""
         collectionRunning = False
         self.model.clear()
-        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName)["item_list"]
+        st = time.time()
+        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName,daq_utils.beamline)['content']
+#        print("getContainerByName " + str(time.time() - st))
         for i in range (0,len(dewarContents)): #dewar contents is the list of puck IDs
           parentItem = self.model.invisibleRootItem()
-          if (dewarContents[i]==None):
-            puck = None
+          if (dewarContents[i]==""):
+            puck = ""
             puckName = ""
           else:
+            st = time.time()
             puck = db_lib.getContainerByID(dewarContents[i])
-            puckName = puck["containerName"]
+#            print("getContainerByID " + str(time.time() - st))
+            puckName = puck["name"]
           index_s = "%d%s" % ((i)/self.pucksPerDewarSector+1,chr(((i)%self.pucksPerDewarSector)+ord('A')))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(index_s + " " + puckName))
+          item.setData(puckName,32)
+          item.setData("container",33)          
           parentItem.appendRow(item)
           parentItem = item
-          if (puck != None):
-            puckContents = puck["item_list"]
+          if (puck != ""):
+            puckContents = puck['content']
             puckSize = len(puckContents)
             for j in range (0,len(puckContents)):#should be the list of samples
-              if (puckContents[j] != None):
+              if (puckContents[j] != ""):
+                st = time.time()
                 position_s = str(j+1) + "-" + db_lib.getSampleNamebyID(puckContents[j])
+#                print("getSampNameByID " + str(time.time() - st))
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
-                item.setData(-100-puckContents[j]) #not sure what this is (9/19) - it WAS the absolute dewar position, just stuck sampleID there, but negate it to diff from reqID
+                item.setData(puckContents[j],32) #just stuck sampleID there, but negate it to diff from reqID
+                item.setData("sample",33)
                 if (puckContents[j] == self.parent.mountedPin_pv.get()):
                   item.setForeground(QtGui.QColor('red'))       
                   font = QtGui.QFont()
@@ -454,12 +472,15 @@ class DewarTree(QtGui.QTreeView):
                 if (puckContents[j] == self.parent.selectedSampleID): #looking for the selected item
                   print "found " + str(self.parent.SelectedItemData)
                   selectedSampleIndex = self.model.indexFromItem(item)
+                st = time.time()
                 sampleRequestList = db_lib.getRequestsBySampleID(puckContents[j])
+#                print("getReqsBySampID " + str(time.time() - st))
                 for k in xrange(len(sampleRequestList)):
                   if not (sampleRequestList[k]["request_obj"].has_key("protocol")):
                     continue
                   col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(sampleRequestList[k]["request_obj"]["file_prefix"]+"_"+sampleRequestList[k]["request_obj"]["protocol"]))
-                  col_item.setData(sampleRequestList[k]["request_id"])
+                  col_item.setData(sampleRequestList[k]["uid"],32)
+                  col_item.setData("request",33)                  
                   col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
                   if (sampleRequestList[k]["priority"] == 99999):
                     col_item.setCheckState(Qt.Checked)
@@ -479,19 +500,20 @@ class DewarTree(QtGui.QTreeView):
                     col_item.setCheckState(Qt.Unchecked)
                     col_item.setBackground(QtGui.QColor('white'))
                   item.appendRow(col_item)
-                  if (sampleRequestList[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item, this is a request
+                  if (sampleRequestList[k]["uid"] == self.parent.SelectedItemData): #looking for the selected item, this is a request
+#                    print("found the selected sample from request")
                     selectedIndex = self.model.indexFromItem(col_item)
               else : #this is an empty spot, no sample
                 position_s = str(j+1)
                 item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(position_s))
-                item.setData(-99)
+                item.setData("",32)
 ##                item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
 ##                item.setCheckState(Qt.Unchecked)
                 parentItem.appendRow(item)
 
         self.setModel(self.model)
         if (selectedSampleIndex != None and collectionRunning == False):
-          print "selectedSampleIndex = " + str(selectedSampleIndex)
+#          print "selectedSampleIndex = " + str(selectedSampleIndex)
           self.setCurrentIndex(selectedSampleIndex)
           if (mountedIndex != None):
             self.model.itemFromIndex(mountedIndex).setForeground(QtGui.QColor('red'))       
@@ -527,6 +549,7 @@ class DewarTree(QtGui.QTreeView):
         else:
           self.collapseAll()
         self.scrollTo(self.currentIndex(),QAbstractItemView.PositionAtCenter)
+        print("refresh time = " + str(time.time()-startTime))
 
 
     def refreshTreePriorityView(self): #"item" is a sample, "col_items" are requests which are children of samples.
@@ -535,14 +558,14 @@ class DewarTree(QtGui.QTreeView):
         mountedIndex = None
         selectedSampleIndex = None
         self.model.clear()
-        self.orderedRequests = db_lib.getOrderedRequestList()
-        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName)["item_list"]
+        self.orderedRequests = db_lib.getOrderedRequestList(daq_utils.beamline)
+        dewarContents = db_lib.getContainerByName(daq_utils.primaryDewarName,daq_utils.beamline)['content']
         maxPucks = len(dewarContents)
         requestedSampleList = []
         mountedPin = self.parent.mountedPin_pv.get()
         for i in xrange(len(self.orderedRequests)): # I need a list of samples for parent nodes
-          if (self.orderedRequests[i]["sample_id"] not in requestedSampleList):
-            requestedSampleList.append(self.orderedRequests[i]["sample_id"])
+          if (self.orderedRequests[i]["sample"] not in requestedSampleList):
+            requestedSampleList.append(self.orderedRequests[i]["sample"])
         for i in xrange(len(requestedSampleList)):
           parentItem = self.model.invisibleRootItem()
 #          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(requestedSampleList[i])
@@ -550,7 +573,8 @@ class DewarTree(QtGui.QTreeView):
 #          index_s = "%d%s" % ((puckPosition)/self.pucksPerDewarSector+1,chr(((puckPosition)%self.pucksPerDewarSector)+ord('A')))
           nodeString = QtCore.QString(str(db_lib.getSampleNamebyID(requestedSampleList[i])))
           item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), nodeString)
-          item.setData(-100-requestedSampleList[i]) #the negated sample_id for use in row_click
+          item.setData(requestedSampleList[i],32)
+          item.setData("sample",33)          
           if (requestedSampleList[i] == mountedPin):
             item.setForeground(QtGui.QColor('red'))       
             font = QtGui.QFont()
@@ -565,9 +589,10 @@ class DewarTree(QtGui.QTreeView):
             selectedSampleIndex = self.model.indexFromItem(item)
           parentItem = item
           for k in xrange(len(self.orderedRequests)):
-            if (self.orderedRequests[k]["sample_id"] == requestedSampleList[i]):
+            if (self.orderedRequests[k]["sample"] == requestedSampleList[i]):
               col_item = QtGui.QStandardItem(QtGui.QIcon(":/trolltech/styles/commonstyle/images/file-16.png"), QtCore.QString(self.orderedRequests[k]["request_obj"]["file_prefix"]+"_"+self.orderedRequests[k]["request_obj"]["protocol"]))
-              col_item.setData(self.orderedRequests[k]["request_id"])
+              col_item.setData(self.orderedRequests[k]["uid"],32)
+              col_item.setData("request",33)                  
               col_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
               if (self.orderedRequests[k]["priority"] == 99999):
                 col_item.setCheckState(Qt.Checked)
@@ -586,7 +611,7 @@ class DewarTree(QtGui.QTreeView):
                 col_item.setCheckState(Qt.Unchecked)
                 col_item.setBackground(QtGui.QColor('white'))
               item.appendRow(col_item)
-              if (self.orderedRequests[k]["request_id"] == self.parent.SelectedItemData): #looking for the selected item
+              if (self.orderedRequests[k]["uid"] == self.parent.SelectedItemData): #looking for the selected item
                 selectedIndex = self.model.indexFromItem(col_item)
         self.setModel(self.model)
         if (selectedSampleIndex != None and collectionRunning == False):
@@ -607,9 +632,9 @@ class DewarTree(QtGui.QTreeView):
 
 
     def queueSelectedSample(self,item):
-        print "queueing selected sample"
-        reqID = item.data().toInt()[0]
-        checkedSampleRequest = db_lib.getRequest(reqID)      
+#        print "queueing selected sample"
+        reqID = str(item.data(32).toString())
+        checkedSampleRequest = db_lib.getRequestByID(reqID) #line not needed???
         if (item.checkState() == Qt.Checked):
           db_lib.updatePriority(reqID,5000)
         else:
@@ -624,9 +649,10 @@ class DewarTree(QtGui.QTreeView):
       indexes = selection.indexes()
       for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
-        itemData = item.data().toInt()[0]
-        if (itemData > 0): #then it's a request, not a sample
-          selectedSampleRequest = db_lib.getRequest(itemData)
+        itemData = str(item.data(32).toString())
+        itemDataType = str(item.data(33).toString())
+        if (itemDataType == "request"): 
+          selectedSampleRequest = db_lib.getRequestByID(itemData)
           db_lib.updatePriority(itemData,5000)
 #      self.refreshTree()
       self.parent.treeChanged_pv.put(1)
@@ -638,9 +664,10 @@ class DewarTree(QtGui.QTreeView):
       indexes = selection.indexes()
       for i in xrange(len(indexes)):
         item = self.model.itemFromIndex(indexes[i])
-        itemData = item.data().toInt()[0]
-        if (itemData > 0): #then it's a request, not a sample
-          selectedSampleRequest = db_lib.getRequest(itemData)
+        itemData = str(item.data(32).toString())
+        itemDataType = str(item.data(33).toString())
+        if (itemDataType == "request"): 
+          selectedSampleRequest = db_lib.getRequestByID(itemData)
           db_lib.updatePriority(itemData,0)
       self.parent.treeChanged_pv.put(1)
 
@@ -656,15 +683,16 @@ class DewarTree(QtGui.QTreeView):
       for i in xrange(len(indexes)):
         self.parent.progressDialog.setValue(int((i+1)*progressInc))
         item = self.model.itemFromIndex(indexes[i])
-        itemData = item.data().toInt()[0]
-        if (itemData > 0): #then it's a request, not a sample
-          selectedSampleRequest = db_lib.getRequest(itemData)
-          self.selectedSampleID = selectedSampleRequest["sample_id"]
-          db_lib.deleteRequest(selectedSampleRequest)
+        itemData = str(item.data(32).toString())
+        itemDataType = str(item.data(33).toString())
+        if (itemDataType == "request"): 
+          selectedSampleRequest = db_lib.getRequestByID(itemData)
+          self.selectedSampleID = selectedSampleRequest["sample"]
+          db_lib.deleteRequest(selectedSampleRequest["uid"])
           if (selectedSampleRequest["request_obj"]["protocol"] == "raster"):
             for i in xrange(len(self.parent.rasterList)):
               if (self.parent.rasterList[i] != None):
-                if (self.parent.rasterList[i]["request_id"] == selectedSampleRequest["request_id"]):
+                if (self.parent.rasterList[i]["uid"] == selectedSampleRequest["uid"]):
                   self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
                   self.parent.rasterList[i] = None
           if (selectedSampleRequest["request_obj"]["protocol"] == "vector"):
@@ -790,7 +818,7 @@ class rasterGroup(QtGui.QGraphicsItemGroup):
         if (self.parent.rasterList[i] != None):
           if (self.parent.rasterList[i]["graphicsItem"].isSelected()):
             print "found selected raster"
-            self.parent.SelectedItemData = self.parent.rasterList[i]["request_id"]
+            self.parent.SelectedItemData = self.parent.rasterList[i]["uid"]
             self.parent.treeChanged_pv.put(1)
 
 
@@ -836,13 +864,14 @@ class controlMain(QtGui.QMainWindow):
     
     def __init__(self):
         super(controlMain, self).__init__()
-        self.SelectedItemData = -999 #attempt to know what row is selected
+        self.SelectedItemData = "" #attempt to know what row is selected
         self.popUpMessageInit = 1 # I hate these next two, but I don't want to catch old messages. Fix later, maybe.
         self.textWindowMessageInit = 1
         self.processID = os.getpid()
         self.popupMessage = QtGui.QErrorMessage(self)
         self.popupMessage.setModal(False)
-        self.groupName = "skinner"        
+        self.groupName = "skinner"
+        self.owner = "johns"                
         self.vectorStart = None
         self.vectorEnd = None
         self.centerMarkerCharSize = 20
@@ -861,7 +890,7 @@ class controlMain(QtGui.QMainWindow):
         self.initCallbacks()        
         self.dewarTree.refreshTreeDewarView()
         self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}
-        if (self.mountedPin_pv.get() == 0):
+        if (self.mountedPin_pv.get() == ""):
           mountedPin = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]
           self.mountedPin_pv.put(mountedPin)
         self.rasterExploreDialog = rasterExploreDialog()
@@ -892,7 +921,7 @@ class controlMain(QtGui.QMainWindow):
         self.dewarTreeFrame = QFrame()
         vBoxDFlayout= QtGui.QVBoxLayout()
         self.selectedSampleRequest = {}
-        self.selectedSampleID = -1
+        self.selectedSampleID = ""
         self.dewarTree   = DewarTree(self)
         QtCore.QObject.connect(self.dewarTree, QtCore.SIGNAL("clicked (QModelIndex)"),self.row_clicked)
         treeSelectBehavior = QtGui.QAbstractItemView.SelectItems
@@ -1347,7 +1376,7 @@ class controlMain(QtGui.QMainWindow):
         self.beamSizeOverlay.setPen(beamOverlayPen)
         self.scene.addItem(self.beamSizeOverlay)
         self.beamSizeOverlay.setVisible(False)
-        print(self.centerMarker.x())
+#        print(self.centerMarker.x())
         self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 #        self.centerMarker.setPos(317.0,253.0)
 
@@ -1633,7 +1662,7 @@ class controlMain(QtGui.QMainWindow):
             self.rasterXmicrons = rasterXPixels * (fov["x"]/daq_utils.screenPixX)
             self.rasterYmicrons = rasterYPixels * (fov["y"]/daq_utils.screenPixY)
 #            print saveRasterList[i]
-            self.drawPolyRaster(db_lib.getRequest(saveRasterList[i]["request_id"]),saveRasterList[i]["coords"]["x"],saveRasterList[i]["coords"]["y"],saveRasterList[i]["coords"]["z"])
+            self.drawPolyRaster(db_lib.getRequestByID(saveRasterList[i]["uid"]),saveRasterList[i]["coords"]["x"],saveRasterList[i]["coords"]["y"],saveRasterList[i]["coords"]["z"])
 
 #            self.drawPolyRaster(self.rasterDefList[i])
 ###########what about this>>>>>            self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
@@ -1756,6 +1785,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def saveVidSnapshotCB(self,comment="",reqID=None):
+      return #short-circuit
 #      totalRect = QtCore.QRectF(self.view.frameRect())
        
 #      width = 564
@@ -1787,7 +1817,7 @@ class controlMain(QtGui.QMainWindow):
       resultObj["data"] = imgRef
       resultObj["comment"] = str(comment)
       if (reqID != None): #assuming raster here, but will probably need to check the type
-        db_lib.addResultforRequest("rasterJpeg",reqID,resultObj)
+        db_lib.addResultforRequest("rasterJpeg",reqID,owner=self.owner,result_obj=resultObj)
       else: # the user pushed the snapshot button on the gui
         mountedSampleID = self.mountedPin_pv.get()
         if (mountedSampleID>-1): #not sure what to do if no sample is mounted
@@ -2033,19 +2063,21 @@ class controlMain(QtGui.QMainWindow):
       self.choochGraph.removeCurves()
 
     def displayXrecRaster(self,xrecRasterFlag):
-      self.xrecRasterFlag_pv.put(0)
-      if (xrecRasterFlag==100):
+      self.xrecRasterFlag_pv.put("0")
+      if (xrecRasterFlag=="100"):
         for i in xrange(len(self.rasterList)):
           if (self.rasterList[i] != None):
             self.scene.removeItem(self.rasterList[i]["graphicsItem"])
       else:
-        rasterReq = db_lib.getRequest(xrecRasterFlag)
+        print("xrecrasterflag = ")
+        print(xrecRasterFlag)
+        rasterReq = db_lib.getRequestByID(xrecRasterFlag)
         rasterDef = rasterReq["request_obj"]["rasterDef"]
         if (rasterDef["status"] == 1):
           self.drawPolyRaster(rasterReq)
         elif (rasterDef["status"] == 2):        
           self.fillPolyRaster(rasterReq)
-          self.selectedSampleID = rasterReq["sample_id"]
+          self.selectedSampleID = rasterReq["sample"]
 #          db_lib.deleteRequest(rasterReq)
           self.treeChanged_pv.put(1) #not sure about this
         else:
@@ -2053,7 +2085,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def processMountedPin(self,mountedPinPos):
-      print "in callback mounted pin = " + str(mountedPinPos)
+#      print "in callback mounted pin = " + str(mountedPinPos)
       self.treeChanged_pv.put(1)
 
     def processFastShutter(self,shutterVal):
@@ -2095,7 +2127,7 @@ class controlMain(QtGui.QMainWindow):
 
 # seems like we should be able to do an aggregate query to mongo for max/min :(
     def getMaxPriority(self):
-      orderedRequests = db_lib.getOrderedRequestList()      
+      orderedRequests = db_lib.getOrderedRequestList(daq_utils.beamline)      
       priorityMax = 0
       for i in xrange(len(orderedRequests)):
         if (orderedRequests[i]["priority"] > priorityMax):
@@ -2103,7 +2135,7 @@ class controlMain(QtGui.QMainWindow):
       return priorityMax
 
     def getMinPriority(self):
-      orderedRequests = db_lib.getOrderedRequestList()      
+      orderedRequests = db_lib.getOrderedRequestList(daq_utils.beamline)      
       priorityMin = 10000000
       for i in xrange(len(orderedRequests)):
         if ((orderedRequests[i]["priority"] < priorityMin) and orderedRequests[i]["priority"]>0):
@@ -2132,15 +2164,15 @@ class controlMain(QtGui.QMainWindow):
 #        self.characterizeParamsFrame.hide()
       elif (protocol == "screen"):
 #        return #SHORT CIRCUIT #why would I short circuit this?
-        self.osc_start_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phist")))
-        self.osc_end_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_phi_end")))
-        self.osc_range_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_width")))
-        self.exp_time_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_time")))
-        self.energy_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_energy")))
-        self.transmission_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_transmission_percent")))
-        self.beamWidth_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamWidth")))
-        self.beamHeight_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_beamHeight")))
-        self.resolution_ledit.setText(str(daq_utils.getBeamlineConfigParam("screen_default_reso")))
+        self.osc_start_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phist")))
+        self.osc_end_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phi_end")))
+        self.osc_range_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_width")))
+        self.exp_time_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_time")))
+        self.energy_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_energy")))
+        self.transmission_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_transmission_percent")))
+        self.beamWidth_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamWidth")))
+        self.beamHeight_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamHeight")))
+        self.resolution_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_reso")))
       elif (protocol == "vector"):
         self.vectorParamsFrame.show()
         self.processingOptionsFrame.show()        
@@ -2195,20 +2227,30 @@ class controlMain(QtGui.QMainWindow):
         self.dataPathGB.setBasePath_ledit(fname)
 
 
+    def popImportDialogCB(self):
+      fname = QtGui.QFileDialog.getOpenFileName(self, 'Choose Spreadsheet File', '',filter="*.xls",options=QtGui.QFileDialog.DontUseNativeDialog)      
+      if (fname != ""):
+        print(fname)
+        comm_s = "importSpreadsheet(\""+str(fname)+"\")"
+        print(comm_s)
+        self.send_to_server(comm_s)
+        
+        
+
     def upPriorityCB(self): #neither of these are very elegant, and might even be glitchy if overused
       currentPriority = self.selectedSampleRequest["priority"]
       if (currentPriority<1):
         return
-      orderedRequests = db_lib.getOrderedRequestList()
+      orderedRequests = db_lib.getOrderedRequestList(daq_utils.beamline)
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
+        if (orderedRequests[i]["sample"] == self.selectedSampleRequest["sample"]):
           if (i<2):
             self.topPriorityCB()
           else:
             priority = (orderedRequests[i-2]["priority"] + orderedRequests[i-1]["priority"])/2
             if (currentPriority == priority):
               priority = priority+20
-            db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+            db_lib.updatePriority(self.selectedSampleRequest["uid"],priority)
       self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
             
@@ -2217,16 +2259,16 @@ class controlMain(QtGui.QMainWindow):
       currentPriority = self.selectedSampleRequest["priority"]
       if (currentPriority<1):
         return
-      orderedRequests = db_lib.getOrderedRequestList()
+      orderedRequests = db_lib.getOrderedRequestList(daq_utils.beamline)
       for i in xrange(len(orderedRequests)):
-        if (orderedRequests[i]["sample_id"] == self.selectedSampleRequest["sample_id"]):
+        if (orderedRequests[i]["sample"] == self.selectedSampleRequest["sample"]):
           if ((len(orderedRequests)-i) < 3):
             self.bottomPriorityCB()
           else:
             priority = (orderedRequests[i+1]["priority"] + orderedRequests[i+2]["priority"])/2
             if (currentPriority == priority):
               priority = priority-20
-            db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+            db_lib.updatePriority(self.selectedSampleRequest["uid"],priority)
 #      self.dewarTree.refreshTree()
       self.treeChanged_pv.put(1)
 
@@ -2237,7 +2279,7 @@ class controlMain(QtGui.QMainWindow):
         return
       priority = int(self.getMaxPriority())
       priority = priority+100
-      db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+      db_lib.updatePriority(self.selectedSampleRequest["uid"],priority)
       self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
 
@@ -2248,7 +2290,7 @@ class controlMain(QtGui.QMainWindow):
         return
       priority = int(self.getMinPriority())
       priority = priority-100
-      db_lib.updatePriority(self.selectedSampleRequest["request_id"],priority)
+      db_lib.updatePriority(self.selectedSampleRequest["uid"],priority)
       self.treeChanged_pv.put(1)
 #      self.dewarTree.refreshTree()
       
@@ -2311,13 +2353,13 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server("loop_center_xrec()")
       
     def autoRasterLoopCB(self):
-      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+      self.selectedSampleID = self.selectedSampleRequest["sample"]
       comm_s = "autoRasterLoop(" + str(self.selectedSampleID) + ")"
       self.send_to_server(comm_s)
 #      self.send_to_server("autoRasterLoop()")
 
     def runRastersCB(self):
-      comm_s = "snakeRaster(" + str(self.selectedSampleRequest["request_id"]) + ")"
+      comm_s = "snakeRaster(" + str(self.selectedSampleRequest["uid"]) + ")"
       self.send_to_server(comm_s)
       
     def drawInteractiveRasterCB(self): # any polygon for now, interactive or from xrec
@@ -2387,21 +2429,31 @@ class controlMain(QtGui.QMainWindow):
       
 
     def fillPolyRaster(self,rasterReq): #at this point I should have a drawn polyRaster
-#      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
-      print "filling poly for " + str(rasterReq["request_id"])
-      resultCount = len(db_lib.getResultsforRequest(rasterReq["request_id"]))
-      rasterResult = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]
+      time.sleep(1)
+#####old      (rasterListIndex,rasterDef) = db_lib.getNextDisplayRaster()
+      print "filling poly for " + str(rasterReq["uid"])
+      print(db_lib.getResultsforRequest(rasterReq["uid"]))
+      resultCount = len(db_lib.getResultsforRequest(rasterReq["uid"]))
+      rasterResults = db_lib.getResultsforRequest(rasterReq["uid"])
+      rasterResult = {}
+      for i in range (0,len(rasterResults)):
+        if (rasterResults[i]['result_type'] == 'rasterResult'):
+          rasterResult = rasterResults[i]
+          break
       rasterDef = rasterReq["request_obj"]["rasterDef"]
       rasterListIndex = 0
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
-          if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
+          if (self.rasterList[i]["uid"] == rasterReq["uid"]):
             rasterListIndex = i
+      if (rasterResult == {}):
+        return
       currentRasterGroup = self.rasterList[rasterListIndex]["graphicsItem"]
 #      print len(currentRasterGroup.childItems())
       self.currentRasterCellList = currentRasterGroup.childItems()
-      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']
-#      cellResults = db_lib.getResultsforRequest(rasterReq["request_id"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']["data"]["response"]            
+      cellResults = rasterResult["result_obj"]["rasterCellResults"]['resultObj']
+#      cellResults = db_lib.getResultsforRequest(rasterReq["uid"])[resultCount-1]["result_obj"]["rasterCellResults"]['resultObj']      
+
       numLines = len(cellResults)
       cellResults_array = [{} for i in xrange(numLines)]
 #      filename_array = ["" for i in xrange(numLines)]
@@ -2475,7 +2527,7 @@ class controlMain(QtGui.QMainWindow):
           self.currentRasterCellList[cellCounter].setData(2,d_min)
           self.currentRasterCellList[cellCounter].setData(3,total_intensity)
           cellCounter+=1
-      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]),reqID=rasterReq["request_id"])
+      self.saveVidSnapshotCB("Raster Result from sample " + str(rasterReq["request_obj"]["file_prefix"]),reqID=rasterReq["uid"])
 
 
 
@@ -2641,7 +2693,7 @@ class controlMain(QtGui.QMainWindow):
         numsteps_v = numsteps_v + 1
       point_offset_x = -(numsteps_h*stepsizeXPix)/2
       point_offset_y = -(numsteps_v*stepsizeYPix)/2
-      print "in define poly"
+#      print "in define poly"
       if (numsteps_v > numsteps_h): #vertical raster
         for i in xrange(numsteps_h):
           rowCellCount = 0
@@ -2672,12 +2724,12 @@ class controlMain(QtGui.QMainWindow):
                 rowStartY = newCellY
               rowCellCount = rowCellCount+1
           if (rowCellCount != 0): #testing for no points in this row of the bounding rect are in the poly?
-            print("rowStartX =" + str(rowStartX))
+#            print("rowStartX =" + str(rowStartX))
             vectorStartX = self.screenXPixels2microns(rowStartX-self.centerMarker.x()-self.centerMarkerCharOffsetX)
-            print("vectorStartX = " + str(vectorStartX))
+#            print("vectorStartX = " + str(vectorStartX))
 ####            vectorEndX = vectorStartX + (rowCellCount*stepsize) #this is the correct definition, but the next one accounts for any scaling issues on the video image and looks better!!
             vectorEndX = vectorStartX + self.screenXPixels2microns(rowCellCount*stepsizeXPix) #this looks better
-            print("vectorEndX = " + str(vectorEndX))
+#            print("vectorEndX = " + str(vectorEndX))
             vectorStartY = self.screenYPixels2microns(rowStartY-self.centerMarker.y()-self.centerMarkerCharOffsetY)
             vectorEndY = vectorStartY
             newRowDef = {"start":{"x": vectorStartX,"y":vectorStartY},"end":{"x":vectorEndX,"y":vectorEndY},"numsteps":rowCellCount}
@@ -2689,7 +2741,7 @@ class controlMain(QtGui.QMainWindow):
     def rasterIsDrawn(self,rasterReq):
       for i in xrange(len(self.rasterList)):
         if (self.rasterList[i] != None):
-          if (self.rasterList[i]["request_id"] == rasterReq["request_id"]):
+          if (self.rasterList[i]["uid"] == rasterReq["uid"]):
             return True
       return False
           
@@ -2740,9 +2792,9 @@ class controlMain(QtGui.QMainWindow):
       for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
       if (x==-1):
-        newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}          
+        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}          
       else:    
-        newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
+        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
@@ -2790,7 +2842,7 @@ class controlMain(QtGui.QMainWindow):
       self.scene.addItem(newItemGroup)
       for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
-      newRasterGraphicsDesc = {"request_id":rasterReq["request_id"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
       
@@ -2836,10 +2888,10 @@ class controlMain(QtGui.QMainWindow):
             if (self.rasterList[i] != None):
               if (self.rasterList[i]["graphicsItem"].isSelected()):
                 try:
-                  sceneReq = db_lib.getRequest(self.rasterList[i]["request_id"])
+                  sceneReq = db_lib.getRequestByID(self.rasterList[i]["uid"])
                   if (sceneReq != None):
-                    self.selectedSampleID = sceneReq["sample_id"]
-                    db_lib.deleteRequest(sceneReq)
+                    self.selectedSampleID = sceneReq["sample"]
+                    db_lib.deleteRequest(sceneReq)["uid"]
                 except AttributeError:
                   pass
                 self.scene.removeItem(self.rasterList[i]["graphicsItem"])
@@ -2881,8 +2933,8 @@ class controlMain(QtGui.QMainWindow):
         fov = self.getCurrentFOV()
         correctedC2C_x = daq_utils.screenPixCenterX + (x_click - (self.centerMarker.x()+self.centerMarkerCharOffsetX))
         correctedC2C_y = daq_utils.screenPixCenterY + (y_click - (self.centerMarker.y()+self.centerMarkerCharOffsetY))        
-        print(correctedC2C_x)
-        print(correctedC2C_y)        
+#        print(correctedC2C_x)
+#        print(correctedC2C_y)        
         if (self.threeClickCount > 0): #3-click centering
           self.threeClickCount = self.threeClickCount + 1
           comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'
@@ -2909,7 +2961,7 @@ class controlMain(QtGui.QMainWindow):
       indexes = selection.indexes()
       i = 0
       item = self.dewarTree.model.itemFromIndex(indexes[i])
-      db_lib.deleteRequest(self.selectedSampleRequest)
+      db_lib.deleteRequest(self.selectedSampleRequest)["uid"]
       self.dewarTree.refreshTree()
 #      item.setCheckState(Qt.Checked)
 
@@ -2920,9 +2972,10 @@ class controlMain(QtGui.QMainWindow):
       singleRequest = 1
       for i in xrange(len(indexes)):
         item = self.dewarTree.model.itemFromIndex(indexes[i])
-        itemData = item.data().toInt()[0]
-        if not (itemData < -100): #then it's a request
-          self.selectedSampleRequest = db_lib.getRequest(itemData)
+        itemData = str(item.data(32).toString())
+        itemDataType = str(item.data(33).toString())
+        if (itemDataType == "request"): 
+          self.selectedSampleRequest = db_lib.getRequestByID(itemData)
           self.editSampleRequestCB(singleRequest)
           singleRequest = 0
 #            if (len(indexes)>1):
@@ -2978,9 +3031,10 @@ class controlMain(QtGui.QMainWindow):
       for i in xrange(len(indexes)):
         self.progressDialog.setValue(int((i+1)*progressInc))
         item = self.dewarTree.model.itemFromIndex(indexes[i])
-        itemData = item.data().toInt()[0]
-        if (itemData < -100): #then it's a sample
-          self.selectedSampleID = (0-(itemData))-100
+        itemData = str(item.data(32).toString())
+        itemDataType = str(item.data(33).toString())        
+        if (itemDataType == "sample"): 
+          self.selectedSampleID = itemData
         self.selectedSampleRequest = daq_utils.createDefaultRequest(self.selectedSampleID) #7/21/15  - not sure what this does, b/c I don't pass it, ahhh probably the commented line for prefix
         if (len(indexes)>1):
           self.dataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
@@ -2997,17 +3051,17 @@ class controlMain(QtGui.QMainWindow):
 
     def addSampleRequestCB(self,rasterDef=None,selectedSampleID=None):
 #skinner, not pretty below the way stuff is duplicated.
-      if (self.periodicTableTool.isVisible()):
+      if (self.periodicTableTool.isVisible()): #this one is for periodicTableTool, the other block is periodicTable
         if (self.periodicTableTool.eltCurrent != None):
           symbol = self.periodicTableTool.eltCurrent.symbol
-          print(symbol)
-          print("EnergyScan!!")        
+#          print(symbol)
+#          print("EnergyScan1!!")        
           targetEdge = element_info[symbol][2]
           targetEnergy = ElementsInfo.Elements.Element[symbol]["binding"][targetEdge]
-          print(targetEnergy)
+#          print(targetEnergy)
           colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
-          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
-          runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
+          runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
           reqObj = colRequest["request_obj"]
           reqObj["runNum"] = runNum
           reqObj["file_prefix"] = str(self.EScanDataPathGBTool.prefix_ledit.text())
@@ -3019,9 +3073,10 @@ class controlMain(QtGui.QMainWindow):
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
-          newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
 #attempt here to select a newly created request.        
-          self.SelectedItemData = newSampleRequest["request_id"]
+          self.SelectedItemData = newSampleRequestID
+          newSampleRequest = db_lib.getRequestByID(newSampleRequestID)
           
           if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
             self.treeChanged_pv.put(1)
@@ -3032,14 +3087,14 @@ class controlMain(QtGui.QMainWindow):
       if (self.periodicTable.isVisible()):
         if (self.periodicTable.eltCurrent != None):
           symbol = self.periodicTable.eltCurrent.symbol
-          print(symbol)
-          print("EnergyScan!!")        
+#          print(symbol)
+#          print("EnergyScan2!!")        
           targetEdge = element_info[symbol][2]
           targetEnergy = ElementsInfo.Elements.Element[symbol]["binding"][targetEdge]
-          print(targetEnergy)
+#          print(targetEnergy)
           colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
-          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
-          runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+          sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
+          runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
           reqObj = colRequest["request_obj"]
           reqObj["runNum"] = runNum
           reqObj["file_prefix"] = str(self.EScanDataPathGB.prefix_ledit.text())
@@ -3051,9 +3106,9 @@ class controlMain(QtGui.QMainWindow):
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
-          newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
 #attempt here to select a newly created request.        
-          self.SelectedItemData = newSampleRequest["request_id"]
+          self.SelectedItemData = newSampleRequestID
           
           if (selectedSampleID == None): #this is a temp kludge to see if this is called from addAll
             self.treeChanged_pv.put(1)
@@ -3073,8 +3128,8 @@ class controlMain(QtGui.QMainWindow):
            if (self.centeringMarksList[i]["graphicsItem"].isSelected()):
              selectedCenteringFound = 1
              colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
-             sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
-             runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+             sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
+             runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
              reqObj = colRequest["request_obj"]
              reqObj["runNum"] = runNum
              reqObj["sweep_start"] = float(self.osc_start_ledit.text())
@@ -3106,9 +3161,9 @@ class controlMain(QtGui.QMainWindow):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
-             newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+             newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
 #attempt here to select a newly created request.        
-             self.SelectedItemData = newSampleRequest["request_id"]
+             self.SelectedItemData = newSampleRequestID
              
 #             db_lib.updateRequest(colRequest)
 #             time.sleep(1) #for now only because I use timestamp for sample creation!!!!!
@@ -3118,8 +3173,8 @@ class controlMain(QtGui.QMainWindow):
           message.showMessage("You need to select a centering.")
       else: #autocenter
         colRequest=self.selectedSampleRequest
-        sampleName = str(db_lib.getSampleNamebyID(colRequest["sample_id"]))
-        runNum = db_lib.incrementSampleRequestCount(colRequest["sample_id"])
+        sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
+        runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
         reqObj = colRequest["request_obj"]
         reqObj["runNum"] = runNum
         reqObj["sweep_start"] = float(self.osc_start_ledit.text())
@@ -3166,14 +3221,15 @@ class controlMain(QtGui.QMainWindow):
           y_vec = y_vec_end - y_vec_start
           z_vec = z_vec_end - z_vec_start
           trans_total = math.sqrt(x_vec**2 + y_vec**2 + z_vec**2)
-          print trans_total
+#          print trans_total
           framesPerPoint = int(self.vectorFPP_ledit.text())
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           reqObj["vectorParams"] = vectorParams
         colRequest["request_obj"] = reqObj
-        newSampleRequest = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],reqObj,priority=0)
+        newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
 #attempt here to select a newly created request.        
-        self.SelectedItemData = newSampleRequest["request_id"]
+        self.SelectedItemData = newSampleRequestID
+        newSampleRequest = db_lib.getRequestByID(newSampleRequestID)
         
 #        if (rasterDef != False):
         if (rasterDef != None):
@@ -3203,7 +3259,7 @@ class controlMain(QtGui.QMainWindow):
 ##        self.dewarTree.refreshTree()
 
     def setVectorStartCB(self): #save sample x,y,z
-      print "set vector start"
+#      print "set vector start"
       if (self.vectorStart != None):
         self.scene.removeItem(self.vectorStart["graphicsitem"])
         self.vectorStart = None
@@ -3226,7 +3282,7 @@ class controlMain(QtGui.QMainWindow):
         self.scene.removeItem(self.vecLine)
         self.vectorEnd = None
         
-      print "set vector end"        
+#      print "set vector end"        
       pen = QtGui.QPen(QtCore.Qt.blue)
       brush = QtGui.QBrush(QtCore.Qt.blue)
       markWidth = 10            
@@ -3257,7 +3313,7 @@ class controlMain(QtGui.QMainWindow):
          ipos = int(dewarPos)+1
 #         ipos = int(dewarPos)-1
          if (ok):
-           db_lib.insertIntoContainer(daq_utils.primaryDewarName,ipos,db_lib.getContainerIDbyName(puckName))
+           db_lib.insertIntoContainer(daq_utils.primaryDewarName,daq_utils.beamline,ipos,db_lib.getContainerIDbyName(puckName,daq_utils.owner))
            self.treeChanged_pv.put(1)
 
 
@@ -3271,8 +3327,8 @@ class controlMain(QtGui.QMainWindow):
 
     def mountSampleCB(self):
       print "mount selected sample"
-      self.selectedSampleID = self.selectedSampleRequest["sample_id"]
-      self.send_to_server("mountSample("+str(self.selectedSampleID)+")")
+      self.selectedSampleID = self.selectedSampleRequest["sample"]
+      self.send_to_server("mountSample(\""+str(self.selectedSampleID)+"\")")
 
     def unmountSampleCB(self):
       print "unmount sample"
@@ -3306,16 +3362,17 @@ class controlMain(QtGui.QMainWindow):
       self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))
       self.dataPathGB.setBasePath_ledit(str(reqObj["basePath"]))
       self.dataPathGB.setDataPath_ledit(str(reqObj["directory"]))
-      if (str(reqObj["protocol"]) == "characterize" or str(reqObj["protocol"]) == "ednaCol"): #for now, to get albuladisp to work correctly, maybe this will all suck with eiger h5 format
+      if (str(reqObj["protocol"]) == "characterize" or str(reqObj["protocol"]) == "ednaCol"): 
         prefix_long = str(reqObj["directory"])+"/ref-"+str(reqObj["file_prefix"])
       else:
         prefix_long = str(reqObj["directory"])+"/"+str(reqObj["file_prefix"])
       fnumstart=reqObj["file_number_start"]
 
-      if (selectedSampleRequest.has_key("priority")):
-        if (selectedSampleRequest["priority"] < 0 and self.albulaDispCheckBox.isChecked()):
-          firstFilename = daq_utils.create_filename(prefix_long,fnumstart)            
-          albulaUtils.albulaDisp(firstFilename)
+      if (str(reqObj["protocol"]) == "characterize" or str(reqObj["protocol"]) == "ednaCol" or str(reqObj["protocol"]) == "standard"):          
+        if (selectedSampleRequest.has_key("priority")):
+          if (selectedSampleRequest["priority"] < 0 and self.albulaDispCheckBox.isChecked()):
+            firstFilename = daq_utils.create_filename(prefix_long,fnumstart)            
+            albulaUtils.albulaDisp(firstFilename)
       self.rasterStepEdit.setText(str(reqObj["gridStep"]))
       if (reqObj["gridStep"] == self.rasterStepDefs["Coarse"]):
         self.rasterGrainCoarseRadio.setChecked(True)
@@ -3327,6 +3384,7 @@ class controlMain(QtGui.QMainWindow):
 #      self.eraseCB()
       if (str(reqObj["protocol"])== "raster"):
         if (not self.rasterIsDrawn(selectedSampleRequest)):
+#          print("drawing raster")
           self.drawPolyRaster(selectedSampleRequest)
       elif (str(reqObj["protocol"])== "characterize" or str(reqObj["protocol"])== "ednaCol"):
         characterizationParams = reqObj["characterizationParams"]
@@ -3341,10 +3399,12 @@ class controlMain(QtGui.QMainWindow):
 
 
 
-    def row_clicked(self,index): # do I really need "index" here? seems like I get it from selmod
+    def row_clicked(self,index): #I need "index" here? seems like I get it from selmod, but sometimes is passed
       selmod = self.dewarTree.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
+      if (len(indexes)==0):
+        return
 #      for i in xrange(len(indexes)):
       i = 0
       item = self.dewarTree.model.itemFromIndex(indexes[i])
@@ -3355,34 +3415,37 @@ class controlMain(QtGui.QMainWindow):
       puck_name = parent.data().toString()
 #      print puck_name
 #      sampleRequest = self.dewarTree.sampleRequests[item.data().toInt()[0]]
-      itemData = item.data().toInt()[0]
+      itemData = str(item.data(32).toString())
 #      print itemData
+      itemDataType = str(item.data(33).toString())
+#      print itemDataType
+      
       self.SelectedItemData = itemData # an attempt to know what is selected and preserve it when refreshing the tree
 #      sample_name = getSampleIdFromDewarPos(itemData)
 
-      if (itemData == -99):
+      if (itemData == ""):
         print "nothing there"
         return
-      elif (itemData == 0):
+      elif (itemDataType == "container"):
         print "I'm a puck"
         return
-      elif (itemData< -100):
-        self.selectedSampleID = (0-(itemData))-100 #a terrible kludge to differentiate samples from requests, compounded with low id # in mongo
-        sample_name = db_lib.getSampleNamebyID(self.selectedSampleID) 
+      elif (itemDataType == "sample"):
+        self.selectedSampleID = itemData
+        sample_name = db_lib.getSampleNamebyID(self.selectedSampleID)
         print "sample in pos " + str(itemData) 
         if (self.osc_start_ledit.text() == ""):
-          self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
+          self.selectedSampleRequest = daq_utils.createDefaultRequest(itemData)
           self.refreshCollectionParams(self.selectedSampleRequest)
           if (self.vidActionRasterDefRadio.isChecked()):
 #          self.selectedSampleRequest["protocol"] = "raster"
             self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
             self.showProtParams()
         elif (str(self.protoComboBox.currentText()) == "screen"):
-          self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
+          self.selectedSampleRequest = daq_utils.createDefaultRequest(itemData)
           self.refreshCollectionParams(self.selectedSampleRequest)
 
         else:
-          self.selectedSampleRequest = daq_utils.createDefaultRequest((0-(itemData))-100)
+          self.selectedSampleRequest = daq_utils.createDefaultRequest(itemData)
           reqObj = self.selectedSampleRequest["request_obj"]
           self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
           self.dataPathGB.setBasePath_ledit(reqObj["basePath"])
@@ -3397,18 +3460,18 @@ class controlMain(QtGui.QMainWindow):
           self.EScanDataPathGB.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
           
       else: #request
-        self.selectedSampleRequest = db_lib.getRequest(itemData)
+        self.selectedSampleRequest = db_lib.getRequestByID(itemData)
         reqObj = self.selectedSampleRequest["request_obj"]
-        reqID = self.selectedSampleRequest["request_id"]
-        self.selectedSampleID = self.selectedSampleRequest["sample_id"]
+        reqID = self.selectedSampleRequest["uid"]
+        self.selectedSampleID = self.selectedSampleRequest["sample"]
         if (reqObj["protocol"] == "eScan"):
           if (reqObj["runChooch"]):
             resultList = db_lib.getResultsforRequest(reqID)
             if (len(resultList) > 0):
               lastResult = resultList[-1]
 #              if (lastResult["result_type"] == "choochResult"): #I don't know how to get this from the damn DBRef type, see next line, not ideal, but not bad.
-              if (db_lib.getResult(lastResult['result_id'], as_mongo_obj=True).result_type.name == "choochResult"):
-                resultID = lastResult['result_id']
+              if (db_lib.getResult(lastResult['uid'], as_mongo_obj=True).result_type.name == "choochResult"):
+                resultID = lastResult['uid']
                 print("plotting chooch")
                 self.processChoochResult(resultID)
 
@@ -3432,12 +3495,12 @@ class controlMain(QtGui.QMainWindow):
 
     def processXrecRasterCB(self,value=None, char_value=None, **kw):
       xrecFlag = value
-      if (xrecFlag > 0):
+      if (xrecFlag != "0"):
         self.emit(QtCore.SIGNAL("xrecRasterSignal"),xrecFlag)
 
     def processChoochResultsCB(self,value=None, char_value=None, **kw):
       choochFlag = value
-      if (choochFlag > 0):
+      if (choochFlag != "0"):
         self.emit(QtCore.SIGNAL("choochResultSignal"),choochFlag)
 
     def mountedPinChangedCB(self,value=None, char_value=None, **kw):
@@ -3514,6 +3577,9 @@ class controlMain(QtGui.QMainWindow):
         splitter1.addWidget(self.text_output)
         splitterSizes = [600,100]
         splitter1.setSizes(splitterSizes)
+        importAction = QtGui.QAction('Import Spreadsheet...', self)
+        importAction.triggered.connect(self.popImportDialogCB)        
+        
         exitAction = QtGui.QAction(QtGui.QIcon('exit24.png'), 'Exit', self)
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
@@ -3522,7 +3588,9 @@ class controlMain(QtGui.QMainWindow):
         self.statusBar()
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(importAction)                
         fileMenu.addAction(exitAction)
+
         self.setGeometry(300, 300, 1550, 1000) #width and height here. 
         self.setWindowTitle('LSDC')    
         self.show()
@@ -3546,7 +3614,7 @@ class controlMain(QtGui.QMainWindow):
       self.connect(self, QtCore.SIGNAL("choochResultSignal"),self.processChoochResult)
       self.choochResultFlag_pv.add_callback(self.processChoochResultsCB)  
       self.xrecRasterFlag_pv = PV(daq_utils.beamlineComm + "xrecRasterFlag")
-      self.xrecRasterFlag_pv.put(0)
+      self.xrecRasterFlag_pv.put("0")
       self.connect(self, QtCore.SIGNAL("xrecRasterSignal"),self.displayXrecRaster)
       self.xrecRasterFlag_pv.add_callback(self.processXrecRasterCB)  
       self.message_string_pv = PV(daq_utils.beamlineComm + "message_string") 

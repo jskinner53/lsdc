@@ -13,9 +13,9 @@ import daq_utils
 import beamline_lib
 import beamline_support
 import db_lib
-import stateModule
+#import stateModule
 
-var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':int(db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]),'pause_button_state':'Pause','vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':0,'xrecRasterFlag':0}
+var_list = {'beam_check_flag':0,'overwrite_check_flag':1,'omega':0.00,'kappa':0.00,'phi':0.00,'theta':0.00,'distance':10.00,'rot_dist0':300.0,'inc0':1.00,'exptime0':5.00,'file_prefix0':'lowercase','numstart0':0,'col_start0':0.00,'col_end0':1.00,'scan_axis':'omega','wavelength0':1.1,'datum_omega':0.00,'datum_kappa':0.00,'datum_phi':0.00,'size_mode':0,'spcgrp':1,'state':"Idle",'state_percent':0,'datafilename':'none','active_sweep':-1,'html_logging':1,'take_xtal_pics':0,'px_id':'none','xtal_id':'none','current_pinpos':0,'sweep_count':0,'group_name':'none','mono_energy_target':1.1,'mono_wave_target':1.1,'energy_inflection':12398.5,'energy_peak':12398.5,'wave_inflection':1.0,'wave_peak':1.0,'energy_fall':12398.5,'wave_fall':1.0,'beamline_merit':0,'fprime_peak':0.0,'f2prime_peak':0.0,'fprime_infl':0.0,'f2prime_infl':0.0,'program_state':"Program Ready",'filter':0,'edna_aimed_completeness':0.99,'edna_aimed_ISig':2.0,'edna_aimed_multiplicity':'auto','edna_aimed_resolution':'auto','mono_energy_current':1.1,'mono_energy_scan_step':1,'mono_wave_current':1.1,'mono_scan_points':21,'mounted_pin':(db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]),'pause_button_state':'Pause','vector_on':0,'vector_fpp':1,'vector_step':0.0,'vector_translation':0.0,'xia2_on':0,'grid_exptime':0.2,'grid_imwidth':0.2,'choochResultFlag':"0",'xrecRasterFlag':"0"}
 
 
 global x_vec_start, y_vec_start, z_vec_start, x_vec_end, y_vec_end, z_vec_end, x_vec, y_vec, z_vec
@@ -33,6 +33,7 @@ def init_var_channels():
   global var_channel_list
 
   for varname in list(var_list.keys()):
+#    print(varname)
     var_channel_list[varname] = beamline_support.pvCreate(daq_utils.beamlineComm + varname)
     beamline_support.pvPut(var_channel_list[varname],var_list[varname])
 
@@ -209,55 +210,74 @@ def runChoochObsolete():
 def mountSample(sampID):
   mountedSampleDict = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
-  if (currentMountedSampleID != 99): #then unmount what's there
+  if (currentMountedSampleID != ""): #then unmount what's there
     if (sampID!=currentMountedSampleID):
       puckPos = mountedSampleDict["puckPos"]
       pinPos = mountedSampleDict["pinPos"]
-      robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)
-      set_field("mounted_pin",sampID)
-      (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(sampID)
-      robot_lib.mountRobotSample(puckPos,pinPos,sampID)
+      if (robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)):
+        (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,sampID)
+        if (robot_lib.mountRobotSample(puckPos,pinPos,sampID)):
+          set_field("mounted_pin",sampID)
+        else:
+          return 0
+      else:
+        return 0
     else: #desired sample is mounted, nothing to do
       return 1
   else: #nothing mounted
-    (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(sampID)
-    robot_lib.mountRobotSample(puckPos,pinPos,sampID)
+    (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,sampID)
+    if (robot_lib.mountRobotSample(puckPos,pinPos,sampID)):
+      set_field("mounted_pin",sampID)
+    else:
+      return 0
   db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':puckPos,'pinPos':pinPos,'sampleID':sampID})
+  return 1
 
 
 
 def unmountSample():
   mountedSampleDict = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
-  puckPos = mountedSampleDict["puckPos"]
-  pinPos = mountedSampleDict["pinPos"]
-  robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)
-  set_field("mounted_pin",-99)
-  db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':-99})
-
+  if (currentMountedSampleID != ""):
+    puckPos = mountedSampleDict["puckPos"]
+    pinPos = mountedSampleDict["pinPos"]
+    if (robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)):
+      set_field("mounted_pin","")
+      db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':""})
+      return 1
+    else:
+      return 0
 
 def runDCQueue(): #maybe don't run rasters from here???
   global abort_flag
 
+  autoMounted = 0 #this means the mount was performed from a runQueue, as opposed to a manual mount button push
   print("running queue in daq server")
   while (1):
     if (abort_flag):
       abort_flag =  0 #careful about when to reset this
       return
-    currentRequest = db_lib.popNextRequest()
+    currentRequest = db_lib.popNextRequest(daq_utils.beamline)
     if (currentRequest == {}):
       break
-    sampleID = currentRequest["sample_id"]
+    sampleID = currentRequest["sample"]
     if (get_field("mounted_pin") != sampleID):
-      mountSample(sampleID)
-    db_lib.updatePriority(currentRequest["request_id"],99999)
+      if (mountSample(sampleID)):
+        autoMounted = 1
+      else:
+        return 0
+    db_lib.updatePriority(currentRequest["uid"],99999)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
-    if (stateModule.gotoState("SampleAlignment")):
+#    if (stateModule.gotoState("SampleAlignment")):
+    if (1):      
       colStatus = collectData(currentRequest)
     else:
       print("State violation DC")
       break
+    if (autoMounted and db_lib.queueDone(daq_utils.beamline)):
+      unmountSample()
 
+    
 
 def stopDCQueue(flag):
   print("stopping queue in daq server " + str(flag))
@@ -267,14 +287,21 @@ def stopDCQueue(flag):
 
 def logMxRequestParams(currentRequest):
   resultObj = {"requestObj":currentRequest["request_obj"]}
-  db_lib.addResultforRequest("mxExpParams",currentRequest["request_id"],resultObj)  
-  db_lib.beamlineInfo(daq_utils.beamline, 'currentSampleID', info_dict={'sampleID':currentRequest["sample_id"]})
-  db_lib.beamlineInfo(daq_utils.beamline, 'currentRequestID', info_dict={'requestID':currentRequest["request_id"]})
+  db_lib.addResultforRequest("mxExpParams",currentRequest["uid"],owner=daq_utils.owner,result_obj=resultObj)  
+  db_lib.beamlineInfo(daq_utils.beamline, 'currentSampleID', info_dict={'sampleID':currentRequest["sample"]})
+  db_lib.beamlineInfo(daq_utils.beamline, 'currentRequestID', info_dict={'requestID':currentRequest["uid"]})
 
 
 
 def collectData(currentRequest):
   global data_directory_name
+
+#  print(currentRequest)
+#  print("pretending to collect")
+#  time.sleep(5)
+#  db_lib.updatePriority(currentRequest["uid"],-1)
+#  refreshGuiTree()
+#  return 1 #SHORT CIRCUIT
 
   logMxRequestParams(currentRequest)
   reqObj = currentRequest["request_obj"]
@@ -303,12 +330,13 @@ def collectData(currentRequest):
     comm_s = "chmod 777 " + data_directory_name
     os.system(comm_s)
   if (prot == "raster"):
-    status = daq_macros.snakeRaster(currentRequest["request_id"])
+    status = daq_macros.snakeRaster(currentRequest["uid"])
   elif (prot == "vector"):
 #    collect_vector_seq(currentRequest)
     imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)    
   elif (prot == "multiCol"):
-    daq_macros.multiCol(currentRequest)
+#    daq_macros.multiCol(currentRequest)
+    daq_macros.snakeRaster(currentRequest["uid"])    
   elif (prot == "eScan"):
     daq_macros.eScan(currentRequest)    
   else: #standard, screening, or edna - these may require autoalign, checking first
@@ -320,14 +348,14 @@ def collectData(currentRequest):
       print("autoRaster")
       if not (daq_macros.autoRasterLoop(currentRequest)):
         print("could not center sample")
-        db_lib.updatePriority(currentRequest["request_id"],-1)
+        db_lib.updatePriority(currentRequest["uid"],-1)
         refreshGuiTree()
         return 0
-    if (not stateModule.gotoState("DataCollection")):
-      print("State violation")
-      db_lib.updatePriority(currentRequest["request_id"],-1)
-      refreshGuiTree()
-      return 0
+#    if (not stateModule.gotoState("DataCollection")):      
+#      print("State violation")
+#      db_lib.updatePriority(currentRequest["uid"],-1)
+#      refreshGuiTree()
+#      return 0
     if (reqObj["protocol"] == "screen"):
       screenImages = 2
       screenRange = 90
@@ -344,7 +372,7 @@ def collectData(currentRequest):
       characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
       if (index_success):
-        resultsList = db_lib.getResultsforRequest(currentRequest["request_id"]) # because for testing I keep running the same request. Probably not in usual use.
+        resultsList = db_lib.getResultsforRequest(currentRequest["uid"]) # because for testing I keep running the same request. Probably not in usual use.
         results = resultsList[len(resultsList)-1]
         strategyResults = results["result_obj"]["strategy"]
         stratStart = strategyResults["start"]
@@ -352,7 +380,7 @@ def collectData(currentRequest):
         stratWidth = strategyResults["width"]
         stratExptime = strategyResults["exptime"]
         stratDetDist = strategyResults["detDist"]
-        sampleID = currentRequest["sample_id"]
+        sampleID = currentRequest["sample"]
         tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
         newReqObj = tempnewStratRequest["request_obj"]
         newReqObj["sweep_start"] = stratStart
@@ -371,7 +399,7 @@ def collectData(currentRequest):
         reqObj["runNum"] = runNum
         newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=0)
         if (reqObj["protocol"] == "ednaCol"):
-          db_lib.updatePriority(currentRequest["request_id"],-1)
+          db_lib.updatePriority(currentRequest["uid"],-1)
           refreshGuiTree()
           collectData(newStratRequest)
           return 1
@@ -386,17 +414,17 @@ def collectData(currentRequest):
         fastEPFlag = 0
       if (daq_utils.detector_id == "EIGER-16"):
         seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
-        comm_s = os.environ["LSDCHOME"] + "/runFastDPH5.py " + data_directory_name + " " + file_prefix + " " + str(seqNum) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
+        comm_s = os.environ["LSDCHOME"] + "/runFastDPH5.py " + data_directory_name + " " + file_prefix + " " + str(seqNum) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + "&"
       else:
-        comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + " " + str(fastEPFlag) + "&"
+        comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + "&"
       print(comm_s)
       os.system(comm_s)
     if (reqObj["xia2"]):
-      comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "\"&"
+      comm_s = "ssh -q xf17id1-srv1 \"" + os.environ["LSDCHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + "\"&"
 #      comm_s = os.environ["CBHOME"] + "/runXia2.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["request_id"]) + "&"        
       os.system(comm_s)
   
-  db_lib.updatePriority(currentRequest["request_id"],-1)
+  db_lib.updatePriority(currentRequest["uid"],-1)
   refreshGuiTree()
   return status
 

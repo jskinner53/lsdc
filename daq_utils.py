@@ -3,18 +3,12 @@ import time
 import os
 from math import *
 import requests
-
-import functools
-
-
 import xmltodict
 
 #import metadatastore.commands as mdsc
 
 #import beamline_support
 import db_lib
-# need to change refs to daq_utils.[these_funcs] to db_lib.[these_funcs] and then nuke this line
-from db_lib import (setBeamlineConfigParams, getBeamlineConfigParam, getAllBeamlineConfigParams)
 
 #global det_radius
 #det_radius = 0
@@ -37,46 +31,33 @@ global screenYCenterPixelsLowMagOffset
 screenYCenterPixelsLowMagOffset = 58
 
 
-#searchParams = {"config_params.beamline_id":beamline}
-searchParams = {'info_name': 'config_params', 'beamline_id': beamline}
-
-
-# needed for moving beamlineconfig stuff to db_lib while retaining the existing signatures
-setBeamlineConfigParams = functools.partial(setBeamlineConfigParams, searchParams=searchParams)
-getBeamlineConfigParam = functools.partial(getBeamlineConfigParam, searchParams=searchParams)
-getAllBeamlineConfigParams = functools.partial(getAllBeamlineConfigParams, searchParams=searchParams)
-
-
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL
-
-#  var_list["state"] = "Idle"
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL,owner
 
 
-# beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
-  beamlineConfig = getAllBeamlineConfigParams()
-  primaryDewarName = beamlineConfig["primaryDewarName"]
+  owner = db_lib.getBeamlineConfigParam(beamline,"user")
+  primaryDewarName = db_lib.getBeamlineConfigParam(beamline,"primaryDewarName")
   db_lib.setPrimaryDewarName(primaryDewarName)
-  lowMagCamURL = beamlineConfig["lowMagCamURL"]
-  highMagCamURL = beamlineConfig["highMagCamURL"]
-  highMagZoomCamURL = beamlineConfig["highMagZoomCamURL"]
-  lowMagZoomCamURL = beamlineConfig["lowMagZoomCamURL"]      
-  lowMagFOVx = float(beamlineConfig["lowMagFOVx"])
-  lowMagFOVy = float(beamlineConfig["lowMagFOVy"])
-  highMagFOVx = float(beamlineConfig["highMagFOVx"]) #digizoom will be this/2
-  highMagFOVy = float(beamlineConfig["highMagFOVy"])
-  lowMagPixX = float(beamlineConfig["lowMagPixX"]) #for automated images
-  lowMagPixY = float(beamlineConfig["lowMagPixY"])
-  highMagPixX = float(beamlineConfig["highMagPixX"]) #for automated images
-  highMagPixY = float(beamlineConfig["highMagPixY"])
-  screenPixX = float(beamlineConfig["screenPixX"])
-  screenPixY = float(beamlineConfig["screenPixY"])
-  beamlineComm = beamlineConfig["beamlineComm"]
+  lowMagCamURL = db_lib.getBeamlineConfigParam(beamline,"lowMagCamURL")
+  highMagCamURL = db_lib.getBeamlineConfigParam(beamline,"highMagCamURL")
+  highMagZoomCamURL = db_lib.getBeamlineConfigParam(beamline,"highMagZoomCamURL")
+  lowMagZoomCamURL = db_lib.getBeamlineConfigParam(beamline,"lowMagZoomCamURL")
+  lowMagFOVx = float(db_lib.getBeamlineConfigParam(beamline,"lowMagFOVx"))
+  lowMagFOVy = float(db_lib.getBeamlineConfigParam(beamline,"lowMagFOVy"))
+  highMagFOVx = float(db_lib.getBeamlineConfigParam(beamline,"highMagFOVx")) #digizoom will be this/2
+  highMagFOVy = float(db_lib.getBeamlineConfigParam(beamline,"highMagFOVy"))
+  lowMagPixX = float(db_lib.getBeamlineConfigParam(beamline,"lowMagPixX")) #for automated images
+  lowMagPixY = float(db_lib.getBeamlineConfigParam(beamline,"lowMagPixY"))
+  highMagPixX = float(db_lib.getBeamlineConfigParam(beamline,"highMagPixX")) #for automated images
+  highMagPixY = float(db_lib.getBeamlineConfigParam(beamline,"highMagPixY"))
+  screenPixX = float(db_lib.getBeamlineConfigParam(beamline,"screenPixX"))
+  screenPixY = float(db_lib.getBeamlineConfigParam(beamline,"screenPixY"))
+  beamlineComm = db_lib.getBeamlineConfigParam(beamline,"beamlineComm")
   screenPixCenterX = screenPixX/2.0
   screenPixCenterY = screenPixY/2.0
-  gonioPvPrefix = beamlineConfig["gonioPvPrefix"]
-  detector_id = beamlineConfig["detector_id"]
+  gonioPvPrefix = db_lib.getBeamlineConfigParam(beamline,"gonioPvPrefix")
+  detector_id = db_lib.getBeamlineConfigParam(beamline,"detector_id")
   if (detector_id == "ADSC-Q315"):
     det_radius = 157.5
   elif (detector_id == "ADSC-Q210"):
@@ -87,32 +68,32 @@ def init_environment():
     det_radius = 155.0
   else: #default eiger 16
     det_radius = 155.0
-  det_type = beamlineConfig["detector_type"]
-  imgsrv_port = beamlineConfig["imgsrv_port"]
-  imgsrv_host = beamlineConfig["imgsrv_host"]
-  has_dna = int(beamlineConfig["has_edna"])
-  has_beamline = int(beamlineConfig["has_beamline"])
-  detectorOffline = int(beamlineConfig["detector_offline"])
-  has_xtalview = int(beamlineConfig["has_xtalview"])
-  camera_offset = float(beamlineConfig["camera_offset"])
+  det_type = db_lib.getBeamlineConfigParam(beamline,"detector_type")
+  imgsrv_port = db_lib.getBeamlineConfigParam(beamline,"imgsrv_port")
+  imgsrv_host = db_lib.getBeamlineConfigParam(beamline,"imgsrv_host")
+  has_dna = int(db_lib.getBeamlineConfigParam(beamline,"has_edna"))
+  has_beamline = int(db_lib.getBeamlineConfigParam(beamline,"has_beamline"))
+  detectorOffline = int(db_lib.getBeamlineConfigParam(beamline,"detector_offline"))
+  has_xtalview = int(db_lib.getBeamlineConfigParam(beamline,"has_xtalview"))
+  camera_offset = float(db_lib.getBeamlineConfigParam(beamline,"camera_offset"))
   if (has_xtalview):
-    xtal_url_small = beamlineConfig["xtal_url_small"]
-    xtal_url = beamlineConfig["xtal_url"]
-  mono_mot_code = beamlineConfig["mono_mot_code"]
-  screenProtocol = beamlineConfig["screen_default_protocol"]
-  screenPhist = float(beamlineConfig["screen_default_phist"])
-  screenPhiend = float(beamlineConfig["screen_default_phi_end"])
-  screenWidth = float(beamlineConfig["screen_default_width"])
-  screenDist =  float(beamlineConfig["screen_default_dist"])
-  screenExptime = float(beamlineConfig["screen_default_time"])
-  screenReso = float(beamlineConfig["screen_default_reso"])
-  screenWave = float(beamlineConfig["screen_default_wave"])
-  screenEnergy = float(beamlineConfig["screen_default_energy"])
-  screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
-  screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
-  screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
-  beamstop_x_pvname = beamlineConfig["beamstop_x_pvname"]
-  beamstop_y_pvname = beamlineConfig["beamstop_y_pvname"]
+    xtal_url_small = db_lib.getBeamlineConfigParam(beamline,"xtal_url_small")
+    xtal_url = db_lib.getBeamlineConfigParam(beamline,"xtal_url")
+  mono_mot_code = db_lib.getBeamlineConfigParam(beamline,"mono_mot_code")
+  screenProtocol = db_lib.getBeamlineConfigParam(beamline,"screen_default_protocol")
+  screenPhist = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phist"))
+  screenPhiend = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phi_end"))
+  screenWidth = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_width"))
+  screenDist =  float(db_lib.getBeamlineConfigParam(beamline,"screen_default_dist"))
+  screenExptime = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_time"))
+  screenReso = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_reso"))
+  screenWave = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_wave"))
+  screenEnergy = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_energy"))
+  screenbeamWidth = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_beamWidth"))
+  screenbeamHeight = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_beamHeight"))
+  screenTransmissionPercent = float(db_lib.getBeamlineConfigParam(beamline,"screen_transmission_percent"))
+  beamstop_x_pvname = db_lib.getBeamlineConfigParam(beamline,"beamstop_x_pvname")
+  beamstop_y_pvname = db_lib.getBeamlineConfigParam(beamline,"beamstop_y_pvname")
 
 #  varname = "HAS_XTALVIEW"
 #  if varname in os.environ:
@@ -195,26 +176,25 @@ def createDefaultRequest(sample_id):
     Doesn't really create a request, just returns a dictionary
     with the default parameters that can be passed to addRequesttoSample().
     """
-#   beamlineConfig = db_lib.getAllBeamlineConfigParams(**searchParams)
-    beamlineConfig = getAllBeamlineConfigParams()
 
-    screenPhist = float(beamlineConfig["screen_default_phist"])
-    screenPhiend = float(beamlineConfig["screen_default_phi_end"])
-    screenWidth = float(beamlineConfig["screen_default_width"])
-    screenDist =  float(beamlineConfig["screen_default_dist"])
-    screenExptime = float(beamlineConfig["screen_default_time"])
-    screenReso = float(beamlineConfig["screen_default_reso"])
-    screenWave = float(beamlineConfig["screen_default_wave"])
-    screenEnergy = float(beamlineConfig["screen_default_energy"])
-    screenbeamWidth = float(beamlineConfig["screen_default_beamWidth"])
-    screenbeamHeight = float(beamlineConfig["screen_default_beamHeight"])
-    screenTransmissionPercent = float(beamlineConfig["screen_transmission_percent"])
+
+    screenPhist = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phist"))
+    screenPhiend = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phi_end"))
+    screenWidth = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_width"))
+    screenDist =  float(db_lib.getBeamlineConfigParam(beamline,"screen_default_dist"))
+    screenExptime = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_time"))
+    screenReso = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_reso"))
+    screenWave = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_wave"))
+    screenEnergy = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_energy"))
+    screenbeamWidth = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_beamWidth"))
+    screenbeamHeight = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_beamHeight"))
+    screenTransmissionPercent = float(db_lib.getBeamlineConfigParam(beamline,"screen_transmission_percent"))
     sampleName = str(db_lib.getSampleNamebyID(sample_id))
     basePath = os.getcwd()
     runNum = db_lib.getSampleRequestCount(sample_id)
-    request = {"sample_id": sample_id}
+    request = {"sample": sample_id}
     requestObj = {
-               "sample_id": sample_id,
+               "sample": sample_id,
                "sweep_start": screenPhist,  "sweep_end": screenPhiend,
                "img_width": screenWidth,
                "exposure_time": screenExptime,
@@ -243,14 +223,14 @@ def createResult(typeName,resultObj):
   return result
 
 
-def runDials(imgPath,reqID=None):
+def runDialsObsolete(imgPath,reqID=None):
   comm_s = "dials.find_spots_client " + imgPath
   print(comm_s)
   dialsResultObj = xmltodict.parse("<data>\n"+os.popen(comm_s).read()+"</data>\n")
   print("done parsing dials output")
   print(dialsResultObj)
-  currentRequestID = db_lib.beamlineInfo(beamline, 'currentRequestID')["requestID"]
-  dialsResult = db_lib.addResultforRequest("dials",currentRequestID, dialsResultObj)
+  currentRequestID = db_lib.getBeamlineConfigParam(beamline,'currentRequestID')
+  dialsResult = db_lib.addResultforRequest("dials",currentRequestID, owner=owner,result_obj=dialsResultObj)
 
 
 
@@ -275,7 +255,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None,omega=-999):
     imgRef = db_lib.addFile(data)
     xtalpicJpegDataResult["data"] = imgRef
     xtalpicJpegDataResult["omegaPos"] = omega 
-    db_lib.addResultforRequest("xtalpicJpeg",reqID,xtalpicJpegDataResult)
+    db_lib.addResultforRequest("xtalpicJpeg",reqID,owner=owner,result_obj=xtalpicJpegDataResult)
 
 
 def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
@@ -324,7 +304,7 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
+    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj)
   return imageJpegData
 
 
@@ -376,7 +356,7 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    db_lib.addResultforRequest("diffImageJpeg",reqID,resultObj)
+    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj)
   return imageJpegData
 
 def create_filename(prefix,number):

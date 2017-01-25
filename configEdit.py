@@ -1,4 +1,4 @@
-#!/opt/conda_envs/lsdc_dev/bin/python
+#####!/opt/conda_envs/lsdc_dev/bin/python
 import daq_utils
 import time
 import os
@@ -16,7 +16,8 @@ newBeamlineConfig = {}
 tmpConfigFile = open(tmpFileName,"r")
 for line in tmpConfigFile.readlines():
 #  print line
-  (key,val) = string.split(line)
+  (key,val) = line.split()
+#  (key,val) = string.split(line)  
   newBeamlineConfig[key]=val
 #looks like you could add new stuff like so for each new key:
 #newBeamlineConfig["primaryDewarName"] = "primaryDewarAMX"

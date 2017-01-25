@@ -16,6 +16,10 @@ def detector_set_exposure_time(exptime):
   print("set detector exposure time " + str(exptime))
   epics_det.det_set_exptime(exptime)
 
+def detector_get_seqnum():
+  return epics_det.det_getSeqNum()
+
+
 def detector_set_numimages(numimages):
   print("set detector number of images " + str(numimages))
   epics_det.det_set_numimages(numimages)
@@ -58,6 +62,15 @@ def detector_trigger():
 
 def get_trigger_mode():
   return epics_det.det_get_trigger_mode()
+
+def detector_stop_acquire():
+  epics_det.det_stop_acquire()
+  
+def detector_set_trigger_mode(mode):
+  epics_det.det_set_trigger_mode(mode)
+  
+def detector_set_num_triggers(numTrigs):
+  epics_det.det_set_num_triggers(numtrigs)
   
 def detector_is_manual_trigger():
   return epics_det.det_is_manual_trigger()

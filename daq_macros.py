@@ -23,7 +23,7 @@ from start_bs import *
 import subprocess
 import super_state_machine
 import _thread
-
+import parseSheet
 import attenCalc
 
 global dialsResultDict, rasterRowResultsList, processedRasterRowCount
@@ -334,12 +334,12 @@ def changeImageCenterLowMagZoomObsolete(x,y):
 
 def autoRasterLoop(currentRequest):
   return 1 #short circuit for commissioning
-  set_field("xrecRasterFlag",100)        
-  sampleID = currentRequest["sample_id"]
+  set_field("xrecRasterFlag","100")        
+  sampleID = currentRequest["sample"]
   print("auto raster " + str(sampleID))
   status = loop_center_xrec()
   if (status == -99): #abort, never hit this
-    db_lib.updatePriority(currentRequest["request_id"],5000)
+    db_lib.updatePriority(currentRequest["uid"],5000)
     return 0    
   if not (status):
     return 0
@@ -353,8 +353,8 @@ def autoRasterLoop(currentRequest):
   return 1
 
 def multiCol(currentRequest):
-  set_field("xrecRasterFlag",100)      
-  sampleID = currentRequest["sample_id"]
+  set_field("xrecRasterFlag","100")      
+  sampleID = currentRequest["sample"]
   print("multiCol " + str(sampleID))
   status = loop_center_xrec()
   if not (status):
@@ -517,8 +517,9 @@ def generateGridMap(rasterRequest):
 ###############
   print(dialsResultLocalList)
 
-  rasterResultObj = {"sample_id": rasterRequest["sample_id"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}
-  rasterResult = db_lib.addResultforRequest("rasterResult",rasterRequest["request_id"], rasterResultObj)
+  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}
+  rasterResultID = db_lib.addResultforRequest("rasterResult",rasterRequest["uid"], owner=daq_utils.owner,result_obj=rasterResultObj)
+  rasterResult = db_lib.getResult(rasterResultID)
   return rasterResult
 
 
@@ -544,7 +545,8 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
 
   if (daq_utils.detector_id == "EIGER-16"):
     if (rowIndex%2 == 0):
-      node = "cpu-009"
+      node = "cpu-010"
+#      node = "cpu-009"      
     else:
       node = "cpu-010"
   else:
@@ -595,13 +597,13 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
 def snakeRaster(rasterReqID,grain=""):
   global dialsResultDict,rasterRowResultsList,processedRasterRowCount
   
-  rasterRequest = db_lib.getRequest(rasterReqID)
+  rasterRequest = db_lib.getRequestByID(rasterReqID)
   reqObj = rasterRequest["request_obj"]
   parentReqID = reqObj["parentReqID"]
   parentReqProtocol = ""
   
   if (parentReqID != -1):
-    parentRequest = db_lib.getRequest(parentReqID)
+    parentRequest = db_lib.getRequestByID(parentReqID)
     parentReqObj = parentRequest["request_obj"]
     parentReqProtocol = parentReqObj["protocol"]
     detDist = parentReqObj["detDist"]    
@@ -728,12 +730,16 @@ def snakeRaster(rasterReqID,grain=""):
         det_lib.detector_trigger()
     vectorWait()
     detector_wait()
+#    time.sleep(1)    
 # add the threading dials stuff here, and the thread routine elsewhere.
     if (daq_utils.detector_id == "EIGER-16"):
-      seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
+#      seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
+      seqNum = int(det_lib.detector_get_seqnum())
     else:
       seqNum = -1
-    _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))      
+    print("running dials thread")
+    _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))
+    print("thread running")
   rasterTimeout = 60
   timerCount = 0
   while (1):
@@ -747,33 +753,42 @@ def snakeRaster(rasterReqID,grain=""):
 
   rasterResult = generateGridMap(rasterRequest) #I think rasterRequest is entire request, of raster type
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
-  print("parent protocol = " + parentReqProtocol)
-  if (parentReqProtocol == "multiCol"):
-    multiColThreshold  = parentReqObj["diffCutoff"]     
+  protocol = reqObj["protocol"]
+  print("protocol = " + protocol)
+  if (protocol == "multiCol" or parentReqProtocol == "multiCol"):
+    if (parentReqProtocol == "multiCol"):    
+      multiColThreshold  = parentReqObj["diffCutoff"]
+    else:
+      multiColThreshold  = reqObj["diffCutoff"]         
     gotoMaxRaster(rasterResult,multiColThreshold=multiColThreshold) 
   else:
     if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
-      gotoMaxRaster(rasterResult)    
+      gotoMaxRaster(rasterResult)
+#  print(rasterRequest)
+  rasterRequestID = rasterRequest["uid"]
   db_lib.updateRequest(rasterRequest)
-  db_lib.updatePriority(rasterRequest["request_id"],-1)  
-  set_field("xrecRasterFlag",rasterRequest["request_id"])
+#  print("after update")
+#  print(rasterRequest)
+  
+  db_lib.updatePriority(rasterRequestID,-1)  
+  set_field("xrecRasterFlag",rasterRequest["uid"])
   return 1
 
 
 
 def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
-  sampleID = currentRequest["sample_id"]
+  sampleID = currentRequest["sample"]
   if (rasterType=="Fine"):
-    set_field("xrecRasterFlag",100)    
+    set_field("xrecRasterFlag","100")    
     rasterReqID = defineRectRaster(currentRequest,50,50,10) 
     snakeRaster(rasterReqID)
   elif (rasterType=="Line"):  
-    set_field("xrecRasterFlag",100)    
+    set_field("xrecRasterFlag","100")    
     mvrDescriptor("omega",90)
     rasterReqID = defineRectRaster(currentRequest,10,150,10)
 #    rasterReqID = defineVectorRaster(currentRequest,10,150,10)     
     snakeRaster(rasterReqID)
-    set_field("xrecRasterFlag",100)    
+    set_field("xrecRasterFlag","100")    
   else:
     rasterReqID = getXrecLoopShape(currentRequest)
     print("snake raster " + str(rasterReqID))
@@ -783,6 +798,8 @@ def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
 
 
 def gotoMaxRaster(rasterResult,multiColThreshold=-1):
+#  print("raster result = ")
+#  print(rasterResult)
   if (rasterResult["result_obj"]["rasterCellResults"]['resultObj'] == None):
 #  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"] == None):    
     print("no raster result!!\n")
@@ -809,9 +826,11 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     try:
       scoreVal = float(cellResults[i][scoreOption])
     except TypeError:
-      continue
-    if (multiColThreshold>0):
-      if (scoreVal > multiColThreshold):
+#      continue
+      scoreVal = 0.0
+    if (multiColThreshold>-1):
+      print("doing multicol")
+      if (scoreVal >= multiColThreshold):
         hitFile = cellResults[i]["image"]
         hitCoords = rasterMap[hitFile[:-4]]
 #        sampID = rasterResult['result_obj']['sample_id']
@@ -839,8 +858,8 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
   
 
 def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of what to pass here for details like how to organize data
-  parentRequest = db_lib.getRequest(parentReqID)
-  sampleID = parentRequest["sample_id"]
+  parentRequest = db_lib.getRequestByID(parentReqID)
+  sampleID = parentRequest["sample"]
 
   print (str(sampleID))
   print (hitCoords)
@@ -910,7 +929,7 @@ def screenYPixels2microns(pixels):
 
 def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #maybe point_x and point_y are image center? #everything can come as microns, make this a horz vector scan, note this never deals with pixels.
   
-  sampleID = currentRequest["sample_id"]
+  sampleID = currentRequest["sample"]
   raster_h = float(raster_h_s)
   raster_w = float(raster_w_s)
   stepsize = float(stepsizeMicrons_s)
@@ -954,15 +973,15 @@ def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #m
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
-  reqObj["parentReqID"] = currentRequest["request_id"]
+  reqObj["parentReqID"] = currentRequest["uid"]
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
-  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
+  set_field("xrecRasterFlag",newRasterRequest["uid"])  
   time.sleep(1)
-  return newRasterRequest["request_id"]
+  return newRasterRequest["uid"]
 
 
 def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
-  sampleID = currentRequest["sample_id"]
+  sampleID = currentRequest["sample"]
   newRowDef = {}
   beamWidth = stepsizeMicrons
   beamHeight = stepsizeMicrons
@@ -1027,15 +1046,15 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
   reqObj["rasterDef"]["status"] = 1 # this will tell clients that the raster should be displayed.
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
-  reqObj["parentReqID"] = currentRequest["request_id"]
+  reqObj["parentReqID"] = currentRequest["uid"]
   newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
-  set_field("xrecRasterFlag",newRasterRequest["request_id"])  
-  return newRasterRequest["request_id"]
+  set_field("xrecRasterFlag",newRasterRequest["uid"])  
+  return newRasterRequest["uid"]
 #  daq_lib.refreshGuiTree() # not sure
 
 
 def getXrecLoopShape(currentRequest):
-  sampleID = currentRequest["sample_id"]
+  sampleID = currentRequest["sample"]
 #  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   for i in range(4):
     if (daq_lib.abort_flag == 1):
@@ -1079,7 +1098,7 @@ def getXrecLoopShape(currentRequest):
 
 def eScan(energyScanRequest):
   plt.clf()
-  sampleID = energyScanRequest["sample_id"]
+  sampleID = energyScanRequest["sample"]
   reqObj = energyScanRequest["request_obj"]
   exptime = reqObj['exposure_time']
   targetEnergy = reqObj['scanEnergy'] *1000.0
@@ -1112,7 +1131,8 @@ def eScan(energyScanRequest):
   eScanResultObj = {}
   eScanResultObj["databrokerID"] = scanID
   eScanResultObj["sample_id"] = sampleID  
-  eScanResult = db_lib.addResultforRequest("eScanResult",energyScanRequest["request_id"], eScanResultObj)  
+  eScanResultID = db_lib.addResultforRequest("eScanResult",energyScanRequest["uid"], daq_utils.owner,result_obj=eScanResultObj)
+  eScanResult = db_lib.getResult(eScanResultID)
   print(scanDataTable)
   if (reqObj["runChooch"]):
     chooch_prefix = "choochData1"
@@ -1181,8 +1201,8 @@ def eScan(energyScanRequest):
 #    plt.plot(chooch_graph_x,chooch_graph_y2)
 #    plt.show()
 #    print(choochResultObj)
-    choochResult = db_lib.addResultforRequest("choochResult",energyScanRequest["request_id"], choochResultObj)
-    choochResultID = choochResult["result_id"]
+    choochResultID = db_lib.addResultforRequest("choochResult",energyScanRequest["uid"], daq_utils.owner,result_obj=choochResultObj)
+    choochResult = db_lib.getResult(choochResultID)
     set_field("choochResultFlag",choochResultID)
 
 
@@ -1262,7 +1282,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     beamline_lib.mvaDescriptor("omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
-    daq_utils.take_crystal_picture(reqID=charRequest["request_id"])
+    daq_utils.take_crystal_picture(reqID=charRequest["uid"])
     charRequest["request_obj"]["sweep_start"] = colstart
     imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
@@ -1298,7 +1318,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #  flux = 600000000.0  #for now
   edna_input_filename = dna_directory + "/adsc1_in.xml"
   
-  comm_s = "ssh -q xf17id1-srv1 \"source /nfs/skinner/wrappers/ednaWrap;" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["request_id"]) + "\""
+  comm_s = "ssh -q xf17id1-srv1 \"source /nfs/skinner/wrappers/ednaWrap;" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["uid"]) + "\""
   print(comm_s)
   os.system(comm_s)
 
@@ -1314,3 +1334,7 @@ def setAttens(transmission): #where transmission = 0.0-1.0
     pvKeyName = "Atten%02d-%d" % (i+1,pvVal)    
     beamline_support.setPvValFromDescriptor(pvKeyName,1)
     print (pvKeyName)
+
+def importSpreadsheet(fname):
+  parseSheet.importSpreadsheet(fname,daq_utils.owner)
+

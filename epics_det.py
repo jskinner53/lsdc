@@ -158,6 +158,9 @@ def det_set_numexposures(numexposures):
 def det_take_image():
   set_det_pv("acquire",1)
 
+def det_stop_acquire():
+  set_det_pv("acquire",0)
+
 def det_set_exptime(exptime): #exposure_time = exposure_period - .0024 for nsls1 pil6
   set_det_pv("exptime",exptime)
 
@@ -190,6 +193,9 @@ def det_waitArmed(): #not even sure what this means.
     while (get_det_pv("armed_state") == 0):
 #      print(get_det_pv("armed_state"))
       time.sleep(.01)
+
+def det_getSeqNum():
+  return get_det_pv("file_number")
       
 def det_stop():
   if (offline):
@@ -201,6 +207,9 @@ def det_stop():
 
 def det_set_trigger_mode(mode): #0=internal, 1=external - cbass uses 1
   set_det_pv("det_trigger_mode",mode)
+
+def det_set_num_triggers(numtrigs): 
+  set_det_pv("numTriggers",numtrigs)
 
 def det_get_trigger_mode():
   return get_det_pv("det_trigger_mode")
