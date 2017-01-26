@@ -545,8 +545,8 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
 
   if (daq_utils.detector_id == "EIGER-16"):
     if (rowIndex%2 == 0):
-      node = "cpu-010"
-#      node = "cpu-009"      
+#      node = "cpu-010"
+      node = "cpu-009"      
     else:
       node = "cpu-010"
   else:

@@ -41,7 +41,7 @@ def lib_home_dist():
 
 def gon_stop():
   print("setting osc abort")
-  beamline_support.setPvValFromDescriptor("oscAbort",1)
+  beamline_support.setPvValFromDescriptor("oscAbort",0)
 
 
 def oscWait():

@@ -1,32 +1,30 @@
-#####!/opt/conda_envs/lsdc_dev/bin/python
-import daq_utils
+#!/opt/conda_envs/lsdc_dev/bin/python
+import db_lib
 import time
 import os
 import string
+import sys
 
-beamlineConfig = daq_utils.getAllBeamlineConfigParams()
+beamline_id = sys.argv[1]
+beamlineConfigList = db_lib.getAllBeamlineConfigParams(beamline_id)
 tmpFileName = "/tmp/blConfig"+str(time.time())
 tmpConfigFile = open(tmpFileName,"w+")
-for key in beamlineConfig.keys():
-  tmpConfigFile.write(key + " " + str(beamlineConfig[key]) + "\n")
+for i in range (0,len(beamlineConfigList)):
+  infoName = beamlineConfigList[i]['info_name']
+  info = beamlineConfigList[i]['info']
+  if ("val" in info.keys()):
+    tmpConfigFile.write(infoName + " " + str(info["val"]) + "\n")
 tmpConfigFile.close()
+#exit(0)
 comm_s = "emacs -nw " + tmpFileName
 os.system(comm_s)
-newBeamlineConfig = {}
 tmpConfigFile = open(tmpFileName,"r")
 for line in tmpConfigFile.readlines():
-#  print line
+  print line
   (key,val) = line.split()
 #  (key,val) = string.split(line)  
-  newBeamlineConfig[key]=val
-#looks like you could add new stuff like so for each new key:
-#newBeamlineConfig["primaryDewarName"] = "primaryDewarAMX"
-#newBeamlineConfig["lowMagCamURL"] = "http://xf17id2b-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg"
-#newBeamlineConfig["lowMagZoomCamURL"] = "http://xf17id2b-ioc2.cs.nsls2.local:8007/C1.MJPG.mjpg"
-#newBeamlineConfig["highMagZoomCamURL"] = "http://xf17id2b-ioc2.cs.nsls2.local:8007/C1.MJPG.mjpg"
-#newBeamlineConfig["highMagCamURL"] = "http://xf17id2b-ioc2.cs.nsls2.local:8007/C2.MJPG.mjpg"
+  db_lib.setBeamlineConfigParam(beamline_id, key, val)
 tmpConfigFile.close()
-daq_utils.setBeamlineConfigParams(newBeamlineConfig)
 #os.system("rm " + tmpFileName)
 
 

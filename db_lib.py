@@ -762,3 +762,10 @@ def setBeamlineConfigParam(beamline_id, paramName, paramVal):
 def getBeamlineConfigParam(beamline_id, paramName):
     return beamlineInfo(beamline_id,paramName)["val"]
 
+def getAllBeamlineConfigParams(beamline_id):
+  g = configuration_ref.find(key='beamline_info', beamline_id=beamline_id)
+  configList = list(g)
+#  for i in range (0,len(configList)):
+#    print(configList[i]['info_name'])
+#    print(configList[i]['info'])    
+  return configList

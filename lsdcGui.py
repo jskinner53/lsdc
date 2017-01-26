@@ -1578,7 +1578,7 @@ class controlMain(QtGui.QMainWindow):
         self.lastFileLabel2 = QtGui.QLabel('Last File:')
         self.lastFileLabel2.setFixedWidth(70)
         if (daq_utils.beamline == "amx"):                    
-          self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDB-ES:AMX{Det:Pil6M}cam1:FullFileName_RBV",self,0)            
+          self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDB-ES:AMX{Det:Eig9M}cam1:FullFileName_RBV",self,0)            
         else:
           self.lastFileRBV2 = QtEpicsPVLabel("XF:17IDC-ES:FMX{Det:Eig16M}cam1:FullFileName_RBV",self,0)            
         fileHBoxLayout = QtGui.QHBoxLayout()
