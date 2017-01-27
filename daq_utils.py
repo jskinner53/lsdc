@@ -58,16 +58,17 @@ def init_environment():
   screenPixCenterY = screenPixY/2.0
   gonioPvPrefix = db_lib.getBeamlineConfigParam(beamline,"gonioPvPrefix")
   detector_id = db_lib.getBeamlineConfigParam(beamline,"detector_id")
-  if (detector_id == "ADSC-Q315"):
-    det_radius = 157.5
-  elif (detector_id == "ADSC-Q210"):
-    det_radius = 105.0
-  elif (detector_id == "PILATUS-6"):
-    det_radius = 212.0
-  elif (detector_id == "EIGER-16"):
-    det_radius = 155.0
-  else: #default eiger 16
-    det_radius = 155.0
+  det_radius = db_lib.getBeamlineConfigParam(beamline,"detRadius")
+#  if (detector_id == "ADSC-Q315"):
+#    det_radius = 157.5
+#  elif (detector_id == "ADSC-Q210"):
+#    det_radius = 105.0
+#  elif (detector_id == "PILATUS-6"):
+#    det_radius = 212.0
+#  elif (detector_id == "EIGER-16"):
+#    det_radius = 155.0
+#  else: #default eiger 16
+#    det_radius = 155.0
   det_type = db_lib.getBeamlineConfigParam(beamline,"detector_type")
   imgsrv_port = db_lib.getBeamlineConfigParam(beamline,"imgsrv_port")
   imgsrv_host = db_lib.getBeamlineConfigParam(beamline,"imgsrv_host")

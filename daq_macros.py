@@ -1247,15 +1247,16 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
   collect_and_characterize_success = 0
   dna_have_strategy_results = 0
   dna_have_index_results = 0  
-  dg2rd = 3.14159265 / 180.0  
-  if (daq_utils.detector_id == "ADSC-Q315"):
-    det_radius = 157.5
-  elif (daq_utils.detector_id == "ADSC-Q210"):
-    det_radius = 105.0
-  elif (daq_utils.detector_id == "PILATUS-6"):
-    det_radius = 212.0
-  else: #default Pilatus
-    det_radius = 212.0
+  dg2rd = 3.14159265 / 180.0
+  det_radius = db_lib.getBeamlineConfigParam(beamline,"detRadius")  
+#  if (daq_utils.detector_id == "ADSC-Q315"):
+#    det_radius = 157.5
+#  elif (daq_utils.detector_id == "ADSC-Q210"):
+#    det_radius = 105.0
+#  elif (daq_utils.detector_id == "PILATUS-6"):
+#    det_radius = 212.0
+#  else: #default Pilatus
+#    det_radius = 212.0
 #####  theta_radians = daq_lib.get_field("theta") * dg2rd
   theta_radians = 0.0
   wave = 12398.5/beamline_lib.get_mono_energy() #for now
