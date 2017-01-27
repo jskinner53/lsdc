@@ -828,14 +828,16 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     except TypeError:
 #      continue
       scoreVal = 0.0
-    if (multiColThreshold>-1):
+    if (multiColThreshold>0):
       print("doing multicol")
       if (scoreVal >= multiColThreshold):
         hitFile = cellResults[i]["image"]
         hitCoords = rasterMap[hitFile[:-4]]
-#        sampID = rasterResult['result_obj']['sample_id']
-        parentReqID = rasterResult['result_obj']["parentReqID"]
-        addMultiRequestLocation(parentReqID,hitCoords,i)
+        sampID = rasterResult['result_obj']['sample_id']
+        reqID = rasterResult['request']
+#        parentReqID = rasterResult['result_obj']["parentReqID"]
+#        addMultiRequestLocation(parentReqID,hitCoords,i)
+        addMultiRequestLocation(reqID,hitCoords,i)        
     if (scoreOption == "d_min"):
       if (scoreVal < floor):
         floor = scoreVal
@@ -855,9 +857,19 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     z = hotCoords["z"]
     print("goto " + str(x) + " " + str(y) + " " + str(z))
     mvaDescriptor("sampleX",x,"sampleY",y,"sampleZ",z)
+    if (multiColThreshold == 0): #do the whole map
+      i = 0
+      for key in sorted(rasterMap):
+        hitCoords = rasterMap[key]          
+        reqID = rasterResult['request']          
+        addMultiRequestLocation(reqID,hitCoords,i)                
+        i+=1
+    
   
 
 def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of what to pass here for details like how to organize data
+  print("add multi req id")
+  print(parentReqID)
   parentRequest = db_lib.getRequestByID(parentReqID)
   sampleID = parentRequest["sample"]
 
@@ -889,7 +901,7 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   newReqObj["fastEP"] = False
   newReqObj["xia2"] = False
   newReqObj["runNum"] = runNum
-  newRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=6000) # a higher priority
+  newRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],daq_utils.owner,newReqObj,priority=6000) # a higher priority
   
     
 #these next three differ a little from the gui. the gui uses isChecked, b/c it was too intense to keep hitting the pv, also screen pix vs image pix
@@ -974,7 +986,7 @@ def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #m
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
   reqObj["parentReqID"] = currentRequest["uid"]
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["uid"])  
   time.sleep(1)
   return newRasterRequest["uid"]
@@ -1047,7 +1059,7 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
   runNum = db_lib.incrementSampleRequestCount(sampleID)
   reqObj["runNum"] = runNum
   reqObj["parentReqID"] = currentRequest["uid"]
-  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],reqObj,priority=5000)
+  newRasterRequest = db_lib.addRequesttoSample(sampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000)
   set_field("xrecRasterFlag",newRasterRequest["uid"])  
   return newRasterRequest["uid"]
 #  daq_lib.refreshGuiTree() # not sure

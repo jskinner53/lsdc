@@ -485,10 +485,11 @@ class DewarTree(QtGui.QTreeView):
                   if (sampleRequestList[k]["priority"] == 99999):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('green'))
-                    selectedIndex = self.model.indexFromItem(col_item) ##attempt to leave it on the request after collection                    
+                    selectedIndex = self.model.indexFromItem(col_item) ##attempt to leave it on the request after collection
+                    
                     collectionRunning = True
                     self.parent.refreshCollectionParams(sampleRequestList[k])
-
+#did nothing                    self.setCurrentIndex(selectedIndex)
                   elif (sampleRequestList[k]["priority"] > 0):
                     col_item.setCheckState(Qt.Checked)
                     col_item.setBackground(QtGui.QColor('white'))
@@ -541,7 +542,7 @@ class DewarTree(QtGui.QTreeView):
         if (collectionRunning == True):
           if (mountedIndex != None):
             pass
-##            self.setCurrentIndex(mountedIndex)
+            self.setCurrentIndex(mountedIndex)
 ##            self.parent.row_clicked(mountedIndex)
 
         if (self.isExpanded):
