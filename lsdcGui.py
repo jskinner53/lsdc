@@ -541,8 +541,9 @@ class DewarTree(QtGui.QTreeView):
           self.parent.row_clicked(selectedIndex)
         if (collectionRunning == True):
           if (mountedIndex != None):
-            pass
             self.setCurrentIndex(mountedIndex)
+#            if (selectedIndex != None):
+#              self.setCurrentIndex(selectedIndex)            
 ##            self.parent.row_clicked(mountedIndex)
 
         if (self.isExpanded):
@@ -1088,7 +1089,7 @@ class controlMain(QtGui.QMainWindow):
         self.detDistMotorEntry.getEntry().textChanged[str].connect(self.detDistTextChanged)        
 #        self.detDistMotorEntry.setFixedWidth(60)
         self.moveDetDistButton = QtGui.QPushButton("Move Detector")
-        self.moveDetDistButton.setEnabled(False)                
+#        self.moveDetDistButton.setEnabled(False)                
         self.moveDetDistButton.clicked.connect(self.moveDetDistCB)
         hBoxColParams5.addWidget(detDistLabel)
         hBoxColParams5.addWidget(detDistRBLabel)
@@ -3198,7 +3199,10 @@ class controlMain(QtGui.QMainWindow):
         wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
         reqObj["wavelength"] = wave
         reqObj["protocol"] = str(self.protoComboBox.currentText())
-        reqObj["detDist"] = float(self.detDistMotorEntry.getEntry().text())
+        try:
+          reqObj["detDist"] = float(self.detDistMotorEntry.getEntry().text())
+        except ValueError:
+          reqObj["detDist"] = 500.0
 #        print colRequest
 #        if (rasterDef != False):
         if (reqObj["protocol"] == "multiCol"):

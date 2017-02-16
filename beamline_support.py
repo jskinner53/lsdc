@@ -62,7 +62,10 @@ def pvClose(pv):
 
 #convenience to set a pv value given the name
 def set_any_epics_pv(pv_prefix,field_name,value): #this does not use beamline designation
-  pvname = "%s.%s" % (pv_prefix,field_name)
+  if (field_name == "VAL"):
+    pvname = pv_prefix
+  else:
+    pvname = "%s.%s" % (pv_prefix,field_name)  
   if (pvname not in pvChannelDict):
     pvChannelDict[pvname] = epics.PV(pvname)
   if (pvChannelDict[pvname] != None):
@@ -71,7 +74,10 @@ def set_any_epics_pv(pv_prefix,field_name,value): #this does not use beamline de
 
 #convenience to set a pv value given the name
 def get_any_epics_pv(pv_prefix,field_name): #this does not use beamline designation
-  pvname = "%s.%s" % (pv_prefix,field_name)
+  if (field_name == "VAL"):
+    pvname = pv_prefix
+  else:
+    pvname = "%s.%s" % (pv_prefix,field_name)  
 #  try:
   if (pvname not in pvChannelDict):
     pvChannelDict[pvname] = PVchannel = epics.PV(pvname)

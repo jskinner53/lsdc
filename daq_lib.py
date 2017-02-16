@@ -206,7 +206,78 @@ def runChoochObsolete():
   time.sleep(4)
   set_field("choochResultFlag",1)
 
+def setRobotGovState(stateString):
+  beamline_support.setPvValFromDescriptor("robotGovGo",stateString)
 
+def setGovRobotSE():
+  govTimeout = 120
+  setRobotGovState("SE")
+  startTime = time.time()
+  while (1):
+    time.sleep(1.0)
+    robotGovStatus = beamline_support.getPvValFromDescriptor("robotGovStatus")
+    print("robot gov status = " + str(robotGovStatus))    
+    if (robotGovStatus != 1): #enum 1 = busy
+      break
+    if (time.time()-startTime > govTimeout):
+      print("Governor Timeout!")
+      return 0
+  time.sleep(1.0)    
+  robotGovState = beamline_support.getPvValFromDescriptor("robotSeActive")
+  print("robot gov state = " + str(robotGovState))
+  if (robotGovState == 1):
+    return 1
+  else:
+    print("Governor did not reach SE")
+    return 0
+
+def setGovRobotSA():
+  govTimeout = 120
+  setRobotGovState("SA")
+  startTime = time.time()
+  while (1):
+    time.sleep(1.0)
+    robotGovStatus = beamline_support.getPvValFromDescriptor("robotGovStatus")
+    print("robot gov status = " + str(robotGovStatus))    
+    if (robotGovStatus != 1): #enum 1 = busy
+      break
+    if (time.time()-startTime > govTimeout):
+      print("Governor Timeout!")
+      return 0
+  time.sleep(1.0)    
+  robotGovState = beamline_support.getPvValFromDescriptor("robotSaActive")
+  print("robot gov state = " + str(robotGovState))
+  if (robotGovState == 1):
+    return 1
+  else:
+    print("Governor did not reach SA")
+    return 0
+
+def setGovRobotDA():
+  govTimeout = 120
+  setRobotGovState("DA")
+  startTime = time.time()
+  while (1):
+    time.sleep(1.0)
+    robotGovStatus = beamline_support.getPvValFromDescriptor("robotGovStatus")
+    print("robot gov status = " + str(robotGovStatus))    
+    if (robotGovStatus != 1): #enum 1 = busy
+      break
+    if (time.time()-startTime > govTimeout):
+      print("Governor Timeout!")
+      return 0
+  time.sleep(1.0)    
+  robotGovState = beamline_support.getPvValFromDescriptor("robotDaActive")
+  print("robot gov state = " + str(robotGovState))
+  if (robotGovState == 1):
+    return 1
+  else:
+    print("Governor did not reach DA")
+    return 0
+  
+  
+  
+  
 def mountSample(sampID):
   mountedSampleDict = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')
   currentMountedSampleID = mountedSampleDict["sampleID"]
@@ -215,6 +286,8 @@ def mountSample(sampID):
       puckPos = mountedSampleDict["puckPos"]
       pinPos = mountedSampleDict["pinPos"]
       if (robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)):
+        set_field("mounted_pin","")        
+        db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':""})        
         (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,sampID)
         if (robot_lib.mountRobotSample(puckPos,pinPos,sampID)):
           set_field("mounted_pin",sampID)
@@ -242,6 +315,7 @@ def unmountSample():
     puckPos = mountedSampleDict["puckPos"]
     pinPos = mountedSampleDict["pinPos"]
     if (robot_lib.unmountRobotSample(puckPos,pinPos,currentMountedSampleID)):
+      robot_lib.finish()
       set_field("mounted_pin","")
       db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':""})
       return 1
@@ -333,7 +407,10 @@ def collectData(currentRequest):
     status = daq_macros.snakeRaster(currentRequest["uid"])
   elif (prot == "vector"):
 #    collect_vector_seq(currentRequest)
-    imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)    
+    if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):
+      imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+    else:
+      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)      
   elif (prot == "multiCol"):
 #    daq_macros.multiCol(currentRequest)
     daq_macros.snakeRaster(currentRequest["uid"])    
@@ -367,7 +444,10 @@ def collectData(currentRequest):
         data_directory_name = str(reqObj["directory"]) # for now
         file_number_start = reqObj["file_number_start"]
         beamline_lib.mvaDescriptor("omega",sweep_start)
-        imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+        if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):        
+          imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+        else:
+          imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
     elif (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
       characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
@@ -405,7 +485,10 @@ def collectData(currentRequest):
           return 1
     else: #standard
       beamline_lib.mvaDescriptor("omega",sweep_start)
-      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+      if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):      
+        imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+      else:
+        imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
   if (prot == "vector" or prot == "standard"):
     if (reqObj["fastDP"]):
       if (reqObj["fastEP"]):
@@ -480,53 +563,54 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   set_field("state","Idle")        
   return number_of_images
 
-
-def collect_vector_seqObsolete(currentRequest):
+def collect_detector_seq_hw(range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,currentRequest,z_target=0): #works for pilatus
   global image_started,allow_overwrite,abort_flag
 
+  print("data directory = " + data_directory_name)
   reqObj = currentRequest["request_obj"]
-  protocol = str(reqObj["protocol"])  
-  data_directory_name = str(reqObj["directory"])  
-  sweep_start = reqObj["sweep_start"]
-  sweep_end = reqObj["sweep_end"]
-  fileprefix = str(reqObj["file_prefix"])
-  file_number = reqObj["file_number_start"]
-  range_degrees = abs(sweep_end-sweep_start)
-  beamline_lib.mvaDescriptor("omega",sweep_start)
-  image_width = reqObj["img_width"]
-  exposure_period = reqObj["exposure_time"]
-  angleStart = beamline_lib.motorPosFromDescriptor("omega")
-  if (angleStart>360.0):
-    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now  
+  protocol = str(reqObj["protocol"])
+  sweep_start = reqObj["sweep_start"]%360.0
+  if (protocol == "vector"):
+    beamline_lib.mvaDescriptor("omega",sweep_start)    
   number_of_images = round(range_degrees/image_width)
   range_seconds = number_of_images*exposure_period
   if (daq_utils.detector_id == "EIGER-16"):  
     exposure_time = exposure_period - .00001
   else:
     exposure_time = exposure_period - .0024  
+  angleStart = sweep_start
+#  angleStart = beamline_lib.motorPosFromDescriptor("omega")  
+###  if (angleStart>360.0):
+###    angleStart = angleStart%360.0 #note, nsls2 angle start now used, just get current position for now
   file_prefix_minus_directory = str(fileprefix)
   try:
     file_prefix_minus_directory = file_prefix_minus_directory[file_prefix_minus_directory.rindex("/")+1:len(file_prefix_minus_directory)]
   except ValueError: 
     pass
+  print("collect %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
+  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol"):
+    daq_macros.zebraDaq(angleStart,range_degrees,image_width,exposure_period,file_prefix_minus_directory,data_directory_name,file_number,3)
+  else:
+    daq_macros.vectorZebraScan(currentRequest)  
+  return #SHORT CIRCUIT
+
+#NOTE SHORT CIRCUIT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   detector_set_period(exposure_period)
   detector_set_exposure_time(exposure_time)
   detector_set_numimages(number_of_images)
   detector_set_filepath(data_directory_name)
   detector_set_fileprefix(file_prefix_minus_directory)
   detector_set_filenumber(file_number)
-  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),angleStart,angleStart,get_field("kappa"),get_field("phi"))
-  print("collect %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
+  detector_set_fileheader(angleStart,image_width,beamline_lib.motorPosFromDescriptor("detectorDist"),beamline_lib.motorPosFromDescriptor("wavelength"),get_field("theta"),exposure_period,beamline_support.getPvValFromDescriptor("beamCenterX"),beamline_support.getPvValFromDescriptor("beamCenterY"),"omega",angleStart,get_field("kappa"),get_field("phi"))
   detector_start()
   detector_waitArmed() #don't worry about this while we're not doing hardware triggers., not quite sure what it means
   if (daq_utils.detector_id == "EIGER-16"):
     if (detector_is_manual_trigger()):
-      detector_trigger()
-  
+      detector_trigger()  
   image_started = range_seconds
 #  time.sleep(0.3)  
   set_field("state","Expose")
-  if (protocol == "standard"):
+  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol"):
     gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used    
   else:
     daq_macros.vectorScan(currentRequest)  
