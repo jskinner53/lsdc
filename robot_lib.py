@@ -22,7 +22,7 @@ def finish():
       return 0
 
   
-def mountRobotSample(puckPos,pinPos,sampID):
+def mountRobotSample(puckPos,pinPos,sampID,init=0):
 
   absPos = (pinsPerPuck*puckPos)+pinPos+1
   if (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):
@@ -31,7 +31,10 @@ def mountRobotSample(puckPos,pinPos,sampID):
       print("absPos = " + str(absPos))
 
       try:
-        RobotControlLib.mount(absPos)
+        if (init):
+          RobotControlLib.mount(absPos)
+        else:
+          RobotControlLib._mount(absPos)          
         daq_lib.setGovRobotSA()
         return 1
       except Exception as e:

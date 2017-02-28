@@ -2470,7 +2470,7 @@ class controlMain(QtGui.QMainWindow):
         for j in xrange(numsteps):
           cellResult = cellResults[spotLineCounter]
           try:
-            spotcount = cellResult["spot_count"]
+            spotcount = cellResult["spot_count_no_ice"]
             filename =  cellResult["image"]            
           except TypeError:
             spotcount = 0
@@ -2500,7 +2500,7 @@ class controlMain(QtGui.QMainWindow):
 ##          cellResultsArrayIndex = cellCounter
           cellResult = cellResults_array[cellCounter]
           try:
-            spotcount = int(cellResult["spot_count"])
+            spotcount = int(cellResult["spot_count_no_ice"])
             cellFilename = cellResult["image"]
             d_min =  float(cellResult["d_min"])
             total_intensity =  int(cellResult["total_intensity"])

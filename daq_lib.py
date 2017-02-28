@@ -289,7 +289,7 @@ def mountSample(sampID):
         set_field("mounted_pin","")        
         db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample', info_dict={'puckPos':0,'pinPos':0,'sampleID':""})        
         (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,sampID)
-        if (robot_lib.mountRobotSample(puckPos,pinPos,sampID)):
+        if (robot_lib.mountRobotSample(puckPos,pinPos,sampID,init=0)):
           set_field("mounted_pin",sampID)
         else:
           return 0
@@ -299,7 +299,7 @@ def mountSample(sampID):
       return 1
   else: #nothing mounted
     (puckPos,pinPos,puckID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,sampID)
-    if (robot_lib.mountRobotSample(puckPos,pinPos,sampID)):
+    if (robot_lib.mountRobotSample(puckPos,pinPos,sampID,init=1)):
       set_field("mounted_pin",sampID)
     else:
       return 0
