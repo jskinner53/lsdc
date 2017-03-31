@@ -210,6 +210,8 @@ def setRobotGovState(stateString):
   beamline_support.setPvValFromDescriptor("robotGovGo",stateString)
 
 def setGovRobotSE():
+  if not (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):
+    return 1
   govTimeout = 120
   setRobotGovState("SE")
   startTime = time.time()
@@ -232,6 +234,8 @@ def setGovRobotSE():
     return 0
 
 def setGovRobotSA():
+  if not (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):
+    return 1  
   govTimeout = 120
   setRobotGovState("SA")
   startTime = time.time()
@@ -254,6 +258,8 @@ def setGovRobotSA():
     return 0
 
 def setGovRobotDA():
+  if not (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):
+    return 1  
   govTimeout = 120
   setRobotGovState("DA")
   startTime = time.time()
@@ -342,9 +348,10 @@ def runDCQueue(): #maybe don't run rasters from here???
         return 0
     db_lib.updatePriority(currentRequest["uid"],99999)
     refreshGuiTree() #just tells the GUI to repopulate the tree from the DB
-#    if (stateModule.gotoState("SampleAlignment")):
-    if (1):      
+#    if (setGovRobotDA()):
+    if (1):
       colStatus = collectData(currentRequest)
+##      setGovRobotSA()
     else:
       print("State violation DC")
       break
@@ -408,9 +415,9 @@ def collectData(currentRequest):
   elif (prot == "vector"):
 #    collect_vector_seq(currentRequest)
     if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):
-      imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+      imagesAttempted = collect_detector_seq_hw(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
     else:
-      imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)      
+      imagesAttempted = collect_detector_seq(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)      
   elif (prot == "multiCol"):
 #    daq_macros.multiCol(currentRequest)
     daq_macros.snakeRaster(currentRequest["uid"])    
@@ -445,9 +452,9 @@ def collectData(currentRequest):
         file_number_start = reqObj["file_number_start"]
         beamline_lib.mvaDescriptor("omega",sweep_start)
         if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):        
-          imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+          imagesAttempted = collect_detector_seq_hw(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
         else:
-          imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
+          imagesAttempted = collect_detector_seq(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
     elif (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
       characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
@@ -486,21 +493,25 @@ def collectData(currentRequest):
     else: #standard
       beamline_lib.mvaDescriptor("omega",sweep_start)
       if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):      
-        imagesAttempted = collect_detector_seq_hw(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
+        imagesAttempted = collect_detector_seq_hw(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)
       else:
-        imagesAttempted = collect_detector_seq(range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
+        imagesAttempted = collect_detector_seq(sweep_start,range_degrees,img_width,exposure_period,file_prefix,data_directory_name,file_number_start,currentRequest)        
   if (prot == "vector" or prot == "standard"):
     if (reqObj["fastDP"]):
       if (reqObj["fastEP"]):
         fastEPFlag = 1
       else:
         fastEPFlag = 0
+      if (daq_utils.beamline == "fmx"):
+        node = "cpu-009"
+      else:
+        node = "cpu-004"
       if (daq_utils.detector_id == "EIGER-16"):
         seqNum = int(detector_get_seqnum())
 #        seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")        
-        comm_s = os.environ["LSDCHOME"] + "/runFastDPH5.py " + data_directory_name + " " + file_prefix + " " + str(seqNum) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + "&"
+        comm_s = os.environ["LSDCHOME"] + "/runFastDPH5.py " + data_directory_name + " " + file_prefix + " " + str(seqNum) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + " " + node + "&"
       else:
-        comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + "&"
+        comm_s = os.environ["LSDCHOME"] + "/runFastDP.py " + data_directory_name + " " + file_prefix + " " + str(file_number_start) + " " + str(int(round(range_degrees/img_width))) + " " + str(currentRequest["uid"]) + " " + str(fastEPFlag) + " " + node + "&"
       print(comm_s)
       os.system(comm_s)
     if (reqObj["xia2"]):
@@ -514,13 +525,13 @@ def collectData(currentRequest):
 
     
 
-def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,currentRequest,z_target=0): #works for pilatus
+def collect_detector_seq(sweep_start,range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,currentRequest,z_target=0): #works for pilatus
   global image_started,allow_overwrite,abort_flag
 
   print("data directory = " + data_directory_name)
   reqObj = currentRequest["request_obj"]
   protocol = str(reqObj["protocol"])
-  sweep_start = reqObj["sweep_start"]%360.0
+  sweep_start = sweep_start%360.0
   if (protocol == "vector"):
     beamline_lib.mvaDescriptor("omega",sweep_start)    
   number_of_images = round(range_degrees/image_width)
@@ -554,8 +565,8 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   image_started = range_seconds
 #  time.sleep(0.3)  
   set_field("state","Expose")
-  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol"):
-    gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used    
+  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol" or protocol == "screen"):
+    gon_osc(angleStart,range_degrees,range_seconds) #0.0 is the angle start that's not used - NO! It is used!
   else:
     daq_macros.vectorScan(currentRequest)  
   detector_wait()
@@ -563,13 +574,13 @@ def collect_detector_seq(range_degrees,image_width,exposure_period,fileprefix,da
   set_field("state","Idle")        
   return number_of_images
 
-def collect_detector_seq_hw(range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,currentRequest,z_target=0): #works for pilatus
+def collect_detector_seq_hw(sweep_start,range_degrees,image_width,exposure_period,fileprefix,data_directory_name,file_number,currentRequest,z_target=0): #works for pilatus
   global image_started,allow_overwrite,abort_flag
 
   print("data directory = " + data_directory_name)
   reqObj = currentRequest["request_obj"]
   protocol = str(reqObj["protocol"])
-  sweep_start = reqObj["sweep_start"]%360.0
+  sweep_start = sweep_start%360.0
   if (protocol == "vector"):
     beamline_lib.mvaDescriptor("omega",sweep_start)    
   number_of_images = round(range_degrees/image_width)
@@ -588,7 +599,7 @@ def collect_detector_seq_hw(range_degrees,image_width,exposure_period,fileprefix
   except ValueError: 
     pass
   print("collect %f degrees for %f seconds %d images exposure_period = %f exposure_time = %f" % (range_degrees,range_seconds,number_of_images,exposure_period,exposure_time))
-  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol"):
+  if (protocol == "standard" or protocol == "characterize" or protocol == "ednaCol" or protocol == "screen"):
     daq_macros.zebraDaq(angleStart,range_degrees,image_width,exposure_period,file_prefix_minus_directory,data_directory_name,file_number,3)
   else:
     daq_macros.vectorZebraScan(currentRequest)  

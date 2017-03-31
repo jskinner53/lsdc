@@ -52,7 +52,9 @@ def mountRobotSample(puckPos,pinPos,sampID,init=0):
 def unmountRobotSample(puckPos,pinPos,sampID): #will somehow know where it came from
 
   absPos = (pinsPerPuck*puckPos)+pinPos+1
-  if (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):  
+  robotOnline = db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')
+  print("robot online = " + str(robotOnline))
+  if (robotOnline):  
     if (daq_lib.setGovRobotSE()):
       print("unmounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID))
       print("absPos = " + str(absPos))

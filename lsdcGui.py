@@ -743,6 +743,9 @@ class DataLocInfo(QtGui.QGroupBox):
         self.hBoxDPathParams3 = QtGui.QHBoxLayout()
         self.dataPathLabel = QtGui.QLabel('Data Path:')
         self.dataPath_ledit = QtGui.QLineEdit()
+        self.dataPath_ledit.setFrame(False)
+#        self.dataPath_ledit = QtGui.QLabel()        
+        self.dataPath_ledit.setReadOnly(True)
         self.hBoxDPathParams3.addWidget(self.dataPathLabel)
         self.hBoxDPathParams3.addWidget(self.dataPath_ledit)
         self.hBoxDPathParams2.addWidget(self.dataNumstartLabel)
@@ -1099,15 +1102,19 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams5.addWidget(self.moveDetDistButton)        
         hBoxColParams6 = QtGui.QHBoxLayout()
         hBoxColParams6.setAlignment(QtCore.Qt.AlignLeft) 
-        centeringLabel = QtGui.QLabel('Centering:')
-#        centeringOptionList = ["Interactive","AutoRaster","AutoLoop"]
-        centeringOptionList = ["Interactive","Automatic"]
+        hBoxColParams7 = QtGui.QHBoxLayout()
+        hBoxColParams7.setAlignment(QtCore.Qt.AlignLeft) 
+        centeringLabel = QtGui.QLabel('Sample Centering:')
+        centeringLabel.setFixedWidth(140)        
+        centeringOptionList = ["Interactive","AutoLoop","AutoRaster"]
+#        centeringOptionList = ["Interactive","Automatic"]
         self.centeringComboBox = QtGui.QComboBox(self)
         self.centeringComboBox.addItems(centeringOptionList)
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
         protoLabel.setAlignment(QtCore.Qt.AlignCenter)                 
-        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db
+        protoOptionList = ["standard","screen","raster","vector","multiCol"] # these should probably come from db
+#        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db        
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1116,8 +1123,8 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams6.addWidget(colResoLabel)
         hBoxColParams6.addWidget(self.resolution_ledit)
         
-#        hBoxColParams6.addWidget(centeringLabel)
-#        hBoxColParams6.addWidget(self.centeringComboBox)
+        hBoxColParams7.addWidget(centeringLabel)
+        hBoxColParams7.addWidget(self.centeringComboBox)
 
         self.processingOptionsFrame = QFrame()
         self.hBoxProcessingLayout1= QtGui.QHBoxLayout()        
@@ -1238,6 +1245,7 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1.addLayout(hBoxColParams4)
         vBoxColParams1.addLayout(hBoxColParams5)
         vBoxColParams1.addLayout(hBoxColParams6)
+        vBoxColParams1.addLayout(hBoxColParams7)        
 #        vBoxColParams1.addLayout(self.hBoxRasterLayout1)
         vBoxColParams1.addWidget(self.rasterParamsFrame)
         vBoxColParams1.addWidget(self.multiColParamsFrame)
@@ -1245,7 +1253,7 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1.addWidget(self.characterizeParamsFrame)
         vBoxColParams1.addWidget(self.processingOptionsFrame)
         self.vectorParamsFrame.hide()
-        self.processingOptionsFrame.hide()
+#        self.processingOptionsFrame.hide()
         self.rasterParamsFrame.hide()
         self.multiColParamsFrame.hide()
         self.characterizeParamsFrame.hide()
@@ -1268,8 +1276,9 @@ class controlMain(QtGui.QMainWindow):
         vBoxEScanTool.addWidget(self.periodicTableTool)
         vBoxEScanTool.addWidget(self.EScanDataPathGBTool)
         self.EScanToolFrame.setLayout(vBoxEScanTool)
-        self.mainToolBox.addItem(self.mainColFrame,"Standard Collection")
-        self.mainToolBox.addItem(self.EScanToolFrame,"Energy Scan")
+        self.mainToolBox.addItem(self.mainColFrame,"Collection Parameters")        
+##########        self.mainToolBox.addItem(self.mainColFrame,"Standard Collection")
+#################        self.mainToolBox.addItem(self.EScanToolFrame,"Energy Scan")
         editSampleButton = QtGui.QPushButton("Apply Changes") 
         editSampleButton.clicked.connect(self.editSelectedRequestsCB)
         hBoxPriorityLayout1= QtGui.QHBoxLayout()        
@@ -1401,8 +1410,8 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout = QtGui.QHBoxLayout()
         setDC2CPButton = QtGui.QPushButton("Set DC\nStart")
         setDC2CPButton.clicked.connect(self.setDCStartCB)        
-        omegaLabel = QtGui.QLabel("Omega")
-        omegaRBLabel = QtGui.QLabel("Readback:")
+        omegaLabel = QtGui.QLabel("Omega:")
+#        omegaRBLabel = QtGui.QLabel("Readback:")
         self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70) #creates a video lag
 #        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".RBV",self,70,highlight_on_change=False) #creates a video lag        
 #        self.sampleOmegaRBVLedit = QtEpicsPVLabel(daq_utils.motor_dict["omega"] + ".VAL",self,70) #this works better for remote!        
@@ -1410,25 +1419,31 @@ class controlMain(QtGui.QMainWindow):
         self.sampleOmegaMoveLedit = QtEpicsPVEntry(daq_utils.motor_dict["omega"] + ".VAL",self,70,2)
         moveOmegaButton = QtGui.QPushButton("Move")
         moveOmegaButton.clicked.connect(self.moveOmegaCB)
+        omegaTweakNegButtonFine = QtGui.QPushButton("-5")        
         omegaTweakNegButton = QtGui.QPushButton("<")
         omegaTweakNegButton.clicked.connect(self.omegaTweakNegCB)
+        omegaTweakNegButtonFine.clicked.connect(functools.partial(self.omegaTweakCB,-5))
         self.omegaTweakVal_ledit = QtGui.QLineEdit()
         self.omegaTweakVal_ledit.setFixedWidth(60)
-        self.omegaTweakVal_ledit.setText("90.0")         
+        self.omegaTweakVal_ledit.setText("90")
+        omegaTweakPosButtonFine = QtGui.QPushButton("+5")        
         omegaTweakPosButton = QtGui.QPushButton(">")
         omegaTweakPosButton.clicked.connect(self.omegaTweakPosCB)
+        omegaTweakPosButtonFine.clicked.connect(functools.partial(self.omegaTweakCB,5))
         hBoxSampleOrientationLayout.addWidget(setDC2CPButton)
         hBoxSampleOrientationLayout.addWidget(omegaLabel)
-        hBoxSampleOrientationLayout.addWidget(omegaRBLabel)
+#        hBoxSampleOrientationLayout.addWidget(omegaRBLabel)
         hBoxSampleOrientationLayout.addWidget(self.sampleOmegaRBVLedit.getEntry())
         hBoxSampleOrientationLayout.addWidget(omegaSPLabel)
         hBoxSampleOrientationLayout.addWidget(self.sampleOmegaMoveLedit.getEntry())
         hBoxSampleOrientationLayout.addWidget(moveOmegaButton)
-        spacerItem = QtGui.QSpacerItem(50, 1, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
-##        hBoxSampleOrientationLayout.addItem(spacerItem)
-        hBoxSampleOrientationLayout.addWidget(omegaTweakNegButton)
+        spacerItem = QtGui.QSpacerItem(100, 1, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        hBoxSampleOrientationLayout.addItem(spacerItem)
+        hBoxSampleOrientationLayout.addWidget(omegaTweakNegButtonFine)
+        hBoxSampleOrientationLayout.addWidget(omegaTweakNegButton)        
         hBoxSampleOrientationLayout.addWidget(self.omegaTweakVal_ledit)
         hBoxSampleOrientationLayout.addWidget(omegaTweakPosButton)
+        hBoxSampleOrientationLayout.addWidget(omegaTweakPosButtonFine)        
         hBoxSampleOrientationLayout.addStretch(1)
         hBoxVidControlLayout = QtGui.QHBoxLayout()
 #        lightLevelLabel = QtGui.QLabel("Sample Illumination:")
@@ -1457,12 +1472,13 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleAlignLayout = QtGui.QHBoxLayout()
         centerLoopButton = QtGui.QPushButton("Center\nLoop")
         centerLoopButton.clicked.connect(self.autoCenterLoopCB)
-        centerLoopButton.setEnabled(False)                        
+##        centerLoopButton.setEnabled(False)                        
 ##        rasterLoopButton = QtGui.QPushButton("Raster\nLoop")
 ##        rasterLoopButton.clicked.connect(self.autoRasterLoopCB)
         measureButton = QtGui.QPushButton("Measure")
         measureButton.clicked.connect(self.measurePolyCB)
-        loopShapeButton = QtGui.QPushButton("Draw\nRaster")
+        loopShapeButton = QtGui.QPushButton("Add Raster\nto Queue")
+#        loopShapeButton = QtGui.QPushButton("Draw\nRaster")        
         loopShapeButton.clicked.connect(self.drawInteractiveRasterCB)
         runRastersButton = QtGui.QPushButton("Run\nRaster")
         runRastersButton.clicked.connect(self.runRastersCB)
@@ -1521,12 +1537,12 @@ class controlMain(QtGui.QMainWindow):
 #        self.vidActionRasterMoveRadio.toggled.connect(self.vidActionToggledCB)
 #        self.vidActionRadioGroup.addButton(self.vidActionRasterMoveRadio)
         hBoxRadioLayout100.addWidget(self.vidActionC2CRadio)
-        hBoxRadioLayout100.addWidget(self.vidActionDefineCenterRadio)        
         hBoxRadioLayout100.addWidget(self.vidActionRasterExploreRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterSelectRadio)
         hBoxRadioLayout100.addWidget(self.vidActionRasterDefRadio)
         hBoxRadioLayout100.addWidget(rasterEvalLabel)
         hBoxRadioLayout100.addWidget(self.rasterEvalComboBox)
+        hBoxRadioLayout100.addWidget(self.vidActionDefineCenterRadio)                
 #        hBoxRadioLayout100.addWidget(self.vidActionPolyRasterDefRadio)
 #######        hBoxRadioLayout100.addWidget(self.vidActionRasterMoveRadio)
 ##        vBoxDFlayout.addLayout(hBoxRadioLayout1)                   
@@ -2201,6 +2217,8 @@ class controlMain(QtGui.QMainWindow):
         reso_s = "%.2f" % (daq_utils.calc_reso(daq_utils.det_radius,float(text),daq_utils.energy2wave(float(self.energy_ledit.text())),0))
       except ValueError:
         reso_s = "50.0"
+      except TypeError:
+        reso_s = "50.0"
       self.resolution_ledit.setText(reso_s)
       
     def energyTextChanged(self,text):
@@ -2344,6 +2362,11 @@ class controlMain(QtGui.QMainWindow):
       self.send_to_server(comm_s)
 
 
+    def omegaTweakCB(self,tv):
+      comm_s = "mvrDescriptor(\"omega\"," + str(tv) + ")"
+      self.send_to_server(comm_s)
+
+      
     def omega90CB(self):
       self.send_to_server("mvrDescriptor(\"omega\",90)")
 
@@ -2765,10 +2788,13 @@ class controlMain(QtGui.QMainWindow):
 #      pen = QtGui.QPen(QtCore.Qt.green)
 ##      pen.setStyle(QtCore.Qt.NoPen) #I think this is why we don't see the square!
       newRasterCellList = []
-      if (rasterDef["rowDefs"][0]["start"]["y"] == rasterDef["rowDefs"][0]["end"]["y"]): #this is a horizontal raster
-        rasterDir = "horizontal"
-      else:
-        rasterDir = "vertical"          
+      try:
+        if (rasterDef["rowDefs"][0]["start"]["y"] == rasterDef["rowDefs"][0]["end"]["y"]): #this is a horizontal raster
+          rasterDir = "horizontal"
+        else:
+          rasterDir = "vertical"
+      except IndexError:
+        return
       for i in xrange(len(rasterDef["rowDefs"])):
         rowCellCount = 0
         for j in xrange(rasterDef["rowDefs"][i]["numsteps"]):
@@ -3022,6 +3048,8 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addRequestsToAllSelectedCB(self):
+      if (self.protoComboBox.currentText() == "raster"): #it confused people when they didn't need to add rasters explicitly
+        return
       selmod = self.dewarTree.selectionModel()
       selection = selmod.selection()
       indexes = selection.indexes()
@@ -3075,7 +3103,7 @@ class controlMain(QtGui.QMainWindow):
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
-          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
 #attempt here to select a newly created request.        
           self.SelectedItemData = newSampleRequestID
           newSampleRequest = db_lib.getRequestByID(newSampleRequestID)
@@ -3108,7 +3136,7 @@ class controlMain(QtGui.QMainWindow):
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
-          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
 #attempt here to select a newly created request.        
           self.SelectedItemData = newSampleRequestID
           
@@ -3163,7 +3191,7 @@ class controlMain(QtGui.QMainWindow):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
-             newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
+             newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
 #attempt here to select a newly created request.        
              self.SelectedItemData = newSampleRequestID
              
@@ -3173,11 +3201,17 @@ class controlMain(QtGui.QMainWindow):
           message = QtGui.QErrorMessage(self)
           message.setModal(True)
           message.showMessage("You need to select a centering.")
-      else: #autocenter
+      else: #autocenter or interactive
         colRequest=self.selectedSampleRequest
         sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
         runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
         reqObj = colRequest["request_obj"]
+        centeringOption = str(self.centeringComboBox.currentText())
+        reqObj["centeringOption"] = centeringOption        
+        if (centeringOption == "Interactive"): #user centered manually
+          reqObj["pos_x"] = float(self.sampx_pv.get())
+          reqObj["pos_y"] = float(self.sampy_pv.get())
+          reqObj["pos_z"] = float(self.sampz_pv.get())
         reqObj["runNum"] = runNum
         reqObj["sweep_start"] = float(self.osc_start_ledit.text())
         reqObj["sweep_end"] = float(self.osc_end_ledit.text())
@@ -3231,7 +3265,7 @@ class controlMain(QtGui.QMainWindow):
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           reqObj["vectorParams"] = vectorParams
         colRequest["request_obj"] = reqObj
-        newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=0)
+        newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
 #attempt here to select a newly created request.        
         self.SelectedItemData = newSampleRequestID
         newSampleRequest = db_lib.getRequestByID(newSampleRequestID)

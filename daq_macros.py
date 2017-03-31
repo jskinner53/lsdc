@@ -333,19 +333,36 @@ def changeImageCenterLowMagZoomObsolete(x,y):
   
 
 def autoRasterLoop(currentRequest):
-  return 1 #short circuit for commissioning
+  reqObj = currentRequest["request_obj"]
+  if ("centeringOption" in reqObj):
+    if (reqObj["centeringOption"] == "AutoLoop"):
+      status = loop_center_xrec()
+      if (status== 0):
+        mvrDescriptor("sampleX",200)
+        status = loop_center_xrec()                
+      time.sleep(2.0)
+      status = loop_center_xrec()              
+      return status
+#  return 1 #short circuit for commissioning
   set_field("xrecRasterFlag","100")        
   sampleID = currentRequest["sample"]
   print("auto raster " + str(sampleID))
   status = loop_center_xrec()
+  if (status== 0):
+    mvrDescriptor("sampleX",200)
+    status = loop_center_xrec()                
+  time.sleep(2.0)
+  status = loop_center_xrec()
+  time.sleep(2.0)
   status = loop_center_xrec()  
   if (status == -99): #abort, never hit this
     db_lib.updatePriority(currentRequest["uid"],5000)
     return 0    
   if not (status):
     return 0
-  time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
-  runRasterScan(currentRequest,"LoopShape")
+  time.sleep(2.0) #looks like I really need this sleep, they really improve the appearance 
+#  runRasterScan(currentRequest,"LoopShape")
+  runRasterScan(currentRequest,"Coarse")  
   time.sleep(1.5) 
   runRasterScan(currentRequest,"Fine")
   time.sleep(1) 
@@ -364,7 +381,7 @@ def multiCol(currentRequest):
   runRasterScan(currentRequest,"LoopShape")
 #  time.sleep(1) 
 
-def loop_center_xrec():
+def loop_center_xrec_slow():
   global face_on
 
   daq_lib.abort_flag = 0    
@@ -375,7 +392,7 @@ def loop_center_xrec():
       return 0
     mvaDescriptor("omega",i)
     pic_prefix = "findloop_" + str(i)
-    time.sleep(1.0) #for video lag. This sucks
+    time.sleep(1.5) #for video lag. This sucks
     daq_utils.take_crystal_picture(filename=pic_prefix)
   comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40.txt xrec_result.txt"
   print(comm_s)
@@ -450,7 +467,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 
 
 
-def generateGridMap(rasterRequest):
+def generateGridMap(rasterRequest,rasterEncoderMap=None):
   global dialsResultDict,rasterRowResultsList
 
   reqObj = rasterRequest["request_obj"]
@@ -462,45 +479,74 @@ def generateGridMap(rasterRequest):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
   filePrefix = reqObj["directory"]+"/"+reqObj["file_prefix"]
-  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")  
-#  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/testdata/Eiger1M/*.cbf")
-  testImgCount = 0
   rasterCellMap = {}
   os.system("mkdir -p " + reqObj["directory"])
   for i in range(len(rasterDef["rowDefs"])):
     numsteps = float(rasterDef["rowDefs"][i]["numsteps"])
-    if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-      startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
-    else:
-      startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
-    startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
+#next 6 lines to differentiate horizontal vs vertical raster    
+    startX = rasterDef["rowDefs"][i]["start"]["x"]
+    endX = rasterDef["rowDefs"][i]["end"]["x"]
+    startY = rasterDef["rowDefs"][i]["start"]["y"]
+    endY = rasterDef["rowDefs"][i]["end"]["y"]
+    deltaX = abs(endX-startX)
+    deltaY = abs(endY-startY)
 
-    xRelativeMove = startX
-    yzRelativeMove = startY*sin(omegaRad)
-    yyRelativeMove = startY*cos(omegaRad)
-
-
-    xMotAbsoluteMove = rasterStartX+xRelativeMove    
-    yMotAbsoluteMove = rasterStartY-yyRelativeMove
-    zMotAbsoluteMove = rasterStartZ-yzRelativeMove
-
-    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-    for j in range(numsteps):
+    if (deltaX>deltaY): #horizontal raster
       if (i%2 == 0): #left to right if even, else right to left - a snake attempt
-        xMotCellAbsoluteMove = xMotAbsoluteMove+(j*stepsize)
+        startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
       else:
-        xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
-      if (daq_utils.detector_id == "EIGER-16"):
-        dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+        startX = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["x"]-(stepsize/2.0)
+      startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0)
+      xRelativeMove = startX
+      yzRelativeMove = startY*sin(omegaRad)
+      yyRelativeMove = startY*cos(omegaRad)
+      xMotAbsoluteMove = rasterStartX+xRelativeMove    
+      yMotAbsoluteMove = rasterStartY-yyRelativeMove
+      zMotAbsoluteMove = rasterStartZ-yzRelativeMove
+      numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
+      for j in range(numsteps):
+        if (i%2 == 0): #left to right if even, else right to left - a snake attempt
+          xMotCellAbsoluteMove = xMotAbsoluteMove+(j*stepsize)
+        else:
+          xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
+        if (daq_utils.detector_id == "EIGER-16"):
+          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+        else:
+          dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
+        rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
+        rasterCellMap[dataFileName[:-4]] = rasterCellCoords
+    else: #vertical raster
+      if (i%2 == 0): #top to bottom if even, else bottom to top - a snake attempt
+        startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
       else:
-        dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
+        startY = (numsteps*stepsize) + rasterDef["rowDefs"][i]["start"]["y"]-(stepsize/2.0)
+      startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
+      xRelativeMove = startX
+      yzRelativeMove = startY*sin(omegaRad)
+      yyRelativeMove = startY*cos(omegaRad)
+      xMotAbsoluteMove = rasterStartX+xRelativeMove    
+      yMotAbsoluteMove = rasterStartY-yyRelativeMove
+      zMotAbsoluteMove = rasterStartZ-yzRelativeMove
+      numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
+      for j in range(numsteps):
+        if (i%2 == 0): #top to bottom if even, else bottom to top - a snake attempt
+          yMotCellAbsoluteMove = yMotAbsoluteMove-(cos(omegaRad)*(j*stepsize))
+          zMotCellAbsoluteMove = zMotAbsoluteMove-(sin(omegaRad)*(j*stepsize))          
+        else:
+          yMotCellAbsoluteMove = yMotAbsoluteMove+(cos(omegaRad)*(j*stepsize))
+          zMotCellAbsoluteMove = zMotAbsoluteMove+(sin(omegaRad)*(j*stepsize))          
+        if (daq_utils.detector_id == "EIGER-16"):
+          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+        else:
+          dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
+        rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotCellAbsoluteMove,"z":zMotCellAbsoluteMove}
+        rasterCellMap[dataFileName[:-4]] = rasterCellCoords
 
- ##     comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName      
-##      os.system(comm_s)
-      testImgCount+=1
-      rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
-      rasterCellMap[dataFileName[:-4]] = rasterCellCoords
 #commented out all of the processing, as this should have been done by the thread
+  if (rasterEncoderMap!= None):
+    rasterCellMap = rasterEncoderMap
+  for fname in rasterCellMap.keys():
+    print(fname + " " + str(rasterCellMap[fname]["x"]) + " " + str(rasterCellMap[fname]["y"]) + " " + str(rasterCellMap[fname]["z"]))
   if ("parentReqID" in rasterRequest["request_obj"]):
     parentReqID = rasterRequest["request_obj"]["parentReqID"]
   else:
@@ -630,48 +676,28 @@ def snakeRaster(rasterReqID,grain=""):
   rasterStartZ = float(rasterDef["z"])
   omegaRad = math.radians(omega)
 #  current_omega_mod = beamline_lib.get_epics_motor_pos(beamline_support.pvNameSuffix_from_descriptor("omega"))%360.0
-
-# 2/17/16 - a few things for integrating dials/spotfinding into this routine, this is just to fake the data
-##  testImgFileList = glob.glob("/GPFS/CENTRAL/XF17ID1/skinner/eiger16M/cbf/*.cbf")
-##  testImgCount = 0
-##  for i in range(0,len(rasterDef["rowDefs"])):
-##    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])    
   rowCount = len(rasterDef["rowDefs"])
   rasterRowResultsList = [{} for i in range(0,rowCount)]    
   processedRasterRowCount = 0
-  
+  rasterEncoderMap = {}
   for i in range(len(rasterDef["rowDefs"])):
     if (daq_lib.abort_flag == 1):
       return 0
     numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
-#6/16  a few things for integrating dials/spotfinding into this routine, this is just to fake the data 
-##    for j in range(0,numsteps):
-##      rasterFilePrefix = dataFilePrefix + "_Raster_"
-##n      dataFileName = daq_utils.create_filename(rasterFilePrefix+str(i),j+1)
-##      os.system("mkdir -p " + reqObj["directory"])
-##      comm_s = "ln -sf " + testImgFileList[testImgCount] + " " + dataFileName
-##      os.system(comm_s)
-##      testImgCount+=1
-    
-#    startX = rasterDef["rowDefs"][i]["start"]["x"]+(stepsize/2.0)
-#    endX = rasterDef["rowDefs"][i]["end"]["x"]-(stepsize/2.0)    
-
     startX = rasterDef["rowDefs"][i]["start"]["x"]
     endX = rasterDef["rowDefs"][i]["end"]["x"]
-    
     startY = rasterDef["rowDefs"][i]["start"]["y"]
     endY = rasterDef["rowDefs"][i]["end"]["y"]
-
     deltaX = abs(endX-startX)
     deltaY = abs(endY-startY)
     if (deltaX>deltaY): #horizontal raster
-      startX = startX + (stepsize/2.0)
-      endX = endX - (stepsize/2.0)
+####      startX = startX + (stepsize/2.0)      
+####      endX = endX - (stepsize/2.0)      
       startY = startY + (stepsize/2.0)
       endY = startY
     else: #vertical raster
-      startY = startY + (stepsize/2.0)
-      endY = endY - (stepsize/2.0)
+####      startY = startY + (stepsize/2.0)
+####      endY = endY - (stepsize/2.0)
       startX = startX + (stepsize/2.0)
       endX = startX
       
@@ -691,8 +717,7 @@ def snakeRaster(rasterReqID,grain=""):
     
     yyRelativeMove = yRelativeMove*cos(omegaRad)
     yzRelativeMove = yRelativeMove*sin(omegaRad)
-      
-      
+
     xEnd = xMotAbsoluteMove + xRelativeMove
     yEnd = yMotAbsoluteMove - yyRelativeMove
     zEnd = zMotAbsoluteMove - yzRelativeMove
@@ -736,6 +761,11 @@ def snakeRaster(rasterReqID,grain=""):
       vectorWait()
       detector_wait()
 # add the threading dials stuff here, and the thread routine elsewhere.
+    if (daq_utils.beamline == "amx"):        
+      rasterRowEncoderVals = {"x":beamline_support.getPvValFromDescriptor("zebraEncX"),"y":beamline_support.getPvValFromDescriptor("zebraEncY"),"z":beamline_support.getPvValFromDescriptor("zebraEncZ"),"omega":beamline_support.getPvValFromDescriptor("zebraEncOmega")}
+      for j in range (0,numsteps):
+        dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+        rasterEncoderMap[dataFileName[:-4]] = {"x":rasterRowEncoderVals["x"][j],"y":rasterRowEncoderVals["y"][j],"z":rasterRowEncoderVals["z"][j],"omega":rasterRowEncoderVals["omega"][j]}
     if (daq_utils.detector_id == "EIGER-16"):
 #      seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
       seqNum = int(det_lib.detector_get_seqnum())
@@ -754,8 +784,10 @@ def snakeRaster(rasterReqID,grain=""):
     print(processedRasterRowCount)
     if (processedRasterRowCount == rowCount):
       break
-
-  rasterResult = generateGridMap(rasterRequest) #I think rasterRequest is entire request, of raster type
+  if (daq_utils.beamline == "amx"):        
+    rasterResult = generateGridMap(rasterRequest,rasterEncoderMap) #I think rasterRequest is entire request, of raster type    
+  else:
+    rasterResult = generateGridMap(rasterRequest)     
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
   protocol = reqObj["protocol"]
   print("protocol = " + protocol)
@@ -766,7 +798,8 @@ def snakeRaster(rasterReqID,grain=""):
       multiColThreshold  = reqObj["diffCutoff"]         
     gotoMaxRaster(rasterResult,multiColThreshold=multiColThreshold) 
   else:
-    if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
+#    if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
+    if (1):
       gotoMaxRaster(rasterResult)
 #  print(rasterRequest)
   rasterRequestID = rasterRequest["uid"]
@@ -776,6 +809,7 @@ def snakeRaster(rasterReqID,grain=""):
   
   db_lib.updatePriority(rasterRequestID,-1)  
   set_field("xrecRasterFlag",rasterRequest["uid"])
+  daq_lib.setGovRobotSA()      
   return 1
 
 
@@ -785,6 +819,10 @@ def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
   if (rasterType=="Fine"):
     set_field("xrecRasterFlag","100")    
     rasterReqID = defineRectRaster(currentRequest,50,50,10) 
+    snakeRaster(rasterReqID)
+  elif (rasterType=="Coarse"):
+    set_field("xrecRasterFlag","100")    
+    rasterReqID = defineRectRaster(currentRequest,330,210,30) 
     snakeRaster(rasterReqID)
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag","100")    
@@ -873,8 +911,8 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   dataDirectory = parentRequest["request_obj"]['directory']+"multi_"+str(locIndex)
   runNum = parentRequest["request_obj"]['runNum']
   tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
-  sweepStart = currentOmega - 5.0
-  sweepEnd = currentOmega + 5.0
+  sweepStart = currentOmega - 10.0
+  sweepEnd = currentOmega + 10.0
   imgWidth = parentRequest["request_obj"]['img_width']
   exptime = parentRequest["request_obj"]['exposure_time']
   currentDetDist = parentRequest["request_obj"]['detDist']
@@ -1057,14 +1095,21 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
 def getXrecLoopShape(currentRequest):
   sampleID = currentRequest["sample"]
 #  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
-  for i in range(4):
-    if (daq_lib.abort_flag == 1):
-      return 0
-    mvaDescriptor("omega",i*30)
-    pic_prefix = "findloopshape_" + str(i)
-    time.sleep(1.0) # for vid lag, sucks
-    daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
-  comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
+  os.system("chmod 777 .")
+  pic_prefix = "findloopshape"
+#  zebraCamDaq(0,360,40,1,"xtalPic2","/GPFS/CENTRAL/XF17ID2/soares/Between_Users/skinner",1)
+#  zebraCamDaq(0,360,40,.2,pic_prefix,os.getcwd(),0)
+  zebraCamDaq(0,120,30,.4,pic_prefix,os.getcwd(),0)    
+  comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec_30_Fast.txt xrec30_result.txt"
+
+#  for i in range(4):
+#    if (daq_lib.abort_flag == 1):
+#      return 0
+#    mvaDescriptor("omega",i*30)
+#    pic_prefix = "findloopshape_" + str(i)
+#    time.sleep(2.0) # for vid lag, sucks
+#    daq_utils.take_crystal_picture(filename=pic_prefix,czoom=1)
+#  comm_s = "xrec30 " + os.environ["CONFIGDIR"] + "/xrec30.txt xrec30_result.txt"
   os.system(comm_s)
   print ("face on = " + str(face_on))
   mvaDescriptor("omega",face_on) #global, yuk.
@@ -1106,11 +1151,14 @@ def eScan(energyScanRequest):
   print("energy scan for " + str(targetEnergy))
   scan_element = "Se"
   mvaDescriptor("energy",targetEnergy)
+  if not (daq_lib.setGovRobotDA()):
+    return
   open_shutter()
   scanID = RE(relative_scan([mercury],vdcm.e,-20,20,41),[LivePlot("mercury_mca_rois_roi0_count")])
 #  scanID = RE(relative_scan([mercury],vdcm.e,-40,40,80),[LivePlot("mercury_mca_rois_roi0_count")])  
 #  scanID = RE(relative_scan([mercury],vdcm.e,-60,60,40))  
   close_shutter()
+  daq_lib.setGovRobotSA()  
   scanData = db[scanID[0]]
   for ev in get_events(scanData):
     if ('mercury_mca_spectrum' in ev['data']):
@@ -1263,7 +1311,8 @@ def vectorZebraScan(vecRequest):
   beamline_support.setPvValFromDescriptor("vectorNumFrames",numImages)
   beamline_support.setPvValFromDescriptor("vectorGo",1)
   scanWidth = float(numImages)*imgWidth
-  zebraVecDaq(sweep_start_angle,scanWidth,imgWidth,expTime,numImages,file_prefix,data_directory_name,file_number_start)  
+  zebraVecDaq(sweep_start_angle,scanWidth,imgWidth,expTime,numImages,file_prefix,data_directory_name,file_number_start)
+  daq_lib.setGovRobotSA()    
 #  vectorWait()
   
 
@@ -1317,7 +1366,7 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
     daq_utils.take_crystal_picture(reqID=charRequest["uid"])
     charRequest["request_obj"]["sweep_start"] = colstart
-    imagesAttempted = collect_detector_seq(dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
+    imagesAttempted = collect_detector_seq(colstart,dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()
@@ -1401,12 +1450,137 @@ def zebraWait():
     time.sleep(.1)
     if (beamline_support.getPvValFromDescriptor("zebraArmOut") == 0):
       break
-    
+
+
+def loop_center_xrec():
+  global face_on
+
+  if (daq_utils.beamline == "fmx"):    
+    return loop_center_xrec_slow()
+  daq_lib.abort_flag = 0    
+  os.system("chmod 777 .")
+  pic_prefix = "findloop"
+#  zebraCamDaq(0,360,40,1,"xtalPic2","/GPFS/CENTRAL/XF17ID2/soares/Between_Users/skinner",1)
+#  zebraCamDaq(0,360,40,.2,pic_prefix,os.getcwd(),0)
+  zebraCamDaq(0,360,40,.4,pic_prefix,os.getcwd(),0)    
+  comm_s = "xrec " + os.environ["CONFIGDIR"] + "/xrec_360_40Fast.txt xrec_result.txt"
+  print(comm_s)
+  os.system(comm_s)
+  xrec_out_file = open("xrec_result.txt","r")
+  target_angle = 0.0
+  radius = 0
+  x_centre = 0
+  y_centre = 0
+  reliability = 0
+  for result_line in xrec_out_file.readlines():
+    print(result_line)
+    tokens = result_line.split()
+    tag = tokens[0]
+    val = tokens[1]
+    if (tag == "TARGET_ANGLE"):
+      target_angle = float(val )
+    elif (tag == "RADIUS"):
+      radius = float(val )
+    elif (tag == "Y_CENTRE"):
+      y_centre_xrec = float(val )
+    elif (tag == "X_CENTRE"):
+      x_centre_xrec = float(val )
+    elif (tag == "RELIABILITY"):
+      reliability = int(val )
+    elif (tag == "FACE"):
+      face_on = float(tokens[3])
+  xrec_out_file.close()
+  xrec_check_file = open("Xrec_check.txt","r")  
+  check_result =  int(xrec_check_file.read(1))
+  print("result = " + str(check_result))
+  xrec_check_file.close()
+  if (reliability < 70 or check_result == 0): #bail if xrec couldn't align loop
+    return 0
+  mvaDescriptor("omega",target_angle)
+#  x_center = daq_utils.highMagPixX/2
+#  y_center = daq_utils.highMagPixY/2
+  x_center = daq_utils.lowMagPixX/2
+  y_center = daq_utils.lowMagPixY/2
   
+#  set_epics_pv("image_X_center","A",x_center)
+#  set_epics_pv("image_Y_center","A",y_center)
+  print("center on click " + str(x_center) + " " + str(y_center-radius))
+  print("center on click " + str((x_center*2) - y_centre_xrec) + " " + str(x_centre_xrec))
+#  fovx = daq_utils.highMagFOVx
+#  fovy = daq_utils.highMagFOVy
+  fovx = daq_utils.lowMagFOVx
+  fovy = daq_utils.lowMagFOVy
+  
+  center_on_click(x_center,y_center-radius,fovx,fovy,source="macro")
+  center_on_click((x_center*2) - y_centre_xrec,x_centre_xrec,fovx,fovy,source="macro")
+#  center_on_click(y_centre_xrec,x_centre_xrec,source="macro")  
+  mvaDescriptor("omega",face_on)
+  #now try to get the loopshape starting from here
+  return 1
+
+  
+
+def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
+#careful - there's total exposure time, exposure period, exposure time
+
+#imgWidth will be something like 40 for xtalCenter
+  beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",0)  
+  angle_end = angle_start+scanWidth
+  numImages = int(round(scanWidth/imgWidth))
+  detector_dead_time = .0001 #put this in config.
+  total_exposure_time = exposurePeriodPerImage*numImages
+  exposureTimePerImage =  exposurePeriodPerImage - detector_dead_time
+  time.sleep(1.0)  
+  beamline_support.setPvValFromDescriptor("oscOmegaStart",angle_start)
+  beamline_support.setPvValFromDescriptor("oscOmegaEnd",angle_end)
+  beamline_support.setPvValFromDescriptor("oscDuration",total_exposure_time)
+  beamline_support.setPvValFromDescriptor("oscGo",1)
+  while (1):
+    time.sleep(.1)
+    if (beamline_support.getPvValFromDescriptor("daqReady") == 1):
+      break
+  zebraDaqPrep()
+  beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
+  time.sleep(1.0)
+  beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
+  beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
+  beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
+  beamline_support.setPvValFromDescriptor("zebraGateWidth",imgWidth/2) #why divide by 2 here and not elsewhere?
+  beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)
+  beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)
+
+  beamline_support.setPvValFromDescriptor("lowMagAcquire",0)
+  time.sleep(1)
+#  beamline_support.setPvValFromDescriptor("lowMagImMode",1)
+  beamline_support.setPvValFromDescriptor("lowMagTrigMode",1)
+#  beamline_support.setPvValFromDescriptor("lowMagNumImages",numImages)
+  beamline_support.setPvValFromDescriptor("lowMagJpegNumImages",numImages)
+  beamline_support.setPvValFromDescriptor("lowMagJpegFilePath",data_directory_name)
+  beamline_support.setPvValFromDescriptor("lowMagJpegFileName",filePrefix)
+  beamline_support.setPvValFromDescriptor("lowMagJpegFileNumber",1)  
+#  beamline_support.setPvValFromDescriptor("lowMagJpegEnableCallbacks",0)
+  beamline_support.setPvValFromDescriptor("lowMagJpegCapture",1)  
+  beamline_support.setPvValFromDescriptor("lowMagAcquire",1)
+ # while(1):
+#    if (beamline_support.getPvValFromDescriptor("lowMagDetStateRBV") == 1):
+#      break
+  zebraArm()
+  time.sleep(1.0)  
+  beamline_support.setPvValFromDescriptor("daqGo",1)
+  zebraWait()
+#  beamline_support.setPvValFromDescriptor("lowMagAcquire",0)  
+#  beamline_support.setPvValFromDescriptor("lowMagJpegEnableCallbacks",0)
+#  beamline_support.setPvValFromDescriptor("lowMagImMode",2)
+  beamline_support.setPvValFromDescriptor("lowMagTrigMode",0)
+#  beamline_support.setPvValFromDescriptor("lowMagAcquire",1)  
+
+
 
 def zebraDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
 #careful - there's total exposure time, exposure period, exposure time
-
+  if not (daq_lib.setGovRobotDA()):
+    return
+  beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",1)
   angle_end = angle_start+scanWidth
   numImages = int(round(scanWidth/imgWidth))
   detector_dead_time = .0001 #put this in config.
@@ -1427,23 +1601,16 @@ def zebraDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,da
   time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
   beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
-#  time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
-  beamline_support.setPvValFromDescriptor("zebraGateWidth",imgWidth)
-#  beamline_support.setPvValFromDescriptor("zebraGateWidth",scanWidth)  
+  beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)
   beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)
-#  beamline_support.setPvValFromDescriptor("zebraGateStep",scanWidth)  
   beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)
-#  beamline_support.setPvValFromDescriptor("zebraGateNumGates",1)  
   beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
   beamline_support.setPvValFromDescriptor("zebraPulseStart",0)
   print("exp per = " + str(exposurePeriodPerImage))
   beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage-0.0005)
-#  beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage)  
   print("exp tim = " + str(exposureTimePerImage))  
-#  beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage)
   beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage-0.0005)  
-#  beamline_support.setPvValFromDescriptor("zebraPulseMax",numImages)
   beamline_support.setPvValFromDescriptor("zebraPulseMax",1)  
   det_lib.detector_set_num_triggers(numImages)
   detector_set_period(exposurePeriodPerImage)
@@ -1453,12 +1620,15 @@ def zebraDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,da
   zebraArm()
   beamline_support.setPvValFromDescriptor("daqGo",1)
   zebraWait()
-  det_lib.detector_wait()    
-#  det_lib.detector_stop_acquire()
+  daq_lib.setGovRobotSA()  
+  det_lib.detector_stop_acquire()
+  det_lib.detector_wait()      
 
 def zebraVecDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
 #careful - there's total exposure time, exposure period, exposure time
-
+  if not (daq_lib.setGovRobotDA()):
+    return
+  beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",1)
   angle_end = angle_start+scanWidth
 ###  numImages = int(round(scanWidth/imgWidth))
   detector_dead_time = .0001 #put this in config.
@@ -1482,7 +1652,7 @@ def zebraVecDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,
 #  time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
 #  beamline_support.setPvValFromDescriptor("zebraGateWidth",scanWidth)
-  beamline_support.setPvValFromDescriptor("zebraGateWidth",imgWidth)  
+  beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)  
 #  beamline_support.setPvValFromDescriptor("zebraGateStep",scanWidth)
   beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)  
 #  beamline_support.setPvValFromDescriptor("zebraGateNumGates",1)
@@ -1492,6 +1662,8 @@ def zebraVecDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,
   print("exp per = " + str(exposurePeriodPerImage))
 #  beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage)
   beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage-0.0005)
+  if (daq_utils.beamline == "amx"):          
+    beamline_support.setPvValFromDescriptor("zebraPulseDelay",(exposurePeriodPerImage-0.0005)/2.0)  
   print("exp tim = " + str(exposureTimePerImage))  
 #  beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage)
   beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage-0.0005)  
@@ -1505,8 +1677,9 @@ def zebraVecDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,
   zebraArm()
   beamline_support.setPvValFromDescriptor("daqGo",1)
   zebraWait()
-  det_lib.detector_wait()    
-#  det_lib.detector_stop_acquire()
+#  daq_lib.setGovRobotSA()  
+  det_lib.detector_stop_acquire()
+  det_lib.detector_wait()      
 
   
 def hwTrigModeOn():
@@ -1521,8 +1694,8 @@ def hwTrigModeOff():
   
   
 def robotOn():
-  db_lib.setBeamlineConfigParam("fmx","robot_online",1)
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"robot_online",1)
 
 
 def robotOff():
-  db_lib.setBeamlineConfigParam("fmx","robot_online",0)
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"robot_online",0)

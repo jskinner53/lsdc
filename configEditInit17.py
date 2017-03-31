@@ -9,8 +9,8 @@ import db_lib
 #    to fetch info:  info = beamlineInfo('x25', 'det')
 
 db_lib.db_connect()
-beamline_id = "fmx"
-tmpConfigFile = open("/nfs/skinner/projects/bnlpx_config/BLConfigsTemp/configJohnFmx16shut.txt","r")
+beamline_id = "99id1"
+tmpConfigFile = open("/nfs/skinner/projects/bnlpx_config/BLConfigsTemp/configAMX030217","r")
 for line in tmpConfigFile.readlines():
   print(line)
   (key,val) = line.split()
