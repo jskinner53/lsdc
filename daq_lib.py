@@ -340,6 +340,10 @@ def runDCQueue(): #maybe don't run rasters from here???
     currentRequest = db_lib.popNextRequest(daq_utils.beamline)
     if (currentRequest == {}):
       break
+    if (daq_utils.beamline == "fmx"):    
+      reqObj = currentRequest["request_obj"]
+      beamline_support.setPvValFromDescriptor("govRobotDetDist",reqObj["detDist"])
+      beamline_support.setPvValFromDescriptor("govHumanDetDist",reqObj["detDist"])          
     sampleID = currentRequest["sample"]
     if (get_field("mounted_pin") != sampleID):
       if (mountSample(sampleID)):
@@ -421,6 +425,9 @@ def collectData(currentRequest):
   elif (prot == "multiCol"):
 #    daq_macros.multiCol(currentRequest)
     daq_macros.snakeRaster(currentRequest["uid"])    
+  elif (prot == "multiColQ"):
+    daq_macros.multiCol(currentRequest)
+#    daq_macros.snakeRaster(currentRequest["uid"])    
   elif (prot == "eScan"):
     daq_macros.eScan(currentRequest)    
   else: #standard, screening, or edna - these may require autoalign, checking first
@@ -503,7 +510,8 @@ def collectData(currentRequest):
       else:
         fastEPFlag = 0
       if (daq_utils.beamline == "fmx"):
-        node = "cpu-009"
+        node = "xf17id2-ws3"
+#        node = "cpu-009"        
       else:
         node = "cpu-004"
       if (daq_utils.detector_id == "EIGER-16"):

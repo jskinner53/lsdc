@@ -377,8 +377,9 @@ def multiCol(currentRequest):
   status = loop_center_xrec()
   if not (status):
     return 0  
-  time.sleep(1) #looks like I really need this sleep, they really improve the appearance 
-  runRasterScan(currentRequest,"LoopShape")
+  time.sleep(1) #looks like I really need this sleep, they really improve the appearance
+  runRasterScan(currentRequest,"Coarse")
+#  runRasterScan(currentRequest,"LoopShape")
 #  time.sleep(1) 
 
 def loop_center_xrec_slow():
@@ -592,14 +593,15 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   time.sleep(1.0)  
   if (daq_utils.beamline == "fmx"):
     if (rowIndex%2 == 0):
-      node = "cpu-009"
+      node = "xf17id2-ws3"
+#      node = "cpu-010"      
     else:
-      node = "cpu-010"
+      node = "xf17id2-ws3"
   else:
     if (rowIndex%2 == 0):
-      node = "cpu-004"
+      node = "xf17id2-srv1"
     else:
-      node = "cpu-005"
+      node = "xf17id2-srv1"
   if (seqNum>-1): #eiger
     cbfDir = directory+"/cbf"
     comm_s = "mkdir -p " + cbfDir
@@ -609,9 +611,9 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
     CBF_conversion_pattern = cbfDir + "/" + prefix+"_" + str(rowIndex)+"_"  
     comm_s = "eiger2cbf-linux " + hdfRowFilepattern
     if (rowCellCount==1): #account for bug in converter
-      comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
+      comm_s = "ssh -q " + node + " \"source /home/jjakoncic/.bashrc;/usr/local/MX-Soft/bin/eiger2cbf " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
     else:
-      comm_s = "ssh -q " + node + " \"/usr/local/crys-local/bin/eiger2cbf-linux " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
+      comm_s = "ssh -q " + node + " \"source /home/jjakoncic/.bashrc;/usr/local/MX-Soft/bin/eiger2cbf " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
     print(comm_s)
     os.system(comm_s)
     CBFpattern = CBF_conversion_pattern + "*.cbf"
@@ -620,7 +622,8 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   time.sleep(1.0)
   comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + ">>/dev/null\""
   lsOut = os.system(comm_s)
-  comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""
+  comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/MX-Soft/Phenix/phenix-installer-dev-2666-intel-linux-2.6-x86_64-centos6/build/bin/dials.find_spots_client\""
+##4/11  comm_s = "ssh -q " + node + " \"ls -rt " + CBFpattern + "|/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client\""  
 ###  comm_s = "ls -rt " + CBFpattern + "|/usr/local/crys-local/dials/build/bin/dials.find_spots_client"  
 ####  comm_s = "ssh -q cpu-004 \"ls -rt " + prefix + "|/usr/local/crys-local/dials-v1-1-4/build/bin/dials.find_spots_client\""  
   print(comm_s)
@@ -631,6 +634,13 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
     if (localDialsResultDict["data"] == None and retry>0):
       print("ERROR \n" + resultString + " retry = " + str(retry))
       retry = retry - 1
+      if (retry==0):
+        localDialsResultDict["data"]={}
+        localDialsResultDict["data"]["response"]=[]
+        for jj in range (0,rowCellCount):
+          localDialsResultDict["data"]["response"].append({'d_min': '-1.00','d_min_method_1': '-1.00','d_min_method_2': '-1.00','image': '','spot_count': '0','spot_count_no_ice': '0','total_intensity': '0'})
+        break
+                                      
     else:
       break
   rasterRowResultsList[rowIndex] = localDialsResultDict["data"]["response"]
@@ -791,8 +801,8 @@ def snakeRaster(rasterReqID,grain=""):
   rasterRequest["request_obj"]["rasterDef"]["status"] = 2
   protocol = reqObj["protocol"]
   print("protocol = " + protocol)
-  if (protocol == "multiCol" or parentReqProtocol == "multiCol"):
-    if (parentReqProtocol == "multiCol"):    
+  if (protocol == "multiCol" or parentReqProtocol == "multiColQ"):
+    if (parentReqProtocol == "multiColQ"):    
       multiColThreshold  = parentReqObj["diffCutoff"]
     else:
       multiColThreshold  = reqObj["diffCutoff"]         
@@ -842,6 +852,7 @@ def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
 def gotoMaxRaster(rasterResult,multiColThreshold=-1):
 #  print("raster result = ")
 #  print(rasterResult)
+  requestID = rasterResult["request"]
   if (rasterResult["result_obj"]["rasterCellResults"]['resultObj'] == None):
 #  if (rasterResult["result_obj"]["rasterCellResults"]['resultObj']["data"] == None):    
     print("no raster result!!\n")
@@ -877,7 +888,10 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
         hitCoords = rasterMap[hitFile[:-4]]
 #        sampID = rasterResult['result_obj']['sample_id']
         parentReqID = rasterResult['result_obj']["parentReqID"]
-        addMultiRequestLocation(parentReqID,hitCoords,i)
+        if (parentReqID == -1):
+          addMultiRequestLocation(requestID,hitCoords,i)
+        else:
+          addMultiRequestLocation(parentReqID,hitCoords,i)        
     if (scoreOption == "d_min"):
       if (scoreVal < floor):
         floor = scoreVal
@@ -1455,7 +1469,7 @@ def zebraWait():
 def loop_center_xrec():
   global face_on
 
-  if (daq_utils.beamline == "fmx"):    
+  if (daq_utils.beamline == "fmx"):        
     return loop_center_xrec_slow()
   daq_lib.abort_flag = 0    
   os.system("chmod 777 .")
@@ -1649,7 +1663,6 @@ def zebraVecDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,
   time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
   beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
-#  time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
 #  beamline_support.setPvValFromDescriptor("zebraGateWidth",scanWidth)
   beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)  

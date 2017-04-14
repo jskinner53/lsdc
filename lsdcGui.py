@@ -1055,6 +1055,7 @@ class controlMain(QtGui.QMainWindow):
         colTransmissionLabel.setFixedWidth(140)
         self.transmission_ledit = QtGui.QLineEdit()
         self.transmission_ledit.setFixedWidth(60)
+        self.transmission_ledit.setEnabled(False)
         hBoxColParams3.addWidget(colTransmissionLabel)
         hBoxColParams3.addWidget(self.transmission_ledit)
         hBoxColParams3.addWidget(colEnergyLabel)
@@ -1113,7 +1114,8 @@ class controlMain(QtGui.QMainWindow):
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
         protoLabel.setAlignment(QtCore.Qt.AlignCenter)                 
-        protoOptionList = ["standard","screen","raster","vector","multiCol"] # these should probably come from db
+#        protoOptionList = ["standard","screen","raster","vector"] # these should probably come from db
+        protoOptionList = ["standard","screen","raster","vector","multiCol","multiColQ"] # these should probably come from db        
 #        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db        
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
@@ -1242,7 +1244,7 @@ class controlMain(QtGui.QMainWindow):
         vBoxColParams1.addLayout(hBoxColParams1)
         vBoxColParams1.addLayout(hBoxColParams2)
         vBoxColParams1.addLayout(hBoxColParams3)
-        vBoxColParams1.addLayout(hBoxColParams4)
+###        vBoxColParams1.addLayout(hBoxColParams4)
         vBoxColParams1.addLayout(hBoxColParams5)
         vBoxColParams1.addLayout(hBoxColParams6)
         vBoxColParams1.addLayout(hBoxColParams7)        
@@ -2175,7 +2177,7 @@ class controlMain(QtGui.QMainWindow):
         self.osc_start_ledit.setEnabled(False)
         self.osc_end_ledit.setEnabled(False)
         
-      elif (protocol == "multiCol"):
+      elif (protocol == "multiCol" or protocol == "multiColQ"):
         self.rasterParamsFrame.show()
         self.multiColParamsFrame.show()
         #        self.vectorParamsFrame.hide()
@@ -2397,11 +2399,18 @@ class controlMain(QtGui.QMainWindow):
       polyPoints = []      
       if (self.click_positions != []): #use the user clicks
         if (len(self.click_positions) == 2): #draws a single row or column
+#          print(str(self.click_positions[0].x()) + " " + str(self.click_positions[0].y()) + " " +str(self.click_positions[1].x()) + " " + str(self.click_positions[1].y()))
           polyPoints.append(self.click_positions[0])
-          point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[1].y())
+          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix          
+            point = QtCore.QPointF(self.click_positions[0].x()+2,self.click_positions[1].y())
+          else:
+            point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[1].y())
           polyPoints.append(point)
           polyPoints.append(self.click_positions[1])
-          point = QtCore.QPointF(self.click_positions[1].x(),self.click_positions[0].y())
+          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix
+            point = QtCore.QPointF(self.click_positions[1].x()+2,self.click_positions[0].y())
+          else:
+            point = QtCore.QPointF(self.click_positions[1].x(),self.click_positions[0].y())
           polyPoints.append(point)
           self.rasterPoly = QtGui.QGraphicsPolygonItem(QtGui.QPolygonF(polyPoints))
         else:
@@ -2546,7 +2555,9 @@ class controlMain(QtGui.QMainWindow):
               color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
             else:
               color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
-          self.currentRasterCellList[cellCounter].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
+          self.currentRasterCellList[cellCounter].setBrush(QtGui.QBrush(QtGui.QColor(0,255-color_id,0,127)))
+#          self.currentRasterCellList[cellCounter].setBrush(QtGui.QBrush(QtGui.QColor(255-color_id,255-color_id,0,127)))          #yellow
+#          self.currentRasterCellList[cellCounter].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))          
           self.currentRasterCellList[cellCounter].setData(0,spotcount)
           self.currentRasterCellList[cellCounter].setData(1,cellFilename)
           self.currentRasterCellList[cellCounter].setData(2,d_min)
@@ -2592,7 +2603,8 @@ class controlMain(QtGui.QMainWindow):
               color_id = int(255.0*(float(param-floor)/float(ceiling-floor)))
             else:
               color_id = int(255-(255.0*(float(param-floor)/float(ceiling-floor))))
-            currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))
+            currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(0,255-color_id,0,127)))
+#            currentRasterCellList[i].setBrush(QtGui.QBrush(QtGui.QColor(color_id,color_id,color_id,127)))            
 
       
         
@@ -2781,7 +2793,8 @@ class controlMain(QtGui.QMainWindow):
       stepsizeX = self.screenXmicrons2pixels(rasterDef["stepsize"])
       stepsizeY = self.screenYmicrons2pixels(rasterDef["stepsize"])      
       pen = QtGui.QPen(QtCore.Qt.green)
-      if (rasterDef["stepsize"]>20):      
+      if (0):
+#      if (rasterDef["stepsize"]>20):                
         pen = QtGui.QPen(QtCore.Qt.green)
       else:
         pen = QtGui.QPen(QtCore.Qt.red)
@@ -3223,8 +3236,12 @@ class controlMain(QtGui.QMainWindow):
         reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
         reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
-        reqObj["fastDP"] = (self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
-        reqObj["fastEP"] =self.fastEPCheckBox.isChecked()
+        if (abs(reqObj["sweep_end"]-reqObj["sweep_start"])<10.0):
+          reqObj["fastDP"] = False
+          reqObj["fastEP"] = False
+        else:
+          reqObj["fastDP"] = (self.fastDPCheckBox.isChecked() or self.fastEPCheckBox.isChecked())
+          reqObj["fastEP"] =self.fastEPCheckBox.isChecked()
         reqObj["xia2"] =self.xia2CheckBox.isChecked()
 #        colRequest["gridStep"] = self.rasterStepEdit.text()
         reqObj["attenuation"] = float(self.transmission_ledit.text())
@@ -3239,7 +3256,7 @@ class controlMain(QtGui.QMainWindow):
           reqObj["detDist"] = 500.0
 #        print colRequest
 #        if (rasterDef != False):
-        if (reqObj["protocol"] == "multiCol"):
+        if (reqObj["protocol"] == "multiCol" or reqObj["protocol"] == "multiColQ"):
           reqObj["gridStep"] = float(self.rasterStepEdit.text())
           reqObj["diffCutoff"] = float(self.multiColCutoffEdit.text())                      
         if (rasterDef != None):
