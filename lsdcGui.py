@@ -1683,6 +1683,7 @@ class controlMain(QtGui.QMainWindow):
             self.rasterYmicrons = rasterYPixels * (fov["y"]/daq_utils.screenPixY)
 #            print saveRasterList[i]
             self.drawPolyRaster(db_lib.getRequestByID(saveRasterList[i]["uid"]),saveRasterList[i]["coords"]["x"],saveRasterList[i]["coords"]["y"],saveRasterList[i]["coords"]["z"])
+            self.fillPolyRaster(db_lib.getRequestByID(saveRasterList[i]["uid"]))
 
 #            self.drawPolyRaster(self.rasterDefList[i])
 ###########what about this>>>>>            self.rasterList[i]["graphicsItem"].setPos(self.screenXmicrons2pixels(self.rasterXmicrons),self.screenYmicrons2pixels(self.rasterYmicrons))
@@ -2005,19 +2006,20 @@ class controlMain(QtGui.QMainWindow):
       self.motPos[motID] = posRBV
       if (len(self.centeringMarksList)>0):
         for i in xrange(len(self.centeringMarksList)):
-          centerMarkerOffsetX = self.centeringMarksList[i]["centerCursorX"]-self.centerMarker.x()
-          centerMarkerOffsetY = self.centeringMarksList[i]["centerCursorY"]-self.centerMarker.y()
-          if (motID == "x"):
-            startX = self.centeringMarksList[i]["sampCoords"]["x"]
-            delta = startX-posRBV
-            newX = float(self.screenXmicrons2pixels(delta))
-            self.centeringMarksList[i]["graphicsItem"].setPos(newX-centerMarkerOffsetX,self.centeringMarksList[i]["graphicsItem"].y())
+          if (self.centeringMarksList[i] != None):
+            centerMarkerOffsetX = self.centeringMarksList[i]["centerCursorX"]-self.centerMarker.x()
+            centerMarkerOffsetY = self.centeringMarksList[i]["centerCursorY"]-self.centerMarker.y()
+            if (motID == "x"):
+              startX = self.centeringMarksList[i]["sampCoords"]["x"]
+              delta = startX-posRBV
+              newX = float(self.screenXmicrons2pixels(delta))
+              self.centeringMarksList[i]["graphicsItem"].setPos(newX-centerMarkerOffsetX,self.centeringMarksList[i]["graphicsItem"].y())
 #            self.centeringMarksList[i]["graphicsItem"].setPos(newX,self.centeringMarksList[i]["graphicsItem"].y())
-          if (motID == "y" or motID == "z" or motID == "omega"):
-            startYY = self.centeringMarksList[i]["sampCoords"]["z"]
-            startYX = self.centeringMarksList[i]["sampCoords"]["y"]
-            newY = self.calculateNewYCoordPos(startYX,startYY)
-            self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY-centerMarkerOffsetY)
+            if (motID == "y" or motID == "z" or motID == "omega"):
+              startYY = self.centeringMarksList[i]["sampCoords"]["z"]
+              startYX = self.centeringMarksList[i]["sampCoords"]["y"]
+              newY = self.calculateNewYCoordPos(startYX,startYY)
+              self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY-centerMarkerOffsetY)
 #            self.centeringMarksList[i]["graphicsItem"].setPos(self.centeringMarksList[i]["graphicsItem"].x(),newY)            
       if (len(self.rasterList)>0):
         for i in xrange(len(self.rasterList)):
@@ -2032,6 +2034,16 @@ class controlMain(QtGui.QMainWindow):
               startYX = self.rasterList[i]["coords"]["y"]
               newY = self.calculateNewYCoordPos(startYX,startYY)
               self.rasterList[i]["graphicsItem"].setPos(self.rasterList[i]["graphicsItem"].x(),newY)
+            if (motID == "omega"):
+              if (abs(posRBV-self.rasterList[i]["coords"]["omega"])%360.0 > 5.0):
+                self.rasterList[i]["graphicsItem"].setVisible(False)
+              else:
+                self.rasterList[i]["graphicsItem"].setVisible(True)                  
+              startYY = self.rasterList[i]["coords"]["z"]
+              startYX = self.rasterList[i]["coords"]["y"]
+              newY = self.calculateNewYCoordPos(startYX,startYY)
+              self.rasterList[i]["graphicsItem"].setPos(self.rasterList[i]["graphicsItem"].x(),newY)
+            
       if (self.vectorStart != None):
         centerMarkerOffsetX = self.vectorStart["centerCursorX"]-self.centerMarker.x()
         centerMarkerOffsetY = self.vectorStart["centerCursorY"]-self.centerMarker.y()
@@ -2737,7 +2749,8 @@ class controlMain(QtGui.QMainWindow):
           for j in xrange(numsteps_v):
             newCellX = point_x+(i*stepsizeXPix)+point_offset_x
             newCellY = point_y+(j*stepsizeYPix)+point_offset_y
-            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
+            if (1):
+#            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box                
               if (rowCellCount == 0): #start of a new row
                 rowStartX = newCellX
                 rowStartY = newCellY
@@ -2755,7 +2768,8 @@ class controlMain(QtGui.QMainWindow):
           for j in xrange(numsteps_h):
             newCellX = point_x+(j*stepsizeXPix)+point_offset_x
             newCellY = point_y+(i*stepsizeYPix)+point_offset_y
-            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box
+            if (1):
+#            if (self.rasterPoly.contains(QtCore.QPointF(newCellX+(stepsizeXPix/2.0),newCellY+(stepsizeYPix/2.0)))): #stepping through every cell to see if it's in the bounding box                
               if (rowCellCount == 0): #start of a new row
                 rowStartX = newCellX
                 rowStartY = newCellY
@@ -2832,10 +2846,11 @@ class controlMain(QtGui.QMainWindow):
       self.scene.addItem(newItemGroup)
       for i in xrange(len(newRasterCellList)):
         newItemGroup.addToGroup(newRasterCellList[i])
-      if (x==-1):
-        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}          
-      else:    
-        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
+#      if (x==-1):
+#        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get()},"graphicsItem":newItemGroup}          
+#      else:    
+#        newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":x,"y":y,"z":z},"graphicsItem":newItemGroup}
+      newRasterGraphicsDesc = {"uid":rasterReq["uid"],"coords":{"x":rasterDef["x"],"y":rasterDef["y"],"z":rasterDef["z"],"omega":rasterDef["omega"]},"graphicsItem":newItemGroup}
       self.rasterList.append(newRasterGraphicsDesc)
 
 
@@ -3440,8 +3455,17 @@ class controlMain(QtGui.QMainWindow):
 #      self.eraseCB()
       if (str(reqObj["protocol"])== "raster"):
         if (not self.rasterIsDrawn(selectedSampleRequest)):
-#          print("drawing raster")
+#        if (1):            
           self.drawPolyRaster(selectedSampleRequest)
+          self.fillPolyRaster(selectedSampleRequest)
+        self.processSampMove(self.sampx_pv.get(),"x")
+        self.processSampMove(self.sampy_pv.get(),"y")
+        self.processSampMove(self.sampz_pv.get(),"z")
+        comm_s = "mvaDescriptor(\"omega\"," + str(selectedSampleRequest["request_obj"]["rasterDef"]["omega"]) + ")"
+        self.send_to_server(comm_s)
+          
+          
+          
       elif (str(reqObj["protocol"])== "characterize" or str(reqObj["protocol"])== "ednaCol"):
         characterizationParams = reqObj["characterizationParams"]
         self.characterizeCompletenessEdit.setText(str(characterizationParams["aimed_completeness"]))
@@ -3452,6 +3476,7 @@ class controlMain(QtGui.QMainWindow):
 #        self.eraseDisplayCB()
         pass
       self.showProtParams()
+      
 
 
 

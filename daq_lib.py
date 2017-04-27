@@ -1,5 +1,7 @@
 import sys
 import os
+import grp
+import getpass
 import time
 import string
 import math
@@ -643,6 +645,9 @@ def collect_detector_seq_hw(sweep_start,range_degrees,image_width,exposure_perio
 def detectorArm(angle_start,image_width,number_of_images,exposure_period,fileprefix,data_directory_name,file_number): #will need some environ info to diff eiger/pilatus
   global image_started,allow_overwrite,abort_flag
 
+  detector_set_username(getpass.getuser())
+  detector_set_groupname(grp.getgrgid(os.getgid())[0])
+  detector_set_fileperms(420)
   print("data directory = " + data_directory_name)
   if (daq_utils.detector_id == "EIGER-16"):    
     detector_dead_time = .00001     

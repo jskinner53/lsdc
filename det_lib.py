@@ -8,6 +8,17 @@ import epics_det
 
 #pixel array specific start
 
+def detector_set_username(username):
+  epics_det.det_set_username(username)
+
+
+def detector_set_groupname(groupname):
+  epics_det.det_set_groupname(groupname)
+  
+def detector_set_fileperms(fileperms):
+  epics_det.det_set_fileperms(fileperms)
+
+
 def detector_set_period(period):
   print("set detector period " + str(period))
   epics_det.det_set_image_period(period)
@@ -19,6 +30,8 @@ def detector_set_exposure_time(exptime):
 def detector_get_seqnum():
   return epics_det.det_getSeqNum()
 
+def detector_setImagesPerFile(numimages):
+  epics_det.det_setImagesPerFile(numimages)
 
 def detector_set_numimages(numimages):
   print("set detector number of images " + str(numimages))

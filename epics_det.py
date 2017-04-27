@@ -58,6 +58,14 @@ def det_init_pvs():
 def det_set_autoinc_filenum(flag):
   set_det_pv('filenum_auto_increment',int(flag))
 
+def det_set_username(username):
+  set_det_pv('FileOwner',username)
+
+def det_set_groupname(groupname):
+  set_det_pv('FileOwnerGrp',groupname)
+
+def det_set_fileperms(fileperms):
+  set_det_pv('FilePerms',fileperms)
 
 def det_set_file_template(image_type):
   if (image_type == "cbf"):
@@ -157,6 +165,9 @@ def det_set_numexposures(numexposures):
 
 def det_take_image():
   set_det_pv("start",1)
+
+def det_setImagesPerFile(numimages):
+  set_det_pv("images_per_file_val",numimages)
 
 def det_stop_acquire():
   set_det_pv("start",0)

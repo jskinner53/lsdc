@@ -607,13 +607,14 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
     comm_s = "mkdir -p " + cbfDir
     os.system(comm_s)
     hdfSampleDataPattern = directory+"/"+prefix+"_" 
-    hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_" + str(int(float(seqNum))) + "_master.h5"
+    hdfRowFilepattern = hdfSampleDataPattern + str(int(float(seqNum))) + "_master.h5"
+#    hdfRowFilepattern = hdfSampleDataPattern + str(rowIndex) + "_" + str(int(float(seqNum))) + "_master.h5"    
     CBF_conversion_pattern = cbfDir + "/" + prefix+"_" + str(rowIndex)+"_"  
     comm_s = "eiger2cbf-linux " + hdfRowFilepattern
     if (rowCellCount==1): #account for bug in converter
-      comm_s = "ssh -q " + node + " \"source /home/jjakoncic/.bashrc;/usr/local/MX-Soft/bin/eiger2cbf " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
+      comm_s = "ssh -q " + node + " \"/usr/local/MX-Soft/bin/eiger2cbfJohn " + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "000001.cbf\""    
     else:
-      comm_s = "ssh -q " + node + " \"source /home/jjakoncic/.bashrc;/usr/local/MX-Soft/bin/eiger2cbf " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
+      comm_s = "ssh -q " + node + " \"/usr/local/MX-Soft/bin/eiger2cbfJohn " + hdfRowFilepattern  + " 1:" + str(rowCellCount) + " " + CBF_conversion_pattern + "\""
     print(comm_s)
     os.system(comm_s)
     CBFpattern = CBF_conversion_pattern + "*.cbf"
@@ -690,6 +691,23 @@ def snakeRaster(rasterReqID,grain=""):
   rasterRowResultsList = [{} for i in range(0,rowCount)]    
   processedRasterRowCount = 0
   rasterEncoderMap = {}
+
+  totalImages = 0
+  for i in range(len(rasterDef["rowDefs"])):
+    numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
+    totalImages = totalImages+numsteps
+  rasterFilePrefix = dataFilePrefix + "_Raster"
+  detector_dead_time = .0001 #put this in config.
+  total_exposure_time = exptimePerCell*totalImages
+  exposureTimePerImage =  exptimePerCell - detector_dead_time
+  det_lib.detector_set_num_triggers(totalImages)
+  detector_set_period(exptimePerCell)
+  detector_set_exposure_time(exposureTimePerImage)
+  det_lib.detector_set_trigger_mode(3)
+  detectorArm(omega,img_width_per_cell,totalImages,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start) #this waits
+  det_lib.detector_setImagesPerFile(numsteps)
+  zebraVecDaqSetup(omega,img_width_per_cell,exptimePerCell,numsteps,rasterFilePrefix,data_directory_name,file_number_start)  
+  
   for i in range(len(rasterDef["rowDefs"])):
     if (daq_lib.abort_flag == 1):
       return 0
@@ -759,8 +777,9 @@ def snakeRaster(rasterReqID,grain=""):
     rasterFilePrefix = dataFilePrefix + "_Raster_" + str(i)
     scanWidth = float(numsteps)*img_width_per_cell
     if (beamline_support.getPvValFromDescriptor("gonDaqHwTrig")):
-      beamline_support.setPvValFromDescriptor("vectorGo",1)      
-      zebraVecDaq(omega,scanWidth,img_width_per_cell,exptimePerCell,numsteps,rasterFilePrefix,data_directory_name,file_number_start)
+      beamline_support.setPvValFromDescriptor("vectorGo",1)
+      zebraVecDaqGo(omega,scanWidth,img_width_per_cell,exptimePerCell,numsteps,rasterFilePrefix,data_directory_name,file_number_start)      
+#      zebraVecDaq(omega,scanWidth,img_width_per_cell,exptimePerCell,numsteps,rasterFilePrefix,data_directory_name,file_number_start)
     else:
       detectorArm(omega,img_width_per_cell,numsteps,exptimePerCell,rasterFilePrefix,data_directory_name,file_number_start)
       beamline_support.setPvValFromDescriptor("vectorGo",1)
@@ -770,9 +789,11 @@ def snakeRaster(rasterReqID,grain=""):
           det_lib.detector_trigger()
       vectorWait()
       detector_wait()
-# add the threading dials stuff here, and the thread routine elsewhere.
-    if (daq_utils.beamline == "amx"):        
+##  return #SHORT CIRCUIT FOR DC ONLY!!!!!!!!!!!!!!!!
+#    if (0):
+    if (daq_utils.beamline == "amx"):              
       rasterRowEncoderVals = {"x":beamline_support.getPvValFromDescriptor("zebraEncX"),"y":beamline_support.getPvValFromDescriptor("zebraEncY"),"z":beamline_support.getPvValFromDescriptor("zebraEncZ"),"omega":beamline_support.getPvValFromDescriptor("zebraEncOmega")}
+#      print(rasterRowEncoderVals)
       for j in range (0,numsteps):
         dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
         rasterEncoderMap[dataFileName[:-4]] = {"x":rasterRowEncoderVals["x"][j],"y":rasterRowEncoderVals["y"][j],"z":rasterRowEncoderVals["z"][j],"omega":rasterRowEncoderVals["omega"][j]}
@@ -781,9 +802,13 @@ def snakeRaster(rasterReqID,grain=""):
       seqNum = int(det_lib.detector_get_seqnum())
     else:
       seqNum = -1
-    print("running dials thread")
+#    print("running dials thread")
     _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))
-    print("thread running")
+#    print("thread running")
+  time.sleep(2.0)
+  det_lib.detector_stop_acquire()
+  det_lib.detector_wait()      
+    
   rasterTimeout = 60
   timerCount = 0
   while (1):
@@ -821,6 +846,7 @@ def snakeRaster(rasterReqID,grain=""):
   set_field("xrecRasterFlag",rasterRequest["uid"])
   daq_lib.setGovRobotSA()      
   return 1
+      
 
 
 
@@ -1538,6 +1564,7 @@ def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix
 #careful - there's total exposure time, exposure period, exposure time
 
 #imgWidth will be something like 40 for xtalCenter
+  det_lib.detector_setImagesPerFile(500)
   beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",0)  
   angle_end = angle_start+scanWidth
   numImages = int(round(scanWidth/imgWidth))
@@ -1712,3 +1739,71 @@ def robotOn():
 
 def robotOff():
   db_lib.setBeamlineConfigParam(daq_utils.beamline,"robot_online",0)
+
+
+def zebraVecDaqSetup(angle_start,imgWidth,exposurePeriodPerImage,numImages,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
+#careful - there's total exposure time, exposure period, exposure time
+
+  beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",1)
+  detector_dead_time = .0001 #put this in config.
+  total_exposure_time = exposurePeriodPerImage*numImages
+  exposureTimePerImage =  exposurePeriodPerImage - detector_dead_time
+  zebraDaqPrep()
+  beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
+  time.sleep(1.0)
+  beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
+  beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
+  beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
+  beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)  
+  beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)  
+##  beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)
+  beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
+  beamline_support.setPvValFromDescriptor("zebraPulseStart",0)
+  beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage-0.0005)
+  print("exp tim = " + str(exposureTimePerImage))  
+  beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage-0.0005)  
+  beamline_support.setPvValFromDescriptor("zebraPulseMax",1)  
+##  zebraArm()
+##  beamline_support.setPvValFromDescriptor("daqGo",1)
+##  zebraWait()
+
+  
+
+def zebraVecDaqGo(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,numImages,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
+#careful - there's total exposure time, exposure period, exposure time
+
+##  beamline_support.setPvValFromDescriptor("gonDaqHwTrigExpose",1)
+#  det_lib.detector_set_fileprefix(filePrefix)
+  angle_end = angle_start+scanWidth
+  detector_dead_time = .0001 #put this in config.
+  total_exposure_time = exposurePeriodPerImage*numImages
+  exposureTimePerImage =  exposurePeriodPerImage - detector_dead_time
+#  while (1):
+#    time.sleep(.1)
+#    if (beamline_support.getPvValFromDescriptor("daqReady") == 1):
+#      break
+#  zebraDaqPrep()
+#  beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
+#  time.sleep(1.0)
+#  beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
+#  beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
+#  beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
+#  beamline_support.setPvValFromDescriptor("zebraGateWidth",imgWidth)  
+#  beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)  
+  beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)
+#  beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
+#  beamline_support.setPvValFromDescriptor("zebraPulseStart",0)
+#  print("exp per = " + str(exposurePeriodPerImage))
+#  beamline_support.setPvValFromDescriptor("zebraPulseStep",exposurePeriodPerImage-0.0005)
+#  print("exp tim = " + str(exposureTimePerImage))  
+#  beamline_support.setPvValFromDescriptor("zebraPulseWidth",exposureTimePerImage-0.0005)  
+#  beamline_support.setPvValFromDescriptor("zebraPulseMax",1)
+  while (1):
+    time.sleep(.1)
+    if (beamline_support.getPvValFromDescriptor("daqReady") == 1):
+      break
+  zebraArm()
+  beamline_support.setPvValFromDescriptor("daqGo",1)
+  zebraWait()
+
+  
