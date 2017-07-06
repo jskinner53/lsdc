@@ -329,7 +329,7 @@ class QPeriodicTable(QWidget):
         if (self.butSize > 0): #skinner - use a fixed size
           b.setFixedSize(self.butSize,self.butSize)
         b.setAutoDefault(False)
-        if (element_info.has_key(symbol) and element_info[symbol][4] == 1):
+        if (element_info.has_key(symbol) and element_info[symbol][4] > 0):
           b.setEnabled(True)
         else:
           b.setEnabled(False)

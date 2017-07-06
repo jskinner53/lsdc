@@ -22,18 +22,19 @@ def insertSpreadsheetDict(d,owner):
 #    print(d["container_name"][i])
 #    print(d["position"][i])
 #    print(d["item_name"][i])
-    container_name = d["container_name"][i]
+    container_name = str(d["container_name"][i])
     position = d["position"][i]
-    item_name = d["item_name"][i]
+    item_name = str(d["item_name"][i])
     containerUID = db_lib.getContainerIDbyName(container_name,owner)
     if (containerUID == ''):
-      print("create container " + container_name)
+      print("create container " + str(container_name))
       containerUID = db_lib.createContainer(container_name,16,owner,"16_pin_puck")
     sampleUID = db_lib.getSampleIDbyName(item_name,owner)
-    if (sampleUID == ''):
-      print("create sample " + item_name)
+    if (1):
+#    if (sampleUID == ''):      
+      print("create sample " + str(item_name))
       sampleUID = db_lib.createSample(item_name,owner,"pin")
-    print("insertIntoContainer " + container_name + "," + owner + "," + str(position) + "," + sampleUID)
+    print("insertIntoContainer " + str(container_name) + "," + owner + "," + str(position) + "," + sampleUID)
     db_lib.insertIntoContainer(container_name, owner, position, sampleUID)
 
 

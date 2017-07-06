@@ -61,6 +61,9 @@ def det_set_autoinc_filenum(flag):
 def det_set_username(username):
   set_det_pv('FileOwner',username)
 
+def det_save_files():
+  set_det_pv('saveFiles',1)
+
 def det_set_groupname(groupname):
   set_det_pv('FileOwnerGrp',groupname)
 
@@ -224,6 +227,9 @@ def det_set_num_triggers(numtrigs):
 
 def det_get_trigger_mode():
   return get_det_pv("det_trigger_mode")
+
+def det_get_deadtime():
+  return get_det_pv("deadtime")
 
 def det_is_manual_trigger():
   return get_det_pv("manual_trigger")  

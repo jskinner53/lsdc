@@ -112,7 +112,7 @@ def updateContainer(cont_info): #really updating the contents
     return cont
 
 
-def createSample(sample_name, owner, kind, **kwargs):
+def createSample(sample_name, owner, kind, proposalID=None, **kwargs):
     """
     sample_name:  string, name for the new sample, required
     kwargs:       passed to constructor
@@ -121,7 +121,7 @@ def createSample(sample_name, owner, kind, **kwargs):
     if 'request_count' not in kwargs:
         kwargs['request_count'] = 0
 
-    uid = sample_ref.create(name=sample_name, owner=owner,kind=kind,**kwargs)
+    uid = sample_ref.create(name=sample_name, owner=owner,kind=kind,proposalID=proposalID,**kwargs)
     return uid
 
 
@@ -218,20 +218,19 @@ def getContainerNameByID(container_id):
     return c[0]['name']
 
 
-def createResult(result_type, owner,request_id=None, sample_id=None, result_obj=None, timestamp=None,
+def createResult(result_type, owner,request_id=None, sample_id=None, result_obj=None, proposalID=None,
                  **kwargs):
     """
     result_type:  string
     request_id:   int
     sample_id:    int
     result_obj:   dict to attach
-    timestamp:
     """
-    print("creating result")
-    print(result_obj)
-    header = analysis_ref.insert_analysis_header(result_type=result_type,owner=owner,time=timestamp, uid=str(uuid.uuid4()),
+#    print("creating result")
+#    print(result_obj)
+    header = analysis_ref.insert_analysis_header(result_type=result_type,owner=owner, uid=str(uuid.uuid4()),
                                                 sample=sample_id, request=request_id,
-                                                provenance={'lsdc':1}, result_obj=result_obj,**kwargs)
+                                                 provenance={'lsdc':1}, result_obj=result_obj,proposalID=proposalID,time=time.time(),**kwargs)
     print("return from insert")
     print(header)
 
@@ -278,34 +277,31 @@ def getRequestByID(request_id, active_only=True):
     return req
 
 
-def addResultforRequest(result_type, request_id, owner,result_obj=None, timestamp=None, 
-                        **kwargs): 
+def addResultforRequest(result_type, request_id, owner,result_obj=None, **kwargs): 
     """
     like createResult, but also adds it to the resultList of result['sample_id']
     """
     sample = getRequestByID(request_id)['sample'] 
-    r = createResult(owner=owner,result_type=result_type, request_id=request_id, sample_id=sample, result_obj=result_obj, timestamp=timestamp, **kwargs)
+    r = createResult(owner=owner,result_type=result_type, request_id=request_id, sample_id=sample, result_obj=result_obj, **kwargs)
     return r
 
 
-def addResulttoSample(result_type, sample_id, owner,result_obj=None, timestamp=None,
-                        as_mongo_obj=False, **kwargs): 
+def addResulttoSample(result_type, sample_id, owner,result_obj=None, as_mongo_obj=False, proposalID=None,**kwargs): 
     """
     like addResulttoRequest, but without a request
     """
-    r = createResult(owner=owner,result_type=result_type, request_id=None, sample_id=sample_id, result_obj=result_obj, timestamp=timestamp, **kwargs)
+    r = createResult(owner=owner,result_type=result_type, request_id=None, sample_id=sample_id, result_obj=result_obj, proposalID=proposalID,**kwargs)
     return r
 
 
-def addResulttoBL(result_type, beamline_id, owner,result_obj=None, timestamp=None,
-                  **kwargs):
+def addResulttoBL(result_type, beamline_id, owner,result_obj=None, proposalID=None,**kwargs):
     """
     add result to beamline
     beamline_id: the integer, 'beamline_id' field of the beamline entry
 
     other fields are as for createRequest
     """
-    r = createResult(owner=owner,result_type=result_type, request_id=None, sample_id=None, result_obj=result_obj, timestamp=timestamp, beamline_id=beamline_id, **kwargs)
+    r = createResult(owner=owner,result_type=result_type, request_id=None, sample_id=None, result_obj=result_obj, beamline_id=beamline_id, proposalID=proposalID,**kwargs)
     return r
 
 
@@ -393,11 +389,10 @@ def getFile(_id):
                            dict_key='data')
     '''
 
-def createRequest(request_type, owner, request_obj=None, timestamp=None, as_mongo_obj=False, **kwargs):
+def createRequest(request_type, owner, request_obj=None, as_mongo_obj=False, proposalID=None, **kwargs):
     """
     request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
     request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
-    timestamp:  datetime.datetime.now() if not provided
     priority:  optional, integer priority level
 
     anything else (priority, sample_id) can either be embedded in the
@@ -405,22 +400,20 @@ def createRequest(request_type, owner, request_obj=None, timestamp=None, as_mong
     top level.
     """
     kwargs['request_type'] = request_type
-    kwargs['timestamp'] = timestamp
     kwargs['request_obj'] = request_obj
     kwargs['owner'] = owner
+    kwargs['proposalID']=proposalID
 
     uid = request_ref.create(**kwargs)
 
     return uid 
 
 
-def addRequesttoSample(sample_id, request_type, owner,request_obj=None, timestamp=None,
-                       as_mongo_obj=False, **kwargs):
+def addRequesttoSample(sample_id, request_type, owner,request_obj=None, as_mongo_obj=False, proposalID=None,**kwargs):
     """
     sample_id:  required, integer sample id
     request_type:  required, name (string) of request type, dbref to it's db entry, or a Type object
     request_obj:  optional, stored as is, could be a dict of collection parameters, or whatever
-    timestamp:  datetime.datetime.now() if not provided
 
     anything else (priority, sample_id) can either be embedded in the
     request_object or passed in as keyword args to get saved at the
@@ -430,8 +423,7 @@ def addRequesttoSample(sample_id, request_type, owner,request_obj=None, timestam
 #    kwargs['sample_id'] = sample_id
     kwargs['sample'] = sample_id
     s = time.time()
-    r = createRequest(request_type, owner, request_obj=request_obj, timestamp=timestamp,
-                      as_mongo_obj=True, **kwargs)
+    r = createRequest(request_type, owner, request_obj=request_obj, as_mongo_obj=True, proposalID=proposalID,**kwargs)
     t = time.time()-s
     print("add req = " + str(t))
 
@@ -505,6 +497,48 @@ def getQueue(beamlineName):
     # Use .first() instead of [0] here because when the query returns nothing,
     # .first() returns None while [0] generates an IndexError
     # Nah... [0] is faster and catch Exception...
+    DewarItems = []
+    try:
+        DewarItems = getPrimaryDewar(beamlineName)['content']
+    except IndexError as AttributeError:
+        raise ValueError('could not find container: "{0}"!'.format(primaryDewarName))
+    items = []
+    for item in DewarItems:
+      if (item != ""):
+        items.append(item)
+#    items = set(items)
+#    items.discard("")  # skip empty positions
+
+    sample_list = []
+    contents = [getContainerByID(uid)['content'] for uid in items]
+    for samp in contents:
+        if (samp != ""):
+#        sil = set(samp)
+#        sil.discard("")
+          sample_list += samp #not sure why line below did not work.
+#          sample_list.append(samp)
+
+    for s in sample_list:
+        reqs = getRequestsBySampleID(s, active_only=True)
+        for request in reqs:
+            yield request
+
+
+
+def getQueueUnorderedObsolete(beamlineName):
+    """
+    returns a list of request dicts for all the samples in the container
+    named by the global variable 'primaryDewarName'
+    """
+
+    # seems like this would be alot simpler if it weren't for the Nones?
+
+    ret_list = []
+
+    # try to only retrieve what we need...
+    # Use .first() instead of [0] here because when the query returns nothing,
+    # .first() returns None while [0] generates an IndexError
+    # Nah... [0] is faster and catch Exception...
     try:
         items = getPrimaryDewar(beamlineName)['content']
     except IndexError as AttributeError:
@@ -526,7 +560,7 @@ def getQueue(beamlineName):
             yield request
 
 
-
+            
 def queueDone(beamlineName):
     ql = list(getQueue(beamlineName))
     
@@ -585,9 +619,9 @@ def popNextRequest(beamlineName):
         if (orderedRequests[0]["priority"] != 99999):
             if orderedRequests[0]["priority"] > 0:
                 return orderedRequests[0]
-            else: #99999 priority means it's running, try next
-                if orderedRequests[1]["priority"] > 0:
-                    return orderedRequests[1]
+        else: #99999 priority means it's running, try next
+            if orderedRequests[1]["priority"] > 0:
+                return orderedRequests[1]
     except IndexError:
         pass
 
@@ -769,3 +803,13 @@ def getAllBeamlineConfigParams(beamline_id):
 #    print(configList[i]['info_name'])
 #    print(configList[i]['info'])    
   return configList
+
+def deleteCompletedRequestsforSample(sid):
+  return #short circuit, not what they wanted
+  print("delete request " + sid)
+  requestList=getRequestsBySampleID(sid)
+  for i in range (0,len(requestList)):
+    if (requestList[i]["priority"] == -1): #good to clean up completed requests after unmount
+      if (requestList[i]["protocol"] == "raster" or requestList[i]["protocol"] == "vector"):
+        deleteRequest(requestList[i]['uid'])
+

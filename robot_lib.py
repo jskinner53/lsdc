@@ -19,6 +19,7 @@ def finish():
       return 1    
     except Exception as e:
       print(e)
+#      daq_lib.gui_message(e)
       return 0
 
   
@@ -39,6 +40,7 @@ def mountRobotSample(puckPos,pinPos,sampID,init=0):
         return 1
       except Exception as e:
         print(e)
+#        daq_lib.gui_message(e)        
         return 0
       else:
         time.sleep(5)
@@ -64,6 +66,7 @@ def unmountRobotSample(puckPos,pinPos,sampID): #will somehow know where it came 
         return 1
       except Exception as e:
         print(e)
+#        daq_lib.gui_message(e)        
         return 0        
       else:
         time.sleep(5)

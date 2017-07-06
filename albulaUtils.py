@@ -13,7 +13,16 @@ def albulaClose(): #not used
 
   if (albulaFrame != None):
      albulaFrame.close()
-  
+
+
+def albulaOpen():
+  global albulaFrame,albulaSubFrame
+
+  if (albulaFrame == None or albulaSubFrame == None):
+     albulaFrame = dectris.albula.openMainFrame()
+     albulaFrame.disableClose()
+     albulaSubFrame = albulaFrame.openSubFrame()
+     
 
 def albulaDisp(filename):
   global albulaFrame,albulaSubFrame

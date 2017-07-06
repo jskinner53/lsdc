@@ -131,7 +131,7 @@ class screenDefaultsDialog(QDialog):
         self.osc_start_ledit = QtGui.QLineEdit()
         self.osc_start_ledit.setFixedWidth(60)
         self.osc_start_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phist")))
-        colEndLabel = QtGui.QLabel('Oscillation End:')
+        colEndLabel = QtGui.QLabel('Oscillation Range:')
         colEndLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colEndLabel.setFixedWidth(120)
         self.osc_end_ledit = QtGui.QLineEdit()
@@ -142,7 +142,7 @@ class screenDefaultsDialog(QDialog):
         hBoxColParams1.addWidget(colEndLabel)
         hBoxColParams1.addWidget(self.osc_end_ledit)
         hBoxColParams2 = QtGui.QHBoxLayout()
-        colRangeLabel = QtGui.QLabel('Oscillation Range:')
+        colRangeLabel = QtGui.QLabel('Oscillation Width:')
         colRangeLabel.setFixedWidth(120)
         colRangeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_range_ledit = QtGui.QLineEdit()
@@ -339,10 +339,12 @@ class DewarDialog(QtGui.QDialog):
       puckLocs = dewarObj['content']
       self.data = []
       for i in xrange(len(puckLocs)):
+#      for i in range(0,len(puckLocs)):          
         if (puckLocs[i] != ""):
           self.data.append(db_lib.getContainerNameByID(puckLocs[i]))
         else:
           self.data.append("Empty")
+      print(self.data)
 
 
     def initUI(self):
@@ -363,13 +365,14 @@ class DewarDialog(QtGui.QDialog):
           rowLayout = QtGui.QHBoxLayout()
           numLabel = QtGui.QLabel(str(i+1))
           rowLayout.addWidget(numLabel)
-          self.buttons = QDialogButtonBox(Qt.Horizontal, self)
+
           for j in range (0,self.pucksPerDewarSector):
             dataIndex = (i*self.pucksPerDewarSector)+j            
 #            print dataIndex
-            self.allButtonList[dataIndex] = self.buttons.addButton(str(self.data[dataIndex]),0)
-            self.buttons.buttons()[j].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
-          rowLayout.addWidget(self.buttons)
+            self.allButtonList[dataIndex] = QtGui.QPushButton((str(self.data[dataIndex])))
+#            self.allButtonList[dataIndex] = self.buttons.addButton(str(self.data[dataIndex]),0)            
+            self.allButtonList[dataIndex].clicked.connect(functools.partial(self.on_button,str(dataIndex)))
+            rowLayout.addWidget(self.allButtonList[dataIndex])
           layout.addLayout(rowLayout)
         cancelButton = QtGui.QPushButton("Done")        
         cancelButton.clicked.connect(self.containerCancelCB)
@@ -691,13 +694,13 @@ class DewarTree(QtGui.QTreeView):
           selectedSampleRequest = db_lib.getRequestByID(itemData)
           self.selectedSampleID = selectedSampleRequest["sample"]
           db_lib.deleteRequest(selectedSampleRequest["uid"])
-          if (selectedSampleRequest["request_obj"]["protocol"] == "raster"):
+          if (selectedSampleRequest["request_obj"]["protocol"] == "raster" or selectedSampleRequest["request_obj"]["protocol"] == "stepRaster"):
             for i in xrange(len(self.parent.rasterList)):
               if (self.parent.rasterList[i] != None):
                 if (self.parent.rasterList[i]["uid"] == selectedSampleRequest["uid"]):
                   self.parent.scene.removeItem(self.parent.rasterList[i]["graphicsItem"])
                   self.parent.rasterList[i] = None
-          if (selectedSampleRequest["request_obj"]["protocol"] == "vector"):
+          if (selectedSampleRequest["request_obj"]["protocol"] == "vector" or selectedSampleRequest["request_obj"]["protocol"] == "stepVector"):
             self.parent.clearVectorCB()
       self.parent.progressDialog.close()
       self.parent.treeChanged_pv.put(1)
@@ -764,7 +767,8 @@ class DataLocInfo(QtGui.QGroupBox):
     def prefixTextChanged(self,text):
       prefix = self.prefix_ledit.text()
       runNum = db_lib.getSampleRequestCount(self.parent.selectedSampleID)
-      self.setDataPath_ledit(self.base_path_ledit.text()+"/projID/"+prefix+"/"+str(runNum+1)+"/")
+      (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,self.parent.selectedSampleID)      
+      self.setDataPath_ledit(self.base_path_ledit.text()+"/projID/"+prefix+"/"+str(runNum+1)+"/"+db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/")
       
 
     def setFileNumstart_ledit(self,s):
@@ -786,6 +790,7 @@ class rasterCell(QtGui.QGraphicsRectItem):
     def __init__(self,x,y,w,h,topParent,scene):
       super(rasterCell,self).__init__(x,y,w,h,None,scene)
       self.topParent = topParent
+      self.setAcceptHoverEvents(True)
 
     def mousePressEvent(self, e):
       if (self.topParent.vidActionRasterExploreRadio.isChecked()):
@@ -802,8 +807,29 @@ class rasterCell(QtGui.QGraphicsRectItem):
           self.topParent.rasterExploreDialog.setSpotCount(spotcount)
           self.topParent.rasterExploreDialog.setTotalIntensity(intensity)
           self.topParent.rasterExploreDialog.setResolution(d_min)
+          groupList = self.group().childItems()
+          for i in range (0,len(groupList)):
+            groupList[i].setPen(self.topParent.redPen)
+          self.setPen(self.topParent.yellowPen)
+                                              
       else:
         super(rasterCell, self).mousePressEvent(e)
+
+
+    def hoverEnterEvent(self, e):
+      if (1):
+        if (self.data(0) != None):
+          spotcount = self.data(0).toInt()[0]
+#          filename = self.data(1).toString()
+          d_min = self.data(2).toDouble()[0]
+          intensity = self.data(3).toInt()[0]
+          if not (self.topParent.rasterExploreDialog.isVisible()):
+            self.topParent.rasterExploreDialog.show()
+          self.topParent.rasterExploreDialog.setSpotCount(spotcount)
+          self.topParent.rasterExploreDialog.setTotalIntensity(intensity)
+          self.topParent.rasterExploreDialog.setResolution(d_min)
+      else:
+        super(rasterCell, self).hoverEnterEvent(e)
 
 
 
@@ -874,15 +900,19 @@ class controlMain(QtGui.QMainWindow):
         self.textWindowMessageInit = 1
         self.processID = os.getpid()
         self.popupMessage = QtGui.QErrorMessage(self)
+        self.popupMessage.setStyleSheet("background-color: red")
         self.popupMessage.setModal(False)
         self.groupName = "skinner"
-        self.owner = "johns"                
+#        self.owner = "johns"
         self.vectorStart = None
         self.vectorEnd = None
         self.centerMarkerCharSize = 20
         self.centerMarkerCharOffsetX = 12
-        self.centerMarkerCharOffsetY = 18    
+        self.centerMarkerCharOffsetY = 18
         self.currentRasterCellList = []
+        self.redPen = QtGui.QPen(QtCore.Qt.red)
+        self.bluePen = QtGui.QPen(QtCore.Qt.blue)
+        self.yellowPen = QtGui.QPen(QtCore.Qt.yellow)                                
         self.initUI()
         self.lowMagCursorX_pv = PV(daq_utils.pvLookupDict["lowMagCursorX"])
         self.lowMagCursorY_pv = PV(daq_utils.pvLookupDict["lowMagCursorY"])
@@ -892,9 +922,9 @@ class controlMain(QtGui.QMainWindow):
         self.rasterStepDefs = {"Coarse":30.0,"Fine":10.0}
         self.createSampleTab()
         
-        self.initCallbacks()        
+        self.initCallbacks()
+        self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}        
         self.dewarTree.refreshTreeDewarView()
-        self.motPos = {"x":self.sampx_pv.get(),"y":self.sampy_pv.get(),"z":self.sampz_pv.get(),"omega":self.omega_pv.get()}
         if (self.mountedPin_pv.get() == ""):
           mountedPin = db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')["sampleID"]
           self.mountedPin_pv.put(mountedPin)
@@ -1004,7 +1034,7 @@ class controlMain(QtGui.QMainWindow):
         vBoxMainSetup = QtGui.QVBoxLayout()
         self.mainToolBox = QtGui.QToolBox()
 #        self.mainToolBox.setFixedWidth(570)
-        self.mainToolBox.setMinimumWidth(520)
+        self.mainToolBox.setMinimumWidth(570)
         self.mainColFrame = QFrame()
         vBoxMainColLayout= QtGui.QVBoxLayout()
         colParamsGB = QtGui.QGroupBox()
@@ -1016,7 +1046,7 @@ class controlMain(QtGui.QMainWindow):
         colStartLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_start_ledit = QtGui.QLineEdit()
         self.osc_start_ledit.setFixedWidth(60)
-        colEndLabel = QtGui.QLabel('Oscillation End:')
+        colEndLabel = QtGui.QLabel('Oscillation Range:')
         colEndLabel.setAlignment(QtCore.Qt.AlignCenter) 
         colEndLabel.setFixedWidth(140)
         self.osc_end_ledit = QtGui.QLineEdit()
@@ -1026,7 +1056,7 @@ class controlMain(QtGui.QMainWindow):
         hBoxColParams1.addWidget(colEndLabel)
         hBoxColParams1.addWidget(self.osc_end_ledit)
         hBoxColParams2 = QtGui.QHBoxLayout()
-        colRangeLabel = QtGui.QLabel('Oscillation Range:')
+        colRangeLabel = QtGui.QLabel('Oscillation Width:')
         colRangeLabel.setFixedWidth(140)
         colRangeLabel.setAlignment(QtCore.Qt.AlignCenter) 
         self.osc_range_ledit = QtGui.QLineEdit()
@@ -1114,9 +1144,8 @@ class controlMain(QtGui.QMainWindow):
 #        self.centeringComboBox.activated[str].connect(self.ComboActivatedCB) 
         protoLabel = QtGui.QLabel('Protocol:')
         protoLabel.setAlignment(QtCore.Qt.AlignCenter)                 
-#        protoOptionList = ["standard","screen","raster","vector"] # these should probably come from db
-        protoOptionList = ["standard","screen","raster","vector","multiCol","multiColQ"] # these should probably come from db        
-#        protoOptionList = ["standard","screen","raster","vector","characterize","ednaCol","multiCol","eScan"] # these should probably come from db        
+        protoOptionList = ["standard","screen","raster","vector","eScan","stepRaster","stepVector"] # these should probably come from db
+#        protoOptionList = ["standard","screen","raster","vector","multiCol","multiColQ","eScan","stepRaster","stepVector"] # these should probably come from db 
         self.protoComboBox = QtGui.QComboBox(self)
         self.protoComboBox.addItems(protoOptionList)
         self.protoComboBox.activated[str].connect(self.protoComboActivatedCB) 
@@ -1231,7 +1260,8 @@ class controlMain(QtGui.QMainWindow):
         setVectorStartButton.clicked.connect(self.setVectorStartCB)
         setVectorEndButton = QtGui.QPushButton("Set End") 
         setVectorEndButton.clicked.connect(self.setVectorEndCB)
-        vectorFPPLabel = QtGui.QLabel("Frames Per Point")
+        vectorFPPLabel = QtGui.QLabel("Number of Steps")
+#        vectorFPPLabel = QtGui.QLabel("Frames Per Point")        
         self.vectorFPP_ledit = QtGui.QLineEdit("1")
 #        clearVectorButton = QtGui.QPushButton("Clear Vector") 
 #        clearVectorButton.clicked.connect(self.clearVectorCB)
@@ -1361,22 +1391,21 @@ class controlMain(QtGui.QMainWindow):
         self.centerMarker.setFont(font)        
         self.scene.addItem(self.centerMarker)
         self.centerMarker.setPos(daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX,daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY)
-#I moved this block here so that fov could calculate
-        self.cameraRadioGroup=QtGui.QButtonGroup()
-        self.lowMagLevelRadio = QtGui.QRadioButton("LowMag")
-        self.lowMagLevelRadio.setChecked(True)
-        self.lowMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"LowMag"))
-        self.cameraRadioGroup.addButton(self.lowMagLevelRadio)
-        self.highMagLevelRadio = QtGui.QRadioButton("HighMag")
-        self.highMagLevelRadio.setChecked(False)
-        if (0):
-#        if (daq_utils.beamline == "amx"):            
-          self.highMagLevelRadio.setEnabled(False)
-        self.cameraRadioGroup.addButton(self.highMagLevelRadio)
-        self.highMagLevelRadio.toggled.connect(functools.partial(self.vidSourceToggledCB,"HighMag"))
-        self.digiZoomCheckBox = QCheckBox("Zoom")
-#        self.digiZoomCheckBox.setEnabled(False)
-        self.digiZoomCheckBox.stateChanged.connect(self.changeZoomCB)
+
+        self.zoomRadioGroup=QtGui.QButtonGroup()
+        self.zoom1Radio = QtGui.QRadioButton("Zoom1")
+        self.zoom1Radio.setChecked(True)
+        self.zoom1Radio.toggled.connect(functools.partial(self.zoomLevelToggledCB,"Zoom1"))
+        self.zoomRadioGroup.addButton(self.zoom1Radio)
+        self.zoom2Radio = QtGui.QRadioButton("Zoom2")
+        self.zoom2Radio.toggled.connect(functools.partial(self.zoomLevelToggledCB,"Zoom2"))
+        self.zoomRadioGroup.addButton(self.zoom2Radio)
+        self.zoom3Radio = QtGui.QRadioButton("Zoom3")
+        self.zoom3Radio.toggled.connect(functools.partial(self.zoomLevelToggledCB,"Zoom3"))
+        self.zoomRadioGroup.addButton(self.zoom3Radio)
+        self.zoom4Radio = QtGui.QRadioButton("Zoom4")
+        self.zoom4Radio.toggled.connect(functools.partial(self.zoomLevelToggledCB,"Zoom4"))
+        self.zoomRadioGroup.addButton(self.zoom4Radio)
 
         beamOverlayPen = QtGui.QPen(QtCore.Qt.red)
         self.tempBeamSizeXMicrons = 30
@@ -1448,12 +1477,13 @@ class controlMain(QtGui.QMainWindow):
         hBoxSampleOrientationLayout.addWidget(omegaTweakPosButtonFine)        
         hBoxSampleOrientationLayout.addStretch(1)
         hBoxVidControlLayout = QtGui.QHBoxLayout()
-#        lightLevelLabel = QtGui.QLabel("Sample Illumination:")
-#        sampleBrighterButton = QtGui.QPushButton("+")
-#        sampleBrighterButton.clicked.connect(self.lightUpCB)
-#        sampleDimmerButton = QtGui.QPushButton("-")
-#        sampleDimmerButton.clicked.connect(self.lightDimCB)
-        magLevelLabel = QtGui.QLabel("Video Source:")
+        lightLevelLabel = QtGui.QLabel("Backlight:")
+        lightLevelLabel.setAlignment(QtCore.Qt.AlignRight|Qt.AlignVCenter)         
+        sampleBrighterButton = QtGui.QPushButton("+")
+        sampleBrighterButton.clicked.connect(self.lightUpCB)
+        sampleDimmerButton = QtGui.QPushButton("-")
+        sampleDimmerButton.clicked.connect(self.lightDimCB)
+        magLevelLabel = QtGui.QLabel("Vid Zoom:")
         snapshotButton = QtGui.QPushButton("Snapshot")
         snapshotButton.clicked.connect(self.saveVidSnapshotButtonCB)
         snapshotButton.setEnabled(False)
@@ -1464,13 +1494,14 @@ class controlMain(QtGui.QMainWindow):
 #        zoomResetButton = QtGui.QPushButton("Zoom Reset")
 #        zoomResetButton.clicked.connect(self.zoomResetCB)
         hBoxVidControlLayout.addWidget(magLevelLabel)
-        hBoxVidControlLayout.addWidget(self.lowMagLevelRadio)
-        hBoxVidControlLayout.addWidget(self.highMagLevelRadio)
-        hBoxVidControlLayout.addWidget(self.digiZoomCheckBox)
+        hBoxVidControlLayout.addWidget(self.zoom1Radio)
+        hBoxVidControlLayout.addWidget(self.zoom2Radio)
+        hBoxVidControlLayout.addWidget(self.zoom3Radio)
+        hBoxVidControlLayout.addWidget(self.zoom4Radio)        
         hBoxVidControlLayout.addWidget(snapshotButton)
-#        hBoxVidControlLayout.addWidget(lightLevelLabel)
-#        hBoxVidControlLayout.addWidget(sampleBrighterButton)
-#        hBoxVidControlLayout.addWidget(sampleDimmerButton)
+        hBoxVidControlLayout.addWidget(lightLevelLabel)
+        hBoxVidControlLayout.addWidget(sampleBrighterButton)
+        hBoxVidControlLayout.addWidget(sampleDimmerButton)
         hBoxSampleAlignLayout = QtGui.QHBoxLayout()
         centerLoopButton = QtGui.QPushButton("Center\nLoop")
         centerLoopButton.clicked.connect(self.autoCenterLoopCB)
@@ -1562,17 +1593,72 @@ class controlMain(QtGui.QMainWindow):
 #        self.periodicFrame = QFrame()
 #        self.periodicFrame.setLineWidth(1)
 ####        self.periodicTable = QPeriodicTable(self.energyFrame,butSize=20)
-        self.periodicTable = QPeriodicTable(butSize=20)        
+        self.periodicTable = QPeriodicTable(butSize=20)
+        self.periodicTable.elementClicked("Se")
         vBoxEScan.addWidget(self.periodicTable)
 #        vBoxEScan.addWidget(self.periodicFrame)
         self.EScanDataPathGB = DataLocInfo(self)
         vBoxEScan.addWidget(self.EScanDataPathGB)
+        hBoxEScanParams = QtGui.QHBoxLayout()
+        hBoxEScanButtons = QtGui.QHBoxLayout()                        
         tempPlotButton = QtGui.QPushButton("Queue Requests")        
         tempPlotButton.clicked.connect(self.queueEnScanCB)
-        vBoxEScan.addWidget(tempPlotButton)
         clearEnscanPlotButton = QtGui.QPushButton("Clear")        
-        clearEnscanPlotButton.clicked.connect(self.clearEnScanPlotCB)
-        vBoxEScan.addWidget(clearEnscanPlotButton)
+        clearEnscanPlotButton.clicked.connect(self.clearEnScanPlotCB)        
+        hBoxEScanButtons.addWidget(clearEnscanPlotButton)
+        hBoxEScanButtons.addWidget(tempPlotButton)
+        escanStepsLabel = QtGui.QLabel("Steps")        
+        self.escan_steps_ledit = QtGui.QLineEdit()
+        self.escan_steps_ledit.setText("41")
+        escanStepsizeLabel = QtGui.QLabel("Stepsize (EVs)")        
+        self.escan_stepsize_ledit = QtGui.QLineEdit()
+        self.escan_stepsize_ledit.setText("1")
+        hBoxEScanParams.addWidget(escanStepsLabel)
+        hBoxEScanParams.addWidget(self.escan_steps_ledit)
+        hBoxEScanParams.addWidget(escanStepsizeLabel)
+        hBoxEScanParams.addWidget(self.escan_stepsize_ledit)
+        hBoxChoochResults = QtGui.QHBoxLayout()
+        hBoxChoochResults2 = QtGui.QHBoxLayout()        
+        choochResultsLabel = QtGui.QLabel("Chooch Results")
+        choochInflLabel = QtGui.QLabel("Infl")
+        self.choochInfl = QtGui.QLabel("")
+        self.choochInfl.setFixedWidth(70)                
+        choochPeakLabel = QtGui.QLabel("Peak")
+        self.choochPeak = QtGui.QLabel("")
+        self.choochPeak.setFixedWidth(70)
+        choochInflFPrimeLabel = QtGui.QLabel("fPrimeInfl")
+        self.choochFPrimeInfl = QtGui.QLabel("")
+        self.choochFPrimeInfl.setFixedWidth(70)                
+        choochInflF2PrimeLabel = QtGui.QLabel("f2PrimeInfl")
+        self.choochF2PrimeInfl = QtGui.QLabel("")
+        self.choochF2PrimeInfl.setFixedWidth(70)                
+        choochPeakFPrimeLabel = QtGui.QLabel("fPrimePeak")
+        self.choochFPrimePeak = QtGui.QLabel("")
+        self.choochFPrimePeak.setFixedWidth(70)                
+        choochPeakF2PrimeLabel = QtGui.QLabel("f2PrimePeak")
+        self.choochF2PrimePeak = QtGui.QLabel("")
+        self.choochF2PrimePeak.setFixedWidth(70)                
+        
+        hBoxChoochResults.addWidget(choochResultsLabel)
+        hBoxChoochResults.addWidget(choochInflLabel)
+        hBoxChoochResults.addWidget(self.choochInfl)        
+        hBoxChoochResults.addWidget(choochPeakLabel)
+        hBoxChoochResults.addWidget(self.choochPeak)        
+        hBoxChoochResults2.addWidget(choochInflFPrimeLabel)
+        hBoxChoochResults2.addWidget(self.choochFPrimeInfl)
+        hBoxChoochResults2.addWidget(choochInflF2PrimeLabel)                
+        hBoxChoochResults2.addWidget(self.choochF2PrimeInfl)        
+        hBoxChoochResults2.addWidget(choochPeakFPrimeLabel)
+        hBoxChoochResults2.addWidget(self.choochFPrimePeak)
+        hBoxChoochResults2.addWidget(choochPeakF2PrimeLabel)                
+        hBoxChoochResults2.addWidget(self.choochF2PrimePeak)        
+        
+        
+        vBoxEScan.addLayout(hBoxEScanParams)
+        vBoxEScan.addLayout(hBoxEScanButtons)
+        vBoxEScan.addLayout(hBoxChoochResults)
+        vBoxEScan.addLayout(hBoxChoochResults2)        
+#        vBoxEScan.addWidget(clearEnscanPlotButton)
         hBoxEScan.addLayout(vBoxEScan)
         verticalLine = QFrame()
         verticalLine.setFrameStyle(QFrame.VLine)
@@ -1624,11 +1710,14 @@ class controlMain(QtGui.QMainWindow):
         self.XRFTab.setLayout(XRFhBox)
         self.tabs.addTab(sampleTab,"Collect")
         self.tabs.addTab(self.XRFTab,"XRF Spectrum")
-        self.vidSourceToggledCB("LowMag")
+#        self.vidSourceToggledCB("LowMag")
+        self.zoomLevelToggledCB("Zoom1")        
 
     def albulaCheckCB(self,state):
       if state != QtCore.Qt.Checked:
         albulaUtils.albulaClose()
+      else:
+        albulaUtils.albulaOpen()      
 
     def rasterGrainToggledCB(self,identifier):
       if (identifier == "Coarse" or identifier == "Fine"):
@@ -1721,83 +1810,69 @@ class controlMain(QtGui.QMainWindow):
           return
       
 
-    def vidSourceToggledCB(self,identifier):
-      if (identifier == "LowMag" and not self.lowMagLevelRadio.isChecked()):
-#        print("how did I get here?") #it does happen
-        return
-      if (identifier == "HighMag" and not self.highMagLevelRadio.isChecked()):
-#        print("how did I get here?")          
-        return
+
+    def zoomLevelToggledCB(self,identifier):
       fov = {}
       zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
       zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
-      if (self.lowMagLevelRadio.isChecked()):
-#        self.digiZoomCheckBox.setEnabled(True)          
-        if (self.digiZoomCheckBox.isChecked()):
-          self.flushBuffer(self.captureLowMagZoom)
-          self.capture = self.captureLowMagZoom
-          fov["x"] = daq_utils.lowMagFOVx/2.0
-          fov["y"] = daq_utils.lowMagFOVy/2.0
-          unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
-          unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
-          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
-            zoomedCursorX = unzoomedCursorX*2.0
-          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
-            zoomedCursorY = unzoomedCursorY*2.0
-          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
-            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
-          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
-            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
-          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)          
-        else:
-          self.flushBuffer(self.captureLowMag)
-          self.capture = self.captureLowMag
-          fov["x"] = daq_utils.lowMagFOVx
-          fov["y"] = daq_utils.lowMagFOVy
-          if (1):
-#          if (daq_utils.beamline != "amx"):              
-            self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
-            self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-            self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-            self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
-      else:
-        if (self.digiZoomCheckBox.isChecked()):
-          self.flushBuffer(self.captureHighMagZoom)
-          self.capture = self.captureHighMagZoom
-          fov["x"] = daq_utils.highMagFOVx/2.0
-          fov["y"] = daq_utils.highMagFOVy/2.0
-          unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
-          unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
-          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
-            zoomedCursorX = unzoomedCursorX*2.0
-          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
-            zoomedCursorY = unzoomedCursorY*2.0
-          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
-            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
-          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
-            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
-          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
-#          self.centerMarker.setPos(daq_utils.screenPixCenterX-3,daq_utils.screenPixCenterY-3)          
-        else:
-#        self.digiZoomCheckBox.setEnabled(False)          
-          self.flushBuffer(self.captureHighMag)
-          self.capture = self.captureHighMag
-          fov["x"] = daq_utils.highMagFOVx
-          fov["y"] = daq_utils.highMagFOVy
-          if (1):
-#          if (daq_utils.beamline != "amx"):              
-            self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
-            self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-            self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-            self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      if (self.zoom2Radio.isChecked()):
+        self.flushBuffer(self.captureLowMagZoom)
+        self.capture = self.captureLowMagZoom
+        fov["x"] = daq_utils.lowMagFOVx/2.0
+        fov["y"] = daq_utils.lowMagFOVy/2.0
+        unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+        unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
+        if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+          zoomedCursorX = unzoomedCursorX*2.0
+        if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+          zoomedCursorY = unzoomedCursorY*2.0
+        if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+          zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+        if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
+          zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+        self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      elif (self.zoom1Radio.isChecked()):    
+        self.flushBuffer(self.captureLowMag)
+        self.capture = self.captureLowMag
+        fov["x"] = daq_utils.lowMagFOVx
+        fov["y"] = daq_utils.lowMagFOVy
+        self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      elif (self.zoom4Radio.isChecked()):            
+        self.flushBuffer(self.captureHighMagZoom)
+        self.capture = self.captureHighMagZoom
+        fov["x"] = daq_utils.highMagFOVx/2.0
+        fov["y"] = daq_utils.highMagFOVy/2.0
+        unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+        unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
+        if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+          zoomedCursorX = unzoomedCursorX*2.0
+        if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+          zoomedCursorY = unzoomedCursorY*2.0
+        if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+          zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+        if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):
+          zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+        self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      elif (self.zoom3Radio.isChecked()):
+        self.flushBuffer(self.captureHighMag)
+        self.capture = self.captureHighMag
+        fov["x"] = daq_utils.highMagFOVx
+        fov["y"] = daq_utils.highMagFOVy
+        self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
       self.adjustGraphics4ZoomChange(fov)
-
+      
 
     def saveVidSnapshotButtonCB(self): 
       comment,ok = snapCommentDialog.getComment()
@@ -1838,7 +1913,7 @@ class controlMain(QtGui.QMainWindow):
       resultObj["data"] = imgRef
       resultObj["comment"] = str(comment)
       if (reqID != None): #assuming raster here, but will probably need to check the type
-        db_lib.addResultforRequest("rasterJpeg",reqID,owner=self.owner,result_obj=resultObj)
+        db_lib.addResultforRequest("rasterJpeg",reqID,owner=daq_utils.owner,result_obj=resultObj,proposalID=daq_utils.getProposalID())
       else: # the user pushed the snapshot button on the gui
         mountedSampleID = self.mountedPin_pv.get()
         if (mountedSampleID>-1): #not sure what to do if no sample is mounted
@@ -1859,32 +1934,6 @@ class controlMain(QtGui.QMainWindow):
         self.controlMaster_pv.put(self.processID)
 
       
-    def changeZoomCB(self, state):
-      if (self.lowMagLevelRadio.isChecked()):
-        self.vidSourceToggledCB("LowMag")
-      else:
-        self.vidSourceToggledCB("HighMag")
-      return #short circuit
-#      fov = {}      
-#      if state == QtCore.Qt.Checked:
-#        self.flushBuffer(self.captureLowMagZoom)
-#        self.capture = self.captureLowMagZoom          
-#        fov["x"] = daq_utils.lowMagFOVx/2.0
-#        fov["y"] = daq_utils.lowMagFOVy/2.0
-#      else:
-#        if (self.lowMagLevelRadio.isChecked()):
-#          self.flushBuffer(self.captureLowMag)          
-#          self.capture = self.captureLowMag
-#          fov["x"] = daq_utils.lowMagFOVx
-#          fov["y"] = daq_utils.lowMagFOVy
-#        else:
-#          self.flushBuffer(self.captureHighMag)                      
-#          self.capture = self.captureHighMag       
-#          fov["x"] = daq_utils.highMagFOVx
-#          fov["y"] = daq_utils.highMagFOVy
-#      self.adjustGraphics4ZoomChange(fov)
-
-
     def calculateNewYCoordPosOld(self,startYX,startYY):
       startY_pixels = 0
       xMotRBV = self.motPos["x"]
@@ -1928,77 +1977,59 @@ class controlMain(QtGui.QMainWindow):
       return newY
 
 
-    def processZoomLevelChange(self,pvVal,userParam):
-      if (str(pvVal) == "ROI1"):
-        if not (self.digiZoomCheckBox.isChecked()):
-           self.digiZoomCheckBox.setChecked(True)
-      else:
-        if (self.digiZoomCheckBox.isChecked()):
-           self.digiZoomCheckBox.setChecked(False)
-
-
     def processROIChange(self,posRBV,ID):
 #      print(ID + " changed to " + str(posRBV))
       pass
-
-    def processHighMagCursorChangeObsolete(self,posRBV,ID):
-      if (self.highMagLevelRadio.isChecked() and not self.digiZoomCheckBox.isChecked()):
-        self.centerMarker.setPos(self.highMagCursorX_pv.get()-3,self.highMagCursorY_pv.get()-3)
-        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
 
     def processLowMagCursorChange(self,posRBV,ID):
       zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
       zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
-      if (self.lowMagLevelRadio.isChecked()):
-        if (self.digiZoomCheckBox.isChecked()):
-          unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
-          unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
-          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
-            zoomedCursorX = unzoomedCursorX*2.0
-          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
-            zoomedCursorY = unzoomedCursorY*2.0
-          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
-            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
-          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
-            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
-          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
-        else:
-          self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      if (self.zoom2Radio.isChecked()):  #lowmagzoom
+        unzoomedCursorX = self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+        unzoomedCursorY = self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY
+        if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+          zoomedCursorX = unzoomedCursorX*2.0
+        if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+          zoomedCursorY = unzoomedCursorY*2.0
+        if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+          zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+        if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
+          zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+        self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      else:
+        self.centerMarker.setPos(self.lowMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.lowMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
 
     def processHighMagCursorChange(self,posRBV,ID):
       zoomedCursorX = daq_utils.screenPixCenterX-self.centerMarkerCharOffsetX
       zoomedCursorY = daq_utils.screenPixCenterY-self.centerMarkerCharOffsetY
-      if (self.highMagLevelRadio.isChecked()):
-        if (self.digiZoomCheckBox.isChecked()):
-          unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
-          unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
-          if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
-            zoomedCursorX = unzoomedCursorX*2.0
-          if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
-            zoomedCursorY = unzoomedCursorY*2.0
-          if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
-            zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
-          if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
-            zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
-          self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
-        else:
-          self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
-          self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
-          self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
-          self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      if (self.zoom4Radio.isChecked()):      #highmagzoom
+        unzoomedCursorX = self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX
+        unzoomedCursorY = self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY
+        if (unzoomedCursorX*2.0<daq_utils.screenPixCenterX):
+          zoomedCursorX = unzoomedCursorX*2.0
+        if (unzoomedCursorY*2.0<daq_utils.screenPixCenterY):
+          zoomedCursorY = unzoomedCursorY*2.0
+        if (unzoomedCursorX-daq_utils.screenPixCenterX>daq_utils.screenPixCenterX/2):
+          zoomedCursorX = (unzoomedCursorX*2.0) - daq_utils.screenPixX
+        if (unzoomedCursorY-daq_utils.screenPixCenterY>daq_utils.screenPixCenterY/2):           
+          zoomedCursorY = (unzoomedCursorY*2.0) - daq_utils.screenPixY
+        self.centerMarker.setPos(zoomedCursorX,zoomedCursorY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
+      else:
+        self.centerMarker.setPos(self.highMagCursorX_pv.get()-self.centerMarkerCharOffsetX,self.highMagCursorY_pv.get()-self.centerMarkerCharOffsetY)
+        self.beamSizeXPixels = self.screenXmicrons2pixels(self.tempBeamSizeXMicrons)
+        self.beamSizeYPixels = self.screenYmicrons2pixels(self.tempBeamSizeYMicrons)
+        self.beamSizeOverlay.setRect(self.overlayPosOffsetX+self.centerMarker.x()-(self.beamSizeXPixels/2),self.overlayPosOffsetY+self.centerMarker.y()-(self.beamSizeYPixels/2),self.beamSizeXPixels,self.beamSizeYPixels)
 
           
     def processSampMove(self,posRBV,motID):
@@ -2087,6 +2118,7 @@ class controlMain(QtGui.QMainWindow):
 
     def queueEnScanCB(self):
 #      self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+      self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("eScan")))      
       self.addRequestsToAllSelectedCB()
       self.treeChanged_pv.put(1)      
 
@@ -2140,6 +2172,8 @@ class controlMain(QtGui.QMainWindow):
         self.controlMasterCheckBox.setChecked(False)      
 
     def processChoochResult(self,choochResultFlag):
+      if (choochResultFlag == "0"):
+        return
       choochResult = db_lib.getResult(choochResultFlag)
       choochResultObj = choochResult["result_obj"]
       graph_x = choochResultObj["choochInXAxis"]
@@ -2154,7 +2188,13 @@ class controlMain(QtGui.QMainWindow):
       self.choochGraph.newcurve("spline", chooch_graph_x, chooch_graph_y1)
       self.choochGraph.newcurve("fp", chooch_graph_x, chooch_graph_y2)
       self.choochGraph.replot()
-      self.choochResultFlag_pv.put(0)
+      self.choochInfl.setText(str(choochResultObj["infl"]))
+      self.choochPeak.setText(str(choochResultObj["peak"]))
+      self.choochFPrimeInfl.setText(str(choochResultObj["fprime_infl"]))
+      self.choochFPrimePeak.setText(str(choochResultObj["fprime_peak"]))
+      self.choochF2PrimeInfl.setText(str(choochResultObj["f2prime_infl"]))
+      self.choochF2PrimePeak.setText(str(choochResultObj["f2prime_peak"]))
+      self.choochResultFlag_pv.put("0")
 
 
 # seems like we should be able to do an aggregate query to mongo for max/min :(
@@ -2188,14 +2228,16 @@ class controlMain(QtGui.QMainWindow):
         self.rasterParamsFrame.show()
         self.osc_start_ledit.setEnabled(False)
         self.osc_end_ledit.setEnabled(False)
-        
+      elif (protocol == "stepRaster"):
+        self.rasterParamsFrame.show()        
       elif (protocol == "multiCol" or protocol == "multiColQ"):
         self.rasterParamsFrame.show()
         self.multiColParamsFrame.show()
         #        self.vectorParamsFrame.hide()
 #        self.characterizeParamsFrame.hide()
       elif (protocol == "screen"):
-#        return #SHORT CIRCUIT #why would I short circuit this?
+        self.osc_end_ledit.setEnabled(False)          
+        return #SHORT CIRCUIT #why would I short circuit this? - So you don't overwrite what the user wants?
         self.osc_start_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phist")))
         self.osc_end_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_phi_end")))
         self.osc_range_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_width")))
@@ -2205,7 +2247,7 @@ class controlMain(QtGui.QMainWindow):
         self.beamWidth_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamWidth")))
         self.beamHeight_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_beamHeight")))
         self.resolution_ledit.setText(str(db_lib.getBeamlineConfigParam(daq_utils.beamline,"screen_default_reso")))
-      elif (protocol == "vector"):
+      elif (protocol == "vector" or protocol == "stepVector"):
         self.vectorParamsFrame.show()
         self.processingOptionsFrame.show()        
       elif (protocol == "characterize" or protocol == "ednaCol"):
@@ -2244,7 +2286,7 @@ class controlMain(QtGui.QMainWindow):
 #      print "protocol = " + str(text)
       self.showProtParams()
       protocol = str(self.protoComboBox.currentText())
-      if (protocol == "raster"):
+      if (protocol == "raster" or protocol == "stepRaster"):
         self.vidActionRasterDefRadio.setChecked(True)        
 
     def rasterEvalComboActivatedCB(self, text):
@@ -2352,12 +2394,12 @@ class controlMain(QtGui.QMainWindow):
 
     def setDCStartCB(self):
       currentPos = float(self.sampleOmegaRBVLedit.getEntry().text())%360.0
-      sweepStart = float(self.osc_start_ledit.text())
-      sweepEnd = float(self.osc_end_ledit.text())
-      sweepRange = sweepEnd-sweepStart
-      newSweepEnd = currentPos + sweepRange
+#      sweepStart = float(self.osc_start_ledit.text())
+#      sweepEnd = float(self.osc_end_ledit.text())
+#      sweepRange = sweepEnd-sweepStart
+#      newSweepEnd = currentPos + sweepRange
       self.osc_start_ledit.setText(str(currentPos))
-      self.osc_end_ledit.setText(str(newSweepEnd))
+#      self.osc_end_ledit.setText(str(newSweepEnd))
       
       
     def moveDetDistCB(self):
@@ -2413,16 +2455,20 @@ class controlMain(QtGui.QMainWindow):
         if (len(self.click_positions) == 2): #draws a single row or column
 #          print(str(self.click_positions[0].x()) + " " + str(self.click_positions[0].y()) + " " +str(self.click_positions[1].x()) + " " + str(self.click_positions[1].y()))
           polyPoints.append(self.click_positions[0])
-          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix          
-            point = QtCore.QPointF(self.click_positions[0].x()+2,self.click_positions[1].y())
+#          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix
+          if (1): #straight line bug fix                        
+            point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[1].y())
           else:
             point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[1].y())
           polyPoints.append(point)
-          polyPoints.append(self.click_positions[1])
-          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix
-            point = QtCore.QPointF(self.click_positions[1].x()+2,self.click_positions[0].y())
+#          polyPoints.append(self.click_positions[1])
+          point = QtCore.QPointF(self.click_positions[0].x()+2,self.click_positions[1].y())
+          polyPoints.append(point)          
+#          if (abs(self.click_positions[0].x()-self.click_positions[1].x())<2): #straight line bug fix
+          if (1):
+            point = QtCore.QPointF(self.click_positions[0].x()+2,self.click_positions[0].y())
           else:
-            point = QtCore.QPointF(self.click_positions[1].x(),self.click_positions[0].y())
+            point = QtCore.QPointF(self.click_positions[0].x(),self.click_positions[0].y())
           polyPoints.append(point)
           self.rasterPoly = QtGui.QGraphicsPolygonItem(QtGui.QPolygonF(polyPoints))
         else:
@@ -2638,10 +2684,10 @@ class controlMain(QtGui.QMainWindow):
 
 
     def lightUpCB(self):
-      print "brighter"
+      self.send_to_server("backlightBrighter()")      
 
     def lightDimCB(self):
-      print "dimmer"
+      self.send_to_server("backlightDimmer()")              
       
 
     def eraseCB(self):
@@ -2688,21 +2734,18 @@ class controlMain(QtGui.QMainWindow):
 
     def getCurrentFOV(self):
       fov = {"x":0.0,"y":0.0}
-      if (self.lowMagLevelRadio.isChecked()):
-        if (self.digiZoomCheckBox.isChecked()):          
-          fov["x"] = daq_utils.lowMagFOVx/2.0
-          fov["y"] = daq_utils.lowMagFOVy/2.0
-        else:
-          fov["x"] = daq_utils.lowMagFOVx
-          fov["y"] = daq_utils.lowMagFOVy
+      if (self.zoom2Radio.isChecked()):  #lowmagzoom      
+        fov["x"] = daq_utils.lowMagFOVx/2.0
+        fov["y"] = daq_utils.lowMagFOVy/2.0
+      elif (self.zoom1Radio.isChecked()):
+        fov["x"] = daq_utils.lowMagFOVx
+        fov["y"] = daq_utils.lowMagFOVy
+      elif (self.zoom4Radio.isChecked()):        
+        fov["x"] = daq_utils.highMagFOVx/2.0
+        fov["y"] = daq_utils.highMagFOVy/2.0
       else:
-        if (self.digiZoomCheckBox.isChecked()):                    
-          fov["x"] = daq_utils.highMagFOVx/2.0
-          fov["y"] = daq_utils.highMagFOVy/2.0
-        else:
-          fov["x"] = daq_utils.highMagFOVx
-          fov["y"] = daq_utils.highMagFOVy
-            
+        fov["x"] = daq_utils.highMagFOVx
+        fov["y"] = daq_utils.highMagFOVy
       return fov
 
 
@@ -2968,20 +3011,16 @@ class controlMain(QtGui.QMainWindow):
         penRed = QtGui.QPen(QtCore.Qt.red)
         if (self.vidActionDefineCenterRadio.isChecked()):
           self.vidActionC2CRadio.setChecked(True) #because it's easy to forget defineCenter is on
-          if(self.highMagLevelRadio.isChecked()):
-            if(self.digiZoomCheckBox.isChecked()):
-              comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",1)"
-            else:
-              comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",0)"              
-            self.send_to_server(comm_s)
-            return
-          if(self.lowMagLevelRadio.isChecked()):
-            if(self.digiZoomCheckBox.isChecked()):
-              comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",1)"
-            else:
-              comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",0)"              
-            self.send_to_server(comm_s)
-            return
+          if (self.zoom4Radio.isChecked()): 
+            comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",1)"
+          elif (self.zoom3Radio.isChecked()):
+            comm_s = "changeImageCenterHighMag(" + str(x_click) + "," + str(y_click) + ",0)"              
+          if (self.zoom2Radio.isChecked()):        
+            comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",1)"
+          elif (self.zoom1Radio.isChecked()):
+            comm_s = "changeImageCenterLowMag(" + str(x_click) + "," + str(y_click) + ",0)"              
+          self.send_to_server(comm_s)
+          return
         if (self.vidActionRasterDefRadio.isChecked()):
           self.click_positions.append(event.pos())
           self.polyPointItems.append(self.scene.addEllipse(x_click, y_click, 4, 4, penRed))
@@ -2993,7 +3032,8 @@ class controlMain(QtGui.QMainWindow):
 #        print(correctedC2C_y)        
         if (self.threeClickCount > 0): #3-click centering
           self.threeClickCount = self.threeClickCount + 1
-          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'
+          comm_s = 'center_on_click(' + str(correctedC2C_x) + "," + str(correctedC2C_y) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'          
+#          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"]) + "," + '"screen",jog=90)'
         else:
           comm_s = 'center_on_click(' + str(correctedC2C_x) + "," + str(correctedC2C_y) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
 #          comm_s = 'center_on_click(' + str(x_click) + "," + str(y_click) + "," + str(fov["x"]) + "," + str(fov["y"])  + "," + '"screen",0)'
@@ -3046,9 +3086,11 @@ class controlMain(QtGui.QMainWindow):
       colRequest=self.selectedSampleRequest
       reqObj = colRequest["request_obj"]
       reqObj["sweep_start"] = float(self.osc_start_ledit.text())
-      reqObj["sweep_end"] = float(self.osc_end_ledit.text())
+      reqObj["sweep_end"] = float(self.osc_end_ledit.text())+float(self.osc_start_ledit.text())
+#      reqObj["sweep_end"] = float(self.osc_end_ledit.text())      
       reqObj["img_width"] = float(self.osc_range_ledit.text())
       reqObj["exposure_time"] = float(self.exp_time_ledit.text())
+      reqObj["detDist"] = float(self.detDistMotorEntry.getEntry().text())      
       reqObj["resolution"] = float(self.resolution_ledit.text())
       if (singleRequest == 1): # a touch kludgy, but I want to be able to edit parameters for multiple requests w/o screwing the data loc info
         reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
@@ -3065,7 +3107,7 @@ class controlMain(QtGui.QMainWindow):
       reqObj["fastEP"] =self.fastEPCheckBox.isChecked()
       reqObj["xia2"] =self.xia2CheckBox.isChecked()
       reqObj["protocol"] = str(self.protoComboBox.currentText())
-      if (reqObj["protocol"] == "vector"):
+      if (reqObj["protocol"] == "vector" or reqObj["protocol"] == "stepVector"):
         reqObj["vectorParams"]["fpp"] = int(self.vectorFPP_ledit.text())
       colRequest["request_obj"] = reqObj
       db_lib.updateRequest(colRequest)
@@ -3076,7 +3118,7 @@ class controlMain(QtGui.QMainWindow):
 
 
     def addRequestsToAllSelectedCB(self):
-      if (self.protoComboBox.currentText() == "raster"): #it confused people when they didn't need to add rasters explicitly
+      if (self.protoComboBox.currentText() == "raster" or self.protoComboBox.currentText() == "stepRaster"): #it confused people when they didn't need to add rasters explicitly
         return
       selmod = self.dewarTree.selectionModel()
       selection = selmod.selection()
@@ -3100,8 +3142,9 @@ class controlMain(QtGui.QMainWindow):
           self.EScanDataPathGBTool.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
           self.EScanDataPathGBTool.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
           self.EScanDataPathGB.setFilePrefix_ledit(str(self.selectedSampleRequest["request_obj"]["file_prefix"]))
-          self.EScanDataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))                        
-        self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
+          self.EScanDataPathGB.setDataPath_ledit(str(self.selectedSampleRequest["request_obj"]["directory"]))
+        if (itemDataType != "container"):
+          self.addSampleRequestCB(selectedSampleID=self.selectedSampleID)
 #      self.refreshTree()
       self.progressDialog.close()
       self.treeChanged_pv.put(1)
@@ -3109,7 +3152,10 @@ class controlMain(QtGui.QMainWindow):
 
     def addSampleRequestCB(self,rasterDef=None,selectedSampleID=None):
 #skinner, not pretty below the way stuff is duplicated.
-      if (self.periodicTableTool.isVisible()): #this one is for periodicTableTool, the other block is periodicTable
+      if (float(self.osc_end_ledit.text()) < float(self.osc_range_ledit.text())):
+        self.popupServerMessage("Osc range less than Osc width")
+        return
+      if (self.periodicTableTool.isVisible()): #this one is for periodicTableTool, the other block is periodicTable, 6/17 - we don't use tool anymore
         if (self.periodicTableTool.eltCurrent != None):
           symbol = self.periodicTableTool.eltCurrent.symbol
 #          print(symbol)
@@ -3120,18 +3166,23 @@ class controlMain(QtGui.QMainWindow):
           colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
           sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
           runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
+          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,colRequest["sample"])                
           reqObj = colRequest["request_obj"]
+          reqObj["element"] = self.periodicTable.eltCurrent.symbol          
           reqObj["runNum"] = runNum
           reqObj["file_prefix"] = str(self.EScanDataPathGBTool.prefix_ledit.text())
           reqObj["basePath"] = str(self.EScanDataPathGBTool.base_path_ledit.text())
-          reqObj["directory"] = str(self.EScanDataPathGBTool.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+          
+          reqObj["directory"] = str(self.EScanDataPathGBTool.base_path_ledit.text())+"/projID/"+sampleName+"/" + str(runNum) + "/"+db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/"
           reqObj["file_number_start"] = int(self.EScanDataPathGBTool.file_numstart_ledit.text())
           reqObj["exposure_time"] = float(self.exp_time_ledit.text())          
           reqObj["protocol"] = "eScan"
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
+          reqObj["steps"] = int(self.escan_steps_ledit.text())          
+          reqObj["stepsize"] = int(self.escan_stepsize_ledit.text())          
           colRequest["request_obj"] = reqObj             
-          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000,proposalID=daq_utils.getProposalID())
 #attempt here to select a newly created request.        
           self.SelectedItemData = newSampleRequestID
           newSampleRequest = db_lib.getRequestByID(newSampleRequestID)
@@ -3148,23 +3199,32 @@ class controlMain(QtGui.QMainWindow):
 #          print(symbol)
 #          print("EnergyScan2!!")        
           targetEdge = element_info[symbol][2]
+          mcaRoiLo = element_info[symbol][4]
+          mcaRoiHi = element_info[symbol][5]
           targetEnergy = ElementsInfo.Elements.Element[symbol]["binding"][targetEdge]
 #          print(targetEnergy)
           colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
           sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
           runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
+          (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,colRequest["sample"])                
           reqObj = colRequest["request_obj"]
+          reqObj["element"] = self.periodicTable.eltCurrent.symbol
+          reqObj["mcaRoiLo"] = mcaRoiLo
+          reqObj["mcaRoiHi"] = mcaRoiHi
           reqObj["runNum"] = runNum
           reqObj["file_prefix"] = str(self.EScanDataPathGB.prefix_ledit.text())
           reqObj["basePath"] = str(self.EScanDataPathGB.base_path_ledit.text())
-          reqObj["directory"] = str(self.EScanDataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+          reqObj["directory"] = str(self.EScanDataPathGB.base_path_ledit.text())+"/projID/"+sampleName+"/" + str(runNum) + "/"+db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/"
           reqObj["file_number_start"] = int(self.EScanDataPathGB.file_numstart_ledit.text())
           reqObj["exposure_time"] = float(self.exp_time_ledit.text())                    
           reqObj["protocol"] = "eScan"
+          reqObj["steps"] = int(self.escan_steps_ledit.text())          
+          reqObj["stepsize"] = int(self.escan_stepsize_ledit.text())          
+          
           reqObj["scanEnergy"] = targetEnergy
           reqObj["runChooch"] = True #just hardcode for now
           colRequest["request_obj"] = reqObj             
-          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
+          newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000,proposalID=daq_utils.getProposalID())
 #attempt here to select a newly created request.        
           self.SelectedItemData = newSampleRequestID
           
@@ -3188,10 +3248,12 @@ class controlMain(QtGui.QMainWindow):
              colRequest = daq_utils.createDefaultRequest(self.selectedSampleID)
              sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
              runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
+             (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,colRequest["sample"])                   
              reqObj = colRequest["request_obj"]
              reqObj["runNum"] = runNum
              reqObj["sweep_start"] = float(self.osc_start_ledit.text())
-             reqObj["sweep_end"] = float(self.osc_end_ledit.text())
+             reqObj["sweep_end"] = float(self.osc_end_ledit.text())+float(self.osc_start_ledit.text())
+#             reqObj["sweep_end"] = float(self.osc_end_ledit.text())             
              reqObj["img_width"] = float(self.osc_range_ledit.text())
              reqObj["exposure_time"] = float(self.exp_time_ledit.text())
              reqObj["resolution"] = float(self.resolution_ledit.text())
@@ -3199,7 +3261,7 @@ class controlMain(QtGui.QMainWindow):
 
 #             reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
              reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
-             reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+sampleName+"/" + str(runNum) + "/")
+             reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text())+"/projID/"+sampleName+"/" + str(runNum) + "/"+db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/"
              reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
 #             colRequest["gridStep"] = self.rasterStepEdit.text()
              reqObj["attenuation"] = float(self.transmission_ledit.text())
@@ -3219,7 +3281,7 @@ class controlMain(QtGui.QMainWindow):
                characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
                reqObj["characterizationParams"] = characterizationParams
              colRequest["request_obj"] = reqObj             
-             newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
+             newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000,proposalID=daq_utils.getProposalID())
 #attempt here to select a newly created request.        
              self.SelectedItemData = newSampleRequestID
              
@@ -3232,6 +3294,7 @@ class controlMain(QtGui.QMainWindow):
       else: #autocenter or interactive
         colRequest=self.selectedSampleRequest
         sampleName = str(db_lib.getSampleNamebyID(colRequest["sample"]))
+        (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(daq_utils.beamline,colRequest["sample"])              
         runNum = db_lib.incrementSampleRequestCount(colRequest["sample"])
         reqObj = colRequest["request_obj"]
         centeringOption = str(self.centeringComboBox.currentText())
@@ -3242,12 +3305,13 @@ class controlMain(QtGui.QMainWindow):
           reqObj["pos_z"] = float(self.sampz_pv.get())
         reqObj["runNum"] = runNum
         reqObj["sweep_start"] = float(self.osc_start_ledit.text())
-        reqObj["sweep_end"] = float(self.osc_end_ledit.text())
+#        reqObj["sweep_end"] = float(self.osc_end_ledit.text())
+        reqObj["sweep_end"] = float(self.osc_end_ledit.text())+float(self.osc_start_ledit.text())
         reqObj["img_width"] = float(self.osc_range_ledit.text())
         reqObj["exposure_time"] = float(self.exp_time_ledit.text())
         reqObj["resolution"] = float(self.resolution_ledit.text())
 #        reqObj["directory"] = str(self.dataPathGB.dataPath_ledit.text())
-        reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text()+"/projID/"+str(self.dataPathGB.prefix_ledit.text())+"/" + str(runNum) + "/")
+        reqObj["directory"] = str(self.dataPathGB.base_path_ledit.text())+"/projID/"+str(self.dataPathGB.prefix_ledit.text())+"/" + str(runNum) + "/"+db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/"
         reqObj["basePath"] = str(self.dataPathGB.base_path_ledit.text())
         reqObj["file_prefix"] = str(self.dataPathGB.prefix_ledit.text())
         reqObj["file_number_start"] = int(self.dataPathGB.file_numstart_ledit.text())
@@ -3262,7 +3326,10 @@ class controlMain(QtGui.QMainWindow):
         reqObj["attenuation"] = float(self.transmission_ledit.text())
         reqObj["slit_width"] = float(self.beamWidth_ledit.text())
         reqObj["slit_height"] = float(self.beamHeight_ledit.text())
-        wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
+        try:        
+          wave = daq_utils.energy2wave(float(self.energy_ledit.text()))
+        except ValueError:
+          wave = 1.1
         reqObj["wavelength"] = wave
         reqObj["protocol"] = str(self.protoComboBox.currentText())
         try:
@@ -3280,7 +3347,7 @@ class controlMain(QtGui.QMainWindow):
         if (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
           characterizationParams = {"aimed_completeness":float(self.characterizeCompletenessEdit.text()),"aimed_multiplicity":str(self.characterizeMultiplicityEdit.text()),"aimed_resolution":float(self.characterizeResoEdit.text()),"aimed_ISig":float(self.characterizeISIGEdit.text())}
           reqObj["characterizationParams"] = characterizationParams
-        if (reqObj["protocol"] == "vector"):
+        if (reqObj["protocol"] == "vector" or reqObj["protocol"] == "stepVector"):
           selectedCenteringFound = 1            
           x_vec_end = self.vectorEnd["coords"]["x"]
           y_vec_end = self.vectorEnd["coords"]["y"]
@@ -3297,7 +3364,7 @@ class controlMain(QtGui.QMainWindow):
           vectorParams={"vecStart":self.vectorStart["coords"],"vecEnd":self.vectorEnd["coords"],"x_vec":x_vec,"y_vec":y_vec,"z_vec":z_vec,"trans_total":trans_total,"fpp":framesPerPoint}
           reqObj["vectorParams"] = vectorParams
         colRequest["request_obj"] = reqObj
-        newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],self.owner,reqObj,priority=5000)
+        newSampleRequestID = db_lib.addRequesttoSample(self.selectedSampleID,reqObj["protocol"],daq_utils.owner,reqObj,priority=5000,proposalID=daq_utils.getProposalID())
 #attempt here to select a newly created request.        
         self.SelectedItemData = newSampleRequestID
         newSampleRequest = db_lib.getRequestByID(newSampleRequestID)
@@ -3398,11 +3465,13 @@ class controlMain(QtGui.QMainWindow):
 
     def mountSampleCB(self):
       print "mount selected sample"
+      self.eraseCB()      
       self.selectedSampleID = self.selectedSampleRequest["sample"]
       self.send_to_server("mountSample(\""+str(self.selectedSampleID)+"\")")
 
     def unmountSampleCB(self):
       print "unmount sample"
+      self.eraseCB()      
       self.send_to_server("unmountSample()")
 
 
@@ -3410,7 +3479,8 @@ class controlMain(QtGui.QMainWindow):
       reqObj = selectedSampleRequest["request_obj"]
       self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str(reqObj["protocol"])))
       self.osc_start_ledit.setText(str(reqObj["sweep_start"]))
-      self.osc_end_ledit.setText(str(reqObj["sweep_end"]))
+      self.osc_end_ledit.setText(str(reqObj["sweep_end"]-reqObj["sweep_start"]))
+#      self.osc_end_ledit.setText(str(reqObj["sweep_end"]))      
       self.osc_range_ledit.setText(str(reqObj["img_width"]))
       self.exp_time_ledit.setText(str(reqObj["exposure_time"]))
       self.resolution_ledit.setText(str(reqObj["resolution"]))
@@ -3453,7 +3523,7 @@ class controlMain(QtGui.QMainWindow):
         self.rasterGrainCustomRadio.setChecked(True)          
       rasterStep = int(reqObj["gridStep"])
 #      self.eraseCB()
-      if (str(reqObj["protocol"])== "raster"):
+      if (str(reqObj["protocol"])== "raster" or str(reqObj["protocol"])== "stepRaster"):
         if (not self.rasterIsDrawn(selectedSampleRequest)):
 #        if (1):            
           self.drawPolyRaster(selectedSampleRequest)
@@ -3461,10 +3531,17 @@ class controlMain(QtGui.QMainWindow):
         self.processSampMove(self.sampx_pv.get(),"x")
         self.processSampMove(self.sampy_pv.get(),"y")
         self.processSampMove(self.sampz_pv.get(),"z")
-        comm_s = "mvaDescriptor(\"omega\"," + str(selectedSampleRequest["request_obj"]["rasterDef"]["omega"]) + ")"
-        self.send_to_server(comm_s)
-          
-          
+        if (abs(selectedSampleRequest["request_obj"]["rasterDef"]["omega"]-self.omega_pv.get()) > 5.0):
+          comm_s = "mvaDescriptor(\"omega\"," + str(selectedSampleRequest["request_obj"]["rasterDef"]["omega"]) + ")"
+          self.send_to_server(comm_s)
+      if (str(reqObj["protocol"])== "eScan"):
+        self.escan_steps_ledit.setText(str(reqObj["steps"]))
+        self.escan_stepsize_ledit.setText(str(reqObj["stepsize"]))
+        self.EScanDataPathGB.setBasePath_ledit(reqObj["basePath"])
+        self.EScanDataPathGB.setDataPath_ledit(reqObj["directory"])
+        self.EScanDataPathGB.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
+        self.EScanDataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))                  
+        self.periodicTable.elementClicked(reqObj["element"])          
           
       elif (str(reqObj["protocol"])== "characterize" or str(reqObj["protocol"])== "ednaCol"):
         characterizationParams = reqObj["characterizationParams"]
@@ -3517,6 +3594,19 @@ class controlMain(QtGui.QMainWindow):
         if (self.osc_start_ledit.text() == ""):
           self.selectedSampleRequest = daq_utils.createDefaultRequest(itemData)
           self.refreshCollectionParams(self.selectedSampleRequest)
+          reqObj = self.selectedSampleRequest["request_obj"]
+          self.dataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
+          self.dataPathGB.setBasePath_ledit(reqObj["basePath"])
+          self.dataPathGB.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGBTool.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
+          self.EScanDataPathGBTool.setBasePath_ledit(reqObj["basePath"])
+          self.EScanDataPathGBTool.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGBTool.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
+          self.EScanDataPathGB.setFilePrefix_ledit(str(reqObj["file_prefix"]))          
+          self.EScanDataPathGB.setBasePath_ledit(reqObj["basePath"])
+          self.EScanDataPathGB.setDataPath_ledit(reqObj["directory"])
+          self.EScanDataPathGB.setFileNumstart_ledit(str(reqObj["file_number_start"]))          
+          
           if (self.vidActionRasterDefRadio.isChecked()):
 #          self.selectedSampleRequest["protocol"] = "raster"
             self.protoComboBox.setCurrentIndex(self.protoComboBox.findText(str("raster")))
@@ -3551,7 +3641,8 @@ class controlMain(QtGui.QMainWindow):
             if (len(resultList) > 0):
               lastResult = resultList[-1]
 #              if (lastResult["result_type"] == "choochResult"): #I don't know how to get this from the damn DBRef type, see next line, not ideal, but not bad.
-              if (db_lib.getResult(lastResult['uid'], as_mongo_obj=True).result_type.name == "choochResult"):
+#              if (db_lib.getResult(lastResult['uid'], as_mongo_obj=True).result_type.name == "choochResult"):
+              if (db_lib.getResult(lastResult['uid'])["result_type"] == "choochResult"):                  
                 resultID = lastResult['uid']
                 print("plotting chooch")
                 self.processChoochResult(resultID)
@@ -3617,12 +3708,6 @@ class controlMain(QtGui.QMainWindow):
       ID = kw["ID"]
       self.emit(QtCore.SIGNAL("lowMagCursorChangeSignal"),posRBV,ID)
       
-
-    def processZoomLevelChangeCB(self,value=None, char_value=None, **kw):
-      zoomVal = value
-#      userFlag = user_args[0]
-      userFlag = "" #I think I don't use this
-      self.emit(QtCore.SIGNAL("zoomLevelSignal"),zoomVal,userFlag)
 
     def treeChangedCB(self,value=None, char_value=None, **kw):
       self.emit(QtCore.SIGNAL("refreshTreeSignal"))
@@ -3731,14 +3816,6 @@ class controlMain(QtGui.QMainWindow):
 #      self.omega_pv.add_callback(self.processSampMoveCB,motID="omega")
 
       if (1):
-#      if (daq_utils.beamline != "amx"):          
-              
-#        self.highMagZoomMinXRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinXRBV"])
-#        self.connect(self, QtCore.SIGNAL("roiChangeSignal"),self.processROIChange)
-#        self.highMagZoomMinXRBV_pv.add_callback(self.processROIChangeCB,ID="x")
-#        self.highMagZoomMinYRBV_pv = PV(daq_utils.pvLookupDict["highMagZoomMinYRBV"])
-#        self.highMagZoomMinYRBV_pv.add_callback(self.processROIChangeCB,ID="y")
-      
 
         self.connect(self, QtCore.SIGNAL("highMagCursorChangeSignal"),self.processHighMagCursorChange)
         self.highMagCursorX_pv.add_callback(self.processHighMagCursorChangeCB,ID="x")
@@ -3750,9 +3827,6 @@ class controlMain(QtGui.QMainWindow):
         self.lowMagCursorY_pv.add_callback(self.processLowMagCursorChangeCB,ID="y")      
         
 
-##      self.camZoom_pv = PV("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort")
-##      self.connect(self, QtCore.SIGNAL("zoomLevelSignal"),self.processZoomLevelChange)
-##      self.camZoom_pv.add_callback(self.processZoomLevelChangeCB)
         
 
     def popupServerMessage(self,message_s):

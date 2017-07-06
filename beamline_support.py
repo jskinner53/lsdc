@@ -61,7 +61,7 @@ def pvClose(pv):
 
 
 #convenience to set a pv value given the name
-def set_any_epics_pv(pv_prefix,field_name,value): #this does not use beamline designation
+def set_any_epics_pv(pv_prefix,field_name,value,wait=True): #this does not use beamline designation
   if (field_name == "VAL"):
     pvname = pv_prefix
   else:
@@ -69,11 +69,11 @@ def set_any_epics_pv(pv_prefix,field_name,value): #this does not use beamline de
   if (pvname not in pvChannelDict):
     pvChannelDict[pvname] = epics.PV(pvname)
   if (pvChannelDict[pvname] != None):
-    pvChannelDict[pvname].put(value)
+    pvChannelDict[pvname].put(value,wait=wait)
 
 
 #convenience to set a pv value given the name
-def get_any_epics_pv(pv_prefix,field_name): #this does not use beamline designation
+def get_any_epics_pv(pv_prefix,field_name,as_string=False): #this does not use beamline designation
   if (field_name == "VAL"):
     pvname = pv_prefix
   else:
@@ -82,7 +82,7 @@ def get_any_epics_pv(pv_prefix,field_name): #this does not use beamline designat
   if (pvname not in pvChannelDict):
     pvChannelDict[pvname] = PVchannel = epics.PV(pvname)
   if (pvChannelDict[pvname] != None):
-    pv_val = pvChannelDict[pvname].get()
+    pv_val = pvChannelDict[pvname].get(as_string=as_string)
   else:
     pv_val = None
   return pv_val
@@ -377,11 +377,11 @@ def motor_code_from_descriptor(descriptor):
 def pvNameFromDescriptor(descriptor): 
   return pvLookupDict[descriptor]
 
-def getPvValFromDescriptor(descriptor):
-  return get_any_epics_pv(pvNameFromDescriptor(descriptor),"VAL")
+def getPvValFromDescriptor(descriptor,as_string=False):
+  return get_any_epics_pv(pvNameFromDescriptor(descriptor),"VAL",as_string=as_string)
 
-def setPvValFromDescriptor(descriptor,setval):
-  set_any_epics_pv(pvNameFromDescriptor(descriptor),"VAL",setval)
+def setPvValFromDescriptor(descriptor,setval,wait=True):
+  set_any_epics_pv(pvNameFromDescriptor(descriptor),"VAL",setval,wait)
   
 
   

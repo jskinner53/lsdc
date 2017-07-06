@@ -11,6 +11,8 @@ import epics_det
 def detector_set_username(username):
   epics_det.det_set_username(username)
 
+def detector_save_files():
+  epics_det.det_save_files()
 
 def detector_set_groupname(groupname):
   epics_det.det_set_groupname(groupname)
@@ -29,6 +31,9 @@ def detector_set_exposure_time(exptime):
 
 def detector_get_seqnum():
   return epics_det.det_getSeqNum()
+
+def detector_get_deadtime():
+  return epics_det.det_get_deadtime()
 
 def detector_setImagesPerFile(numimages):
   epics_det.det_setImagesPerFile(numimages)

@@ -5,6 +5,16 @@ import beamline_lib
 import beamline_support
 
 
+def backlightBrighter():
+  intensity=beamline_support.getPvValFromDescriptor("backLightVal")
+  intensity = intensity+5  
+  beamline_support.setPvValFromDescriptor("backLightVal",intensity)  
+
+def backlightDimmer():
+  intensity=beamline_support.getPvValFromDescriptor("backLightVal")
+  intensity = intensity-5
+  beamline_support.setPvValFromDescriptor("backLightVal",intensity)  
+
 def lib_init_diffractometer():
   beamline_support.initControlPVs()
 
@@ -43,7 +53,8 @@ def lib_home_dist():
 
 def gon_stop():
   print("setting osc abort")
-  beamline_support.setPvValFromDescriptor("oscAbort",0)
+  beamline_support.setPvValFromDescriptor("vectorAbort",1)
+#  beamline_support.setPvValFromDescriptor("oscAbort",0)  
 
 
 def oscWait():

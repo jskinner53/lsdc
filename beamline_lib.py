@@ -20,7 +20,7 @@ number_of_counter_readouts = 12
 
 
 def mvrDescriptor(*args): #convenience to get around nasty PV names
-  newArgsList = []
+  newArgsList = []  
   for i in range(0,len(args),2):
     newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
     newArgsList.append(float(args[i+1]))
@@ -31,11 +31,18 @@ def mvrDescriptor(*args): #convenience to get around nasty PV names
 
 def mvaDescriptor(*args): #convenience to get around nasty PV names
   newArgsList = []
+  if (args[0] == "detectorDist"):
+    beamline_support.setPvValFromDescriptor("govRobotDetDist",float(args[1]))
+    beamline_support.setPvValFromDescriptor("govHumanDetDist",float(args[1]))
+  
   for i in range(0,len(args),2):
     newArgsList.append(beamline_support.pvNameSuffix_from_descriptor(args[i]))
     newArgsList.append(float(args[i+1]))
   newArgs = tuple(newArgsList)
   mva(*newArgs)
+
+                                            
+    
   
 
   

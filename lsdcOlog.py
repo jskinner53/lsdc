@@ -32,15 +32,10 @@ def toOlog(imagePath,comment,omega_pv=None):
   client.log(entry) 
 
 
-def toOlogComment(comment,omega_pv=None):
+def toOlogComment(comment):
   global client
 
   if (client==None):
     client = OlogClient(url, username, password) 
-  if (omega_pv==None):
-    propOmega = Property(name='motorPosition', attributes={'id':'XF:AMXFMX{MC-Goni}Omega.RBV', 'name':'Omega', 'value':'offline', 'unit':'deg'}) 
-  else:
-    propOmega = Property(name='motorPosition', attributes={'id':'XF:AMXFMX{MC-Goni}Omega.RBV', 'name':'Omega', 'value':str(omega_pv.get()), 'unit':'deg'}) 
-  client.createProperty(propOmega) 
   entry = LogEntry(text=comment, owner=owner, logbooks=[Logbook(logbook)], properties=[propOmega]) 
   client.log(entry) 

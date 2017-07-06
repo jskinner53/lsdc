@@ -4,6 +4,7 @@ import os
 from math import *
 import requests
 import xmltodict
+import getpass
 
 #import metadatastore.commands as mdsc
 
@@ -30,12 +31,11 @@ soft_motor_list = []
 global screenYCenterPixelsLowMagOffset
 screenYCenterPixelsLowMagOffset = 58
 
-
-
 def init_environment():
   global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL,owner
 
 
+#  owner = getpass.getuser()
   owner = db_lib.getBeamlineConfigParam(beamline,"user")
   primaryDewarName = db_lib.getBeamlineConfigParam(beamline,"primaryDewarName")
   db_lib.setPrimaryDewarName(primaryDewarName)
@@ -193,6 +193,7 @@ def createDefaultRequest(sample_id):
     sampleName = str(db_lib.getSampleNamebyID(sample_id))
     basePath = os.getcwd()
     runNum = db_lib.getSampleRequestCount(sample_id)
+    (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(beamline,sample_id)          
     request = {"sample": sample_id}
     requestObj = {
                "sample": sample_id,
@@ -204,14 +205,14 @@ def createDefaultRequest(sample_id):
                "parentReqID": -1,
                "basePath": basePath,
                "file_prefix": sampleName,
-               "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/",
+               "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/" +db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/",
                "file_number_start": 1,
                "energy":screenEnergy,
                "wavelength": energy2wave(screenEnergy),
                "resolution": screenReso,
                "slit_height": screenbeamHeight,  "slit_width": screenbeamWidth,
                "attenuation": screenTransmissionPercent,
-               "pos_x": 0,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A', "gridStep": 30}
+               "pos_x": -999,  "pos_y": 0,  "pos_z": 0,  "pos_type": 'A', "gridStep": 30}
     request["request_obj"] = requestObj
 
     return request
@@ -448,7 +449,11 @@ def readPVDesc():
     counter_dict[counter_inf[1]] = beamline_designation + counter_inf[0]    
 
 
+def setProposal(proposalID):
+  db_lib.setBeamlineConfigParam(beamline,"proposal",proposalID)
 
+def getProposalID():
+  return db_lib.getBeamlineConfigParam(beamline,"proposal")
 
 #def calc_reso_edge(distance,wave,theta):
 #  if (distance < 1.0):
