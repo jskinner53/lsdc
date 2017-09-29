@@ -5,6 +5,7 @@ import RobotControlLib
 import daq_utils
 import db_lib
 import daq_lib
+import beamline_lib
 import time
 
 
@@ -22,15 +23,33 @@ def finish():
 #      daq_lib.gui_message(e)
       return 0
 
+def warmupGripper():
+  RobotControlLib.warmupGripper()
+  
+def cooldownGripper():
+  RobotControlLib.cooldownGripper()
   
 def mountRobotSample(puckPos,pinPos,sampID,init=0):
 
-  absPos = (pinsPerPuck*puckPos)+pinPos+1
+#  absPos = (pinsPerPuck*puckPos)+pinPos+1
+  absPos = (pinsPerPuck*(puckPos%3))+pinPos+1  
   if (db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')):
     if (daq_lib.setGovRobotSE()):
       print("mounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID))
       print("absPos = " + str(absPos))
-
+      platePos = int(puckPos/3)
+      rotMotTarget = daq_utils.dewarPlateMap[platePos][0]
+      rotCP = beamline_lib.motorPosFromDescriptor("dewarRot")
+      print("dewar target,CP")
+      print(rotMotTarget,rotCP)
+      if (abs(rotMotTarget-rotCP)>1):
+        print("rot dewar")
+        try:
+          RobotControlLib.park()
+        except Exception as e:
+          print(e)
+          return 0
+        beamline_lib.mvaDescriptor("dewarRot",rotMotTarget)
       try:
         if (init):
           RobotControlLib.mount(absPos)
@@ -53,14 +72,27 @@ def mountRobotSample(puckPos,pinPos,sampID,init=0):
 
 def unmountRobotSample(puckPos,pinPos,sampID): #will somehow know where it came from
 
-  absPos = (pinsPerPuck*puckPos)+pinPos+1
+#  absPos = (pinsPerPuck*puckPos)+pinPos+1
+  absPos = (pinsPerPuck*(puckPos%3))+pinPos+1  
   robotOnline = db_lib.getBeamlineConfigParam(daq_utils.beamline,'robot_online')
   print("robot online = " + str(robotOnline))
   if (robotOnline):  
     if (daq_lib.setGovRobotSE()):
       print("unmounting " + str(puckPos) + " " + str(pinPos) + " " + str(sampID))
       print("absPos = " + str(absPos))
-
+      platePos = int(puckPos/3)
+      rotMotTarget = daq_utils.dewarPlateMap[platePos][0]
+      rotCP = beamline_lib.motorPosFromDescriptor("dewarRot")
+      print("dewar target,CP")
+      print(rotMotTarget,rotCP)
+      if (abs(rotMotTarget-rotCP)>1):
+        print("rot dewar")
+        try:
+          RobotControlLib.park()
+        except Exception as e:
+          print(e)
+          return 0
+        beamline_lib.mvaDescriptor("dewarRot",rotMotTarget)
       try:
         RobotControlLib.unmount(absPos)
         return 1

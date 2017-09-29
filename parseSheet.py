@@ -18,13 +18,13 @@ def parseSpreadsheet(infilename):
   return d
 
 def insertSpreadsheetDict(d,owner):
-  for i in range (0,len(d["container_name"])): #number of rows in sheet
+  for i in range (0,len(d["puckName"])): #number of rows in sheet
 #    print(d["container_name"][i])
 #    print(d["position"][i])
 #    print(d["item_name"][i])
-    container_name = str(d["container_name"][i])
+    container_name = str(d["puckName"][i])
     position = d["position"][i]
-    item_name = str(d["item_name"][i])
+    item_name = str(d["sampleName"][i])
     containerUID = db_lib.getContainerIDbyName(container_name,owner)
     if (containerUID == ''):
       print("create container " + str(container_name))

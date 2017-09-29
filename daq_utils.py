@@ -32,13 +32,14 @@ global screenYCenterPixelsLowMagOffset
 screenYCenterPixelsLowMagOffset = 58
 
 def init_environment():
-  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL,owner
+  global beamline,detector_id,mono_mot_code,has_beamline,has_xtalview,xtal_url,xtal_url_small,xtalview_user,xtalview_pass,det_type,has_dna,beamstop_x_pvname,beamstop_y_pvname,camera_offset,det_radius,lowMagFOVx,lowMagFOVy,highMagFOVx,highMagFOVy,lowMagPixX,lowMagPixY,highMagPixX,highMagPixY,screenPixX,screenPixY,screenPixCenterX,screenPixCenterY,screenProtocol,screenPhist,screenPhiend,screenWidth,screenDist,screenExptime,screenWave,screenReso,gonioPvPrefix,searchParams,screenEnergy,detectorOffline,imgsrv_host,imgsrv_port,beamlineComm,primaryDewarName,lowMagCamURL,highMagZoomCamURL,lowMagZoomCamURL,highMagCamURL,owner,dewarPlateMap
 
 
-#  owner = getpass.getuser()
-  owner = db_lib.getBeamlineConfigParam(beamline,"user")
+  owner = getpass.getuser()
+#  owner = db_lib.getBeamlineConfigParam(beamline,"user")
   primaryDewarName = db_lib.getBeamlineConfigParam(beamline,"primaryDewarName")
   db_lib.setPrimaryDewarName(primaryDewarName)
+  dewarPlateMap = db_lib.getBeamlineConfigParam(beamline,"dewarPlateMap")
   lowMagCamURL = db_lib.getBeamlineConfigParam(beamline,"lowMagCamURL")
   highMagCamURL = db_lib.getBeamlineConfigParam(beamline,"highMagCamURL")
   highMagZoomCamURL = db_lib.getBeamlineConfigParam(beamline,"highMagZoomCamURL")
@@ -195,6 +196,7 @@ def createDefaultRequest(sample_id):
     runNum = db_lib.getSampleRequestCount(sample_id)
     (puckPosition,samplePositionInContainer,containerID) = db_lib.getCoordsfromSampleID(beamline,sample_id)          
     request = {"sample": sample_id}
+    request["beamline"] = beamline
     requestObj = {
                "sample": sample_id,
                "sweep_start": screenPhist,  "sweep_end": screenPhiend,
@@ -217,9 +219,10 @@ def createDefaultRequest(sample_id):
 
     return request
 
-def createResult(typeName,resultObj):
+def createResultObsolete(typeName,resultObj):
   result = {}
   result["type"] = typeName
+  result["beamline"] = beamline
   result["timestamp"] = time.time()
   result["resultObj"] = resultObj
   return result
@@ -257,7 +260,7 @@ def take_crystal_picture(filename=None,czoom=0,reqID=None,omega=-999):
     imgRef = db_lib.addFile(data)
     xtalpicJpegDataResult["data"] = imgRef
     xtalpicJpegDataResult["omegaPos"] = omega 
-    db_lib.addResultforRequest("xtalpicJpeg",reqID,owner=owner,result_obj=xtalpicJpegDataResult)
+    db_lib.addResultforRequest("xtalpicJpeg",reqID,owner=owner,result_obj=xtalpicJpegDataResult,beamline=beamline)
 
 
 def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
@@ -306,7 +309,7 @@ def diff2jpegLYNX(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj)
+    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj,beamline=beamline)
   return imageJpegData
 
 
@@ -358,7 +361,7 @@ def diff2jpeg(diffimageName,JPEGfilename=None,reqID=None):
     resultObj["thumbData"] = imgRef
     resultObj["dataFilePath"] = diffimageName
     resultObj["header"] = imageJpegHeader
-    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj)
+    db_lib.addResultforRequest("diffImageJpeg",reqID,owner=owner,result_obj=resultObj,beamline=beamline)
   return imageJpegData
 
 def create_filename(prefix,number):
@@ -449,7 +452,7 @@ def readPVDesc():
     counter_dict[counter_inf[1]] = beamline_designation + counter_inf[0]    
 
 
-def setProposal(proposalID):
+def setProposalID(proposalID):
   db_lib.setBeamlineConfigParam(beamline,"proposal",proposalID)
 
 def getProposalID():

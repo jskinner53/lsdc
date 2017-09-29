@@ -459,6 +459,7 @@ def getContainersByType(type_name, owner):
     #TODO: group_name was not being used kept for compatibility
     return getContainers(filters={"kind": type_name,"owner":owner})
 
+
 def getAllPucks(owner): #shouldn't this be for owner?
     # find all the types desended from 'puck'?
     # and then we could do this?

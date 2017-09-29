@@ -25,10 +25,10 @@ import super_state_machine
 import _thread
 import parseSheet
 import attenCalc
+from XSDataMXv1 import XSDataResultCharacterisation
+global rasterRowResultsList, processedRasterRowCount
 
-global dialsResultDict, rasterRowResultsList, processedRasterRowCount
 
-dialsResultDict = {}
 rasterRowResultsList = []
 
 
@@ -99,19 +99,15 @@ def changeImageCenterLowMag(x,y,czoom):
 #  if (1): #sloppy short circuit until fix up amx    
 #    return
   if (new_minX < 0):
-    print("1")
     new_minX = 0
     noZoomCenterX = (new_minXZoom+(sizeXRBV/2.0))/binningFactor
   if (new_minY < 0):
-    print("2")    
     new_minY = 0    
     noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
   if (new_minX+roiSizeXRBV>inputSizeXRBV):
-    print("3")    
     new_minX = inputSizeXRBV-roiSizeXRBV    
     noZoomCenterX = ((new_minXZoom+(sizeXRBV/2.0)) - new_minX)/binningFactor
   if (new_minY+roiSizeYRBV>inputSizeYRBV):
-    print("4")    
     new_minY = inputSizeYRBV-roiSizeYRBV
     noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
 #    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
@@ -176,19 +172,15 @@ def changeImageCenterHighMag(x,y,czoom):
 #  if (1): #sloppy short circuit until fix up amx    
 #    return
   if (new_minX < 0):
-    print("1")
     new_minX = 0
     noZoomCenterX = (new_minXZoom+(sizeXRBV/2.0))/binningFactor
   if (new_minY < 0):
-    print("2")    
     new_minY = 0    
     noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
   if (new_minX+roiSizeXRBV>inputSizeXRBV):
-    print("3")    
     new_minX = inputSizeXRBV-roiSizeXRBV    
     noZoomCenterX = ((new_minXZoom+(sizeXRBV/2.0)) - new_minX)/binningFactor
   if (new_minY+roiSizeYRBV>inputSizeYRBV):
-    print("4")    
     new_minY = inputSizeYRBV-roiSizeYRBV
     noZoomCenterY = ((new_minYZoom+(sizeYRBV/2.0)) - new_minY)/binningFactor    
 #    noZoomCenterY = (new_minYZoom+(sizeYRBV/2.0))/binningFactor
@@ -347,7 +339,7 @@ def fakeDC(directory,filePrefix,numstart,numimages):
 
 
 def generateGridMap(rasterRequest,rasterEncoderMap=None):
-  global dialsResultDict,rasterRowResultsList
+  global rasterRowResultsList
 
   reqObj = rasterRequest["request_obj"]
   rasterDef = reqObj["rasterDef"]
@@ -384,18 +376,21 @@ def generateGridMap(rasterRequest,rasterEncoderMap=None):
       zMotAbsoluteMove = rasterStartZ-yzRelativeMove
       numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
       for j in range(numsteps):
+        imIndexStr = str((i*numsteps)+j+1)        
         if (i%2 == 0): #left to right if even, else right to left - a snake attempt
           xMotCellAbsoluteMove = xMotAbsoluteMove+(j*stepsize)
         else:
           xMotCellAbsoluteMove = xMotAbsoluteMove-(j*stepsize)
         if (daq_utils.detector_id == "EIGER-16"):
 #          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
-          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),(i*numsteps)+j+1)          
+          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),(i*numsteps)+j+1)
+#          dataFileName = imIndexStr #A TERRIBLE KLUDGE TO SWITCH FROM FILENAME DICT KEY TO INDEX FOR DIALS TO DOZOR
         else:
           dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),(i*numsteps)+j+1)
 #          dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)          
         rasterCellCoords = {"x":xMotCellAbsoluteMove,"y":yMotAbsoluteMove,"z":zMotAbsoluteMove}
         rasterCellMap[dataFileName[:-4]] = rasterCellCoords
+#        rasterCellMap[dataFileName] = rasterCellCoords        
     else: #vertical raster
       if (i%2 == 0): #top to bottom if even, else bottom to top - a snake attempt
         startY = rasterDef["rowDefs"][i]["start"]["y"]+(stepsize/2.0) #this is relative to center, so signs are reversed from motor movements.
@@ -410,6 +405,7 @@ def generateGridMap(rasterRequest,rasterEncoderMap=None):
       zMotAbsoluteMove = rasterStartZ-yzRelativeMove
       numsteps = int(rasterDef["rowDefs"][i]["numsteps"])
       for j in range(numsteps):
+        imIndexStr = str((i*numsteps)+j+1)              
         if (i%2 == 0): #top to bottom if even, else bottom to top - a snake attempt
           yMotCellAbsoluteMove = yMotAbsoluteMove-(cos(omegaRad)*(j*stepsize))
           zMotCellAbsoluteMove = zMotAbsoluteMove-(sin(omegaRad)*(j*stepsize))          
@@ -418,11 +414,13 @@ def generateGridMap(rasterRequest,rasterEncoderMap=None):
           zMotCellAbsoluteMove = zMotAbsoluteMove+(sin(omegaRad)*(j*stepsize))          
         if (daq_utils.detector_id == "EIGER-16"):
           dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),(i*numsteps)+j+1)
-#          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)          
+#          dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+#          dataFileName = imIndexStr #A TERRIBLE KLUDGE TO SWITCH FROM FILENAME DICT KEY TO INDEX FOR DIALS TO DOZOR
         else:
           dataFileName = daq_utils.create_filename(filePrefix+"_Raster_"+str(i),j+1)
         rasterCellCoords = {"x":xMotAbsoluteMove,"y":yMotCellAbsoluteMove,"z":zMotCellAbsoluteMove}
         rasterCellMap[dataFileName[:-4]] = rasterCellCoords
+#        rasterCellMap[dataFileName] = rasterCellCoords        
 
 #commented out all of the processing, as this should have been done by the thread
   if (rasterEncoderMap!= None):
@@ -446,8 +444,9 @@ def generateGridMap(rasterRequest,rasterEncoderMap=None):
 ###############
 #  print(dialsResultLocalList)
 
-  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}
-  rasterResultID = db_lib.addResultforRequest("rasterResult",rasterRequest["uid"], owner=daq_utils.owner,result_obj=rasterResultObj,proposalID=daq_utils.getProposalID())
+  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dozorRasterResult","resultObj":dialsResultLocalList}}
+#  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}  
+  rasterResultID = db_lib.addResultforRequest("rasterResult",rasterRequest["uid"], owner=daq_utils.owner,result_obj=rasterResultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)
   rasterResult = db_lib.getResult(rasterResultID)
   return rasterResult
 
@@ -477,6 +476,59 @@ def vectorProceed():
 
 def vectorSync():
   beamline_support.setPvValFromDescriptor("vectorSync",1)
+
+def runDozorThread(directory,prefix,rowIndex,rowCellCount,seqNum):  
+  global rasterRowResultsList,processedRasterRowCount
+  time.sleep(1.0)
+#  dialsComm = db_lib.getBeamlineConfigParam(daq_utils.beamline,"dialsComm")
+  dozorComm = "/nfs/skinner/projects/software/bin/spot_test_row"
+  if (rowIndex%2 == 0):
+    node = "cpu-003"
+  else:
+    node = "cpu-003"    
+#  if (rowIndex%4 == 0):
+#    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")
+#  elif (rowIndex%4 == 1):
+#    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode2")
+#  elif (rowIndex%4 == 2):
+#    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode3")
+#  else:
+#    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode4")  
+  hdfSampleDataPattern = directory+"/"+prefix+"_" 
+  hdfRowFilepattern = hdfSampleDataPattern + str(int(float(seqNum))) + "_master.h5"
+  startIndex=(rowIndex*rowCellCount) + 1
+  endIndex = startIndex+rowCellCount-1
+  comm_s = "ssh -q " + node + " \"source /home/skinner/.bashrc;" + dozorComm + " " + hdfRowFilepattern  + " " + str(startIndex) + " " + str(endIndex) + " "  + str(rowCellCount) + "\""  #works for rectangles only
+  print(comm_s)
+  localDozorResultDict={}
+  localDozorResultDict["data"]={}
+  localDozorResultDict["data"]["response"]=[]  
+  lines = os.popen(comm_s).readlines()
+  found = 0
+  for line in lines:
+    line.strip()
+    tokens = line.split()
+    if (found == 0):
+      if (tokens[0] == 'sort_key'):
+        found = 1
+      else:
+        continue
+    else:
+      if (len(tokens) == 5):
+        index = float(tokens[0])
+        column = int(tokens[1])
+        row = int(tokens[2])
+        mainScore = float(tokens[3])
+        spotScore = float(tokens[4])
+#        index = ((row-1)*rowCellCount) + column
+        print(tokens)
+        localDozorResultDict["data"]["response"].append({'masterIndex': index,'mainScore': mainScore,'spotScore': spotScore,'spot_count_no_ice':spotScore,'image':hdfRowFilepattern,'d_min': index,'total_intensity':mainScore}) ###kludge to give GUI what it wants! see the dials keys in the dict
+  processedRasterRowCount+=1
+  rasterRowResultsList[rowIndex] = localDozorResultDict["data"]["response"]
+#  return localDozorResultDict
+  return
+
+  
 
 def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
@@ -546,7 +598,7 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
 
 
 def snakeRaster(rasterReqID,grain=""):
-  global dialsResultDict,rasterRowResultsList,processedRasterRowCount
+  global rasterRowResultsList,processedRasterRowCount
 
   if not (daq_lib.setGovRobotDA()):
     return
@@ -680,8 +732,11 @@ def snakeRaster(rasterReqID,grain=""):
 #      print(rasterRowEncoderVals)
       for j in range (0,numsteps):
         dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),(i*numsteps)+j+1)
-#        dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)        
-        rasterEncoderMap[dataFileName[:-4]] = {"x":rasterRowEncoderVals["x"][j],"y":rasterRowEncoderVals["y"][j],"z":rasterRowEncoderVals["z"][j],"omega":rasterRowEncoderVals["omega"][j]}
+#        dataFileName = "%s_%06d.cbf" % (reqObj["directory"]+"/cbf/"+reqObj["file_prefix"]+"_Raster_"+str(i),j+1)
+        imIndexStr = str((i*numsteps)+j+1)
+#        dataFileName = imIndexStr
+#        rasterEncoderMap[dataFileName] = {"x":rasterRowEncoderVals["x"][j],"y":rasterRowEncoderVals["y"][j],"z":rasterRowEncoderVals["z"][j],"omega":rasterRowEncoderVals["omega"][j]}
+        rasterEncoderMap[dataFileName[:-4]] = {"x":rasterRowEncoderVals["x"][j],"y":rasterRowEncoderVals["y"][j],"z":rasterRowEncoderVals["z"][j],"omega":rasterRowEncoderVals["omega"][j]}        
     if (daq_utils.detector_id == "EIGER-16"):
 #      seqNum = beamline_support.get_any_epics_pv("XF:17IDC-ES:FMX{Det:Eig16M}cam1:SequenceId","VAL")
       seqNum = int(det_lib.detector_get_seqnum())
@@ -689,6 +744,7 @@ def snakeRaster(rasterReqID,grain=""):
       seqNum = -1
 #    print("running dials thread")
     _thread.start_new_thread(runDialsThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))
+#    _thread.start_new_thread(runDozorThread,(data_directory_name,filePrefix+"_Raster",i,numsteps,seqNum))    
 #    print("thread running")
   time.sleep(2.0)
   det_lib.detector_stop_acquire()
@@ -723,7 +779,6 @@ def snakeRaster(rasterReqID,grain=""):
       multiColThreshold  = reqObj["diffCutoff"]         
     gotoMaxRaster(rasterResult,multiColThreshold=multiColThreshold) 
   else:
-#    if (deltaX>deltaY): #horizontal raster, dont bother vert for now, did not do pos calcs, wait for zebra
     if (1):
       gotoMaxRaster(rasterResult)
 #  print(rasterRequest)
@@ -935,7 +990,7 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     if (multiColThreshold>-1):
       print("doing multicol")
       if (scoreVal >= multiColThreshold):
-        hitFile = cellResults[i]["image"]
+        hitFile = cellResults[i]["masterIndex"]
         hitCoords = rasterMap[hitFile[:-4]]
 #        sampID = rasterResult['result_obj']['sample_id']
         parentReqID = rasterResult['result_obj']["parentReqID"]
@@ -946,17 +1001,20 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     if (scoreOption == "d_min"):
       if (scoreVal < floor):
         floor = scoreVal
-        hotFile = cellResults[i]["image"]
+        hotFile = cellResults[i]["image"]        
+#        hotFile = str(int(cellResults[i]["masterIndex"]))
     else:
       if (scoreVal > ceiling):
         ceiling = scoreVal
-        hotFile = cellResults[i]["image"]
+        hotFile = cellResults[i]["image"]        
+#        hotFile = str(int(cellResults[i]["masterIndex"]))
   if (hotFile != ""):
     print(ceiling)
     print(floor)
     print(hotFile)
 #    rasterMap = rasterResult["result_obj"]["rasterCellMap"]
-    hotCoords = rasterMap[hotFile[:-4]] 
+#    hotCoords = rasterMap[hotFile]
+    hotCoords = rasterMap[hotFile[:-4]]     
     x = hotCoords["x"]
     y = hotCoords["y"]
     z = hotCoords["z"]
@@ -1219,11 +1277,12 @@ def eScan(energyScanRequest):
   right = (steps*stepsize)/2
   mcaRoiLo = reqObj['mcaRoiLo']
   mcaRoiHi = reqObj['mcaRoiHi']
-  beamline_support.setPvValFromDescriptor("mcaRoiLo",mcaRoiLo)
-  beamline_support.setPvValFromDescriptor("mcaRoiHi",mcaRoiHi)      
+  if (daq_utils.beamline == "fmx"):            
+    beamline_support.setPvValFromDescriptor("mcaRoiLo",mcaRoiLo)
+    beamline_support.setPvValFromDescriptor("mcaRoiHi",mcaRoiHi)      
   
   print("energy scan for " + str(targetEnergy))
-  scan_element = "Se"
+  scan_element = reqObj['element']
   mvaDescriptor("energy",targetEnergy)
 #  if not (daq_lib.setGovRobotDA()):
   if not (daq_lib.setGovRobotXF()):    
@@ -1258,7 +1317,7 @@ def eScan(energyScanRequest):
   eScanResultObj = {}
   eScanResultObj["databrokerID"] = scanID
   eScanResultObj["sample_id"] = sampleID  
-  eScanResultID = db_lib.addResultforRequest("eScanResult",energyScanRequest["uid"], daq_utils.owner,result_obj=eScanResultObj,proposalID=daq_utils.getProposalID())
+  eScanResultID = db_lib.addResultforRequest("eScanResult",energyScanRequest["uid"], daq_utils.owner,result_obj=eScanResultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)
   eScanResult = db_lib.getResult(eScanResultID)
   print(scanDataTable)
   if (reqObj["runChooch"]):
@@ -1334,7 +1393,7 @@ def eScan(energyScanRequest):
 #    plt.plot(chooch_graph_x,chooch_graph_y2)
 #    plt.show()
 #    print(choochResultObj)
-    choochResultID = db_lib.addResultforRequest("choochResult",energyScanRequest["uid"], daq_utils.owner,result_obj=choochResultObj,proposalID=daq_utils.getProposalID())
+    choochResultID = db_lib.addResultforRequest("choochResult",energyScanRequest["uid"], daq_utils.owner,result_obj=choochResultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)
     choochResult = db_lib.getResult(choochResultID)
     set_field("choochResultFlag",choochResultID)
 
@@ -1376,7 +1435,10 @@ def vectorZebraScan(vecRequest):
     daq_lib.setGovRobotSA()    
 #  vectorWait()
 
-def vectorZebraStepScan(vecRequest): 
+def vectorZebraStepScan(vecRequest):
+  if not (daq_lib.setGovRobotDA()):
+    return
+  
   reqObj = vecRequest["request_obj"]
   file_prefix = str(reqObj["file_prefix"])
   data_directory_name = str(reqObj["directory"])
@@ -1408,8 +1470,7 @@ def vectorZebraStepScan(vecRequest):
   detector_set_exposure_time(exposureTimePerImage)
   det_lib.detector_set_trigger_mode(3)
   det_lib.detector_setImagesPerFile(500)
-  detectorArm(sweep_start_angle,imgWidth,numImages,expTime,file_prefix,data_directory_name,file_number_start) #this waits
-  
+  detectorArm(sweep_start_angle,imgWidth,numImages,expTime,file_prefix,data_directory_name,file_number_start) #this waits  
   for i in range (0,numVecSteps):
     beamline_support.setPvValFromDescriptor("vectorStartOmega",sweep_start_angle+(i*scanWidthPerStep))
     beamline_support.setPvValFromDescriptor("vectorEndOmega",sweep_end_angle+(i*scanWidthPerStep)+scanWidthPerStep)  
@@ -1430,11 +1491,12 @@ def vectorZebraStepScan(vecRequest):
 
 
 
-def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,charRequest):
+def dna_execute_collection3(dna_startIgnore,dna_range,dna_number_of_images,dna_exptime,dna_directory,prefix,start_image_number,overlap,dna_run_num,charRequest):
   global collect_and_characterize_success,dna_have_strategy_results,dna_have_index_results,picture_taken
   global dna_strategy_exptime,dna_strategy_start,dna_strategy_range,dna_strategy_end,dna_strat_dist
   global screeningoutputid
-  
+
+  dna_start = charRequest["request_obj"]["sweep_start"]
   characterizationParams = charRequest["request_obj"]["characterizationParams"]
   dna_res = float(characterizationParams["aimed_resolution"])
   print("dna_res = " + str(dna_res))
@@ -1452,14 +1514,13 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     det_radius = 212.0
   else: #default Pilatus
     det_radius = 212.0
-#####  theta_radians = daq_lib.get_field("theta") * dg2rd
   theta_radians = 0.0
   wave = 12398.5/beamline_lib.get_mono_energy() #for now
   dx = det_radius/(tan(2.0*(asin(wave/(2.0*dna_res)))-theta_radians))
   print("distance = ",dx)
 #skinner - could move distance and wave and scan axis here, leave wave alone for now
   print("skinner about to take reference images.")
-  for i in range(0,int(dna_number_of_images)):
+  for i in range(0,int(dna_number_of_images)): # 7/17 no idea what this is
     print("skinner prefix7 = " + prefix[0:7] +  " " + str(start_image_number) + "\n")
     if (len(prefix)> 8):
       if ((prefix[0:7] == "postref") and (start_image_number == 1)):
@@ -1471,16 +1532,15 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
 #    dna_start = daq_lib.get_field("datum_omega")    
     colstart = float(dna_start) + (i*(abs(overlap)+float(dna_range)))
     dna_prefix = "ref-"+prefix
-#12/15 not sure why dna_run_num in prefix    dna_prefix = "ref-"+prefix+"_"+str(dna_run_num)
     image_number = start_image_number+i
     dna_prefix_long = dna_directory+"/"+dna_prefix
     filename = daq_utils.create_filename(dna_prefix_long,image_number)
     beamline_lib.mvaDescriptor("omega",float(colstart))
 #####    daq_lib.move_axis_absolute(daq_lib.get_field("scan_axis"),colstart)
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
-    daq_utils.take_crystal_picture(reqID=charRequest["uid"])
+#####ZZZZZZZZ    daq_utils.take_crystal_picture(reqID=charRequest["uid"])
     charRequest["request_obj"]["sweep_start"] = colstart
-    imagesAttempted = collect_detector_seq(colstart,dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
+    imagesAttempted = collect_detector_seq_hw(colstart,dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
 #    diffImgJpegData["timestamp"] = time.time()
@@ -1491,15 +1551,13 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     picture_taken = 1
 #                xml_from_file_list(flux,x_beamsize,y_beamsize,max_exptime_per_dc,aimed_completeness,file_list):
   edna_energy_ev = (12.3985/wave) * 1000.0
-#####  xbeam_size = beamline_lib.get_motor_pos("slitHum")
-#####  ybeam_size = beamline_lib.get_motor_pos("slitVum")
 #  if (xbeam_size == 0.0 or ybeam_size == 0.0): #don't know where to get these from yet
-  if (1): 
-    xbeam_size = .1
-    ybeam_size = .16
+  if (daq_utils.beamline == "fmx"):   # a kludge b/c edna wants a square beam, so where making a 1.5x1micron beam be the sqrt(1*1.5) for x and y on fmx
+    xbeam_size = .00122
+    ybeam_size = .00122
   else:
-    xbeam_size = xbeam_size/1000
-    ybeam_size = ybeam_size/1000    
+    xbeam_size = .0089
+    ybeam_size = .0089
   aimed_completeness = characterizationParams['aimed_completeness']
   aimed_multiplicity = characterizationParams['aimed_multiplicity']
   aimed_resolution = characterizationParams['aimed_resolution']
@@ -1511,12 +1569,132 @@ def dna_execute_collection3(dna_start,dna_range,dna_number_of_images,dna_exptime
     if (timeout_check > 10):
       break
   flux = beamline_support.getPvValFromDescriptor("flux")
-#  flux = 600000000.0  #for now
-  edna_input_filename = dna_directory + "/adsc1_in.xml"
-  
-  comm_s = "ssh -q xf17id1-srv1 \"source /nfs/skinner/wrappers/ednaWrap;" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_directory + " " + dna_prefix + " " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + edna_input_filename + " " + str(charRequest["uid"]) + "\""
+  comm_s = "ssh -q xf17id2-srv1 \"source /nfs/skinner/wrappers/ednaWrap;cd " + dna_directory + ";" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_prefix_long + "_0001.h5 " + dna_prefix_long + "_0002.h5 " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + str(charRequest["uid"]) + "\""
   print(comm_s)
   os.system(comm_s)
+  print("EDNA DONE\n")
+#####  fEdnaLogFile = open(daq_lib.get_misc_dir_name() + "/edna.log", "r" )
+  fEdnaLogFile = open(dna_directory+"/edna.log", "r" )
+  ednaLogLines = fEdnaLogFile.readlines()
+  fEdnaLogFile.close()
+  collect_and_characterize_success = 0
+  for outline in ednaLogLines:
+    print(outline)
+    if (outline.find("EdnaDir")!= -1):
+      (param,dirname) = outline.split('=')
+      strXMLFileName = dirname[0:len(dirname)-1]+"/ControlInterfacev1_2/Characterisation/ControlCharacterisationv1_3_dataOutput.xml"
+#####    strXMLFileName = dirname[0:len(dirname)-1]+"/ControlInterfacev1_2/Characterisation/ControlCharacterisationv1_1_dataOutput.xml"
+    if (outline.find("characterisation successful!")!= -1):
+      collect_and_characterize_success = 1
+  if (not collect_and_characterize_success):
+    dna_comment =  "Characterize Failure"
+    print(dna_comment)
+#####  pxdb_lib.update_sweep(2,daq_lib.sweep_seq_id,dna_comment)  
+    return 0
+  else:
+    xsDataCharacterisation = XSDataResultCharacterisation.parseFile( strXMLFileName )
+    xsDataIndexingResult = xsDataCharacterisation.getIndexingResult()
+    xsDataIndexingSolutionSelected = xsDataIndexingResult.getSelectedSolution()
+    xsDataStatisticsIndexing = xsDataIndexingSolutionSelected.getStatistics()
+    numSpotsFound  = xsDataStatisticsIndexing.getSpotsTotal().getValue()
+    numSpotsUsed  = xsDataStatisticsIndexing.getSpotsUsed().getValue()
+    numSpotsRejected = numSpotsFound-numSpotsUsed
+    beamShiftX = xsDataStatisticsIndexing.getBeamPositionShiftX().getValue()
+    beamShiftY = xsDataStatisticsIndexing.getBeamPositionShiftY().getValue()
+    spotDeviationR = xsDataStatisticsIndexing.getSpotDeviationPositional().getValue()
+    try:
+      spotDeviationTheta = xsDataStatisticsIndexing.getSpotDeviationAngular().getValue()
+    except AttributeError:
+      spotDeviationTheta = 0.0
+    diffractionRings = 0 #for now, don't see this in xml except message string        
+    reflections_used = 0 #for now
+    reflections_used_in_indexing = 0 #for now
+    rejectedReflections = 0 #for now
+    xsDataOrientation = xsDataIndexingSolutionSelected.getOrientation()
+    xsDataMatrixA = xsDataOrientation.getMatrixA()
+    rawOrientationMatrix_a_x = xsDataMatrixA.getM11()
+    rawOrientationMatrix_a_y = xsDataMatrixA.getM12()
+    rawOrientationMatrix_a_z = xsDataMatrixA.getM13()
+    rawOrientationMatrix_b_x = xsDataMatrixA.getM21()
+    rawOrientationMatrix_b_y = xsDataMatrixA.getM22()
+    rawOrientationMatrix_b_z = xsDataMatrixA.getM23()
+    rawOrientationMatrix_c_x = xsDataMatrixA.getM31()
+    rawOrientationMatrix_c_y = xsDataMatrixA.getM32()
+    rawOrientationMatrix_c_z = xsDataMatrixA.getM33()
+    xsDataCrystal = xsDataIndexingSolutionSelected.getCrystal()
+    xsDataCell = xsDataCrystal.getCell()
+    unitCell_alpha = xsDataCell.getAngle_alpha().getValue()
+    unitCell_beta = xsDataCell.getAngle_beta().getValue()
+    unitCell_gamma = xsDataCell.getAngle_gamma().getValue()
+    unitCell_a = xsDataCell.getLength_a().getValue()
+    unitCell_b = xsDataCell.getLength_b().getValue()
+    unitCell_c = xsDataCell.getLength_c().getValue()
+    mosaicity = xsDataCrystal.getMosaicity().getValue()
+    xsSpaceGroup = xsDataCrystal.getSpaceGroup()
+    spacegroup_name = xsSpaceGroup.getName().getValue()
+    pointGroup = spacegroup_name #for now
+    bravaisLattice = pointGroup #for now
+    statusDescription = "ok" #for now
+    try:
+      spacegroup_number = xsSpaceGroup.getITNumber().getValue()
+    except AttributeError:
+      spacegroup_number = 0
+    dna_comment =  "spacegroup = " + str(spacegroup_name) + " mosaicity = " + str(mosaicity) + " cell_a = " + str(unitCell_a) + " cell_b = " + str(unitCell_b) + " cell_c = " + str(unitCell_c) + " cell_alpha = " + str(unitCell_alpha) + " cell_beta = " + str(unitCell_beta) + " cell_gamma = " + str(unitCell_gamma) + " status = " + str(statusDescription)
+###  print "\n\n skinner " + dna_comment + "\n" +str(daq_lib.sweep_seq_id) + "\n"
+    print("\n\n skinner " + dna_comment + "\n") 
+    xsStrategyResult = xsDataCharacterisation.getStrategyResult()
+    resolutionObtained = -999
+    if (xsStrategyResult != None):
+      dna_have_strategy_results = 1
+      xsCollectionPlan = xsStrategyResult.getCollectionPlan()
+      xsStrategySummary = xsCollectionPlan[0].getStrategySummary()
+      resolutionObtained = xsStrategySummary.getRankingResolution().getValue()
+      xsCollectionStrategy = xsCollectionPlan[0].getCollectionStrategy()
+      xsSubWedge = xsCollectionStrategy.getSubWedge()
+      for i in range (0,len(xsSubWedge)):
+        xsExperimentalCondition = xsSubWedge[i].getExperimentalCondition()
+        xsGoniostat = xsExperimentalCondition.getGoniostat()
+        xsDetector = xsExperimentalCondition.getDetector()
+        xsBeam = xsExperimentalCondition.getBeam()
+        dna_strategy_start = xsGoniostat.getRotationAxisStart().getValue()
+        dna_strategy_start = dna_strategy_start-(dna_strategy_start%.1)
+        dna_strategy_range = xsGoniostat.getOscillationWidth().getValue()
+        dna_strategy_range = dna_strategy_range-(dna_strategy_range%.1)
+        dna_strategy_end = xsGoniostat.getRotationAxisEnd().getValue()
+        dna_strategy_end = (dna_strategy_end-(dna_strategy_end%.1)) + dna_strategy_range
+        dna_strat_dist = xsDetector.getDistance().getValue()
+        dna_strat_dist = dna_strat_dist-(dna_strat_dist%1)
+        dna_strategy_exptime = xsBeam.getExposureTime().getValue()
+#wtf?      dna_strategy_exptime = dna_strategy_exptime-(dna_strategy_exptime%.2)
+    program = "edna-1.0" # for now
+    dna_comment =  "spacegroup = " + str(spacegroup_name) + " mosaicity = " + str(mosaicity) + " resolutionHigh = " + str(resolutionObtained) + " cell_a = " + str(unitCell_a) + " cell_b = " + str(unitCell_b) + " cell_c = " + str(unitCell_c) + " cell_alpha = " + str(unitCell_alpha) + " cell_beta = " + str(unitCell_beta) + " cell_gamma = " + str(unitCell_gamma) + " status = " + str(statusDescription)
+###  print "\n\n skinner " + dna_comment + "\n" +str(daq_lib.sweep_seq_id) + "\n"
+    print("\n\n skinner " + dna_comment + "\n") 
+    if (dna_have_strategy_results):
+      dna_strat_comment = "\ndna Strategy results: Start=" + str(dna_strategy_start) + " End=" + str(dna_strategy_end) + " Width=" + str(dna_strategy_range) + " Time=" + str(dna_strategy_exptime) + " Dist=" + str(dna_strat_dist)
+#    characterizationResult = {}
+      characterizationResultObj = {}
+#    characterizationResult["type"] = "characterizationStrategy"
+ #   characterizationResult["timestamp"] = time.time()
+      characterizationResultObj = {"strategy":{"start":dna_strategy_start,"end":dna_strategy_end,"width":dna_strategy_range,"exptime":dna_strategy_exptime,"detDist":dna_strat_dist}}
+#    characterizationResult["resultObj"] = characterizationResultObj
+      db_lib.addResultforRequest("characterizationStrategy",charRequest["uid"], daq_utils.owner,result_obj=characterizationResultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)
+      xsStrategyStatistics = xsCollectionPlan[0].getStatistics()
+      xsStrategyResolutionBins = xsStrategyStatistics.getResolutionBin()
+      now = time.time()
+#  edna_isig_plot_filename = dirname[0:len(dirname)-1] + "/edna_isig_res_" + str(now) + ".txt"
+      edna_isig_plot_filename = dirname[0:len(dirname)-1] + "/edna_isig_res.txt"
+      isig_plot_file = open(edna_isig_plot_filename,"w")
+      for i in range (0,len(xsStrategyResolutionBins)-1):
+        i_over_sigma_bin = xsStrategyResolutionBins[i].getIOverSigma().getValue()
+        maxResolution_bin = xsStrategyResolutionBins[i].getMaxResolution().getValue()
+        print(str(maxResolution_bin) + " " + str(i_over_sigma_bin))
+        isig_plot_file.write(str(maxResolution_bin) + " " + str(i_over_sigma_bin)+"\n")
+      isig_plot_file.close()
+    if (dna_have_strategy_results):
+#    broadcast_output(dna_strat_comment)
+      print(dna_strat_comment)      
+  
 
   return 1
 
@@ -1536,9 +1714,10 @@ def importSpreadsheet(fname):
 
 
 def zebraDaqPrep():
-  beamline_support.setPvValFromDescriptor("zebraReset",1)  
+  beamline_support.setPvValFromDescriptor("zebraReset",1)
+  time.sleep(1)      
   beamline_support.setPvValFromDescriptor("zebraTTlSel",31)
-  time.sleep(1)    
+
   beamline_support.setPvValFromDescriptor("zebraM1SetPosProc",1)
   beamline_support.setPvValFromDescriptor("zebraM2SetPosProc",1)
   beamline_support.setPvValFromDescriptor("zebraM3SetPosProc",1)
@@ -1714,22 +1893,27 @@ def zebraDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,da
   beamline_support.setPvValFromDescriptor("vectorframeExptime",exposurePeriodPerImage*1000.0)
   beamline_support.setPvValFromDescriptor("vectorHold",0)
   zebraDaqPrep()
-  beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
+##  beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
   time.sleep(1.0)
-  beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
-  beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
+##  beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
+##  beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
   beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
 ###  beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)
-  beamline_support.setPvValFromDescriptor("zebraGateWidth",scanWidth)
-  beamline_support.setPvValFromDescriptor("zebraGateStep",scanWidth+.01)
+  PW=(exposurePeriodPerImage-detector_dead_time)*1000.0
+  PS=(exposurePeriodPerImage)*1000.0
+  GW=scanWidth-(1.0-(PW/PS))*(imgWidth/2.0)
+  beamline_support.setPvValFromDescriptor("zebraGateWidth",GW)
+#  beamline_support.setPvValFromDescriptor("zebraGateWidth",scanWidth)  
+#  beamline_support.setPvValFromDescriptor("zebraGateStep",scanWidth+.01)
+  beamline_support.setPvValFromDescriptor("zebraGateStep",scanWidth)
 ###  beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)  
   beamline_support.setPvValFromDescriptor("zebraGateNumGates",1)
 ###  beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)  
-  beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
+##  beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
   beamline_support.setPvValFromDescriptor("zebraPulseStart",0)
 ###  beamline_support.setPvValFromDescriptor("zebraPulseWidth",(exposureTimePerImage-0.0005)*1000.0)
-  beamline_support.setPvValFromDescriptor("zebraPulseWidth",(exposurePeriodPerImage-detector_dead_time)*1000.0)      
-  beamline_support.setPvValFromDescriptor("zebraPulseStep",(exposurePeriodPerImage)*1000.0)
+  beamline_support.setPvValFromDescriptor("zebraPulseWidth",PW)
+  beamline_support.setPvValFromDescriptor("zebraPulseStep",PS)
 ###  beamline_support.setPvValFromDescriptor("zebraPulseStep",(exposurePeriodPerImage-0.0005)*1000.0)  
   beamline_support.setPvValFromDescriptor("zebraPulseDelay",((exposurePeriodPerImage)/2.0)*1000.0)
 ###  beamline_support.setPvValFromDescriptor("zebraPulseDelay",((exposurePeriodPerImage-0.0005)/2.0)*1000.0)    
@@ -1746,7 +1930,7 @@ def zebraDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,da
     daq_lib.setGovRobotSA()  
   det_lib.detector_stop_acquire()
   det_lib.detector_wait()
-  beamline_support.setPvValFromDescriptor("vectorBufferTime",0)      
+  beamline_support.setPvValFromDescriptor("vectorBufferTime",0)
 
 
 def zebraDaqNoDet(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix,data_directory_name,file_number_start,scanEncoder=3): #scan encoder 0=x, 1=y,2=z,3=omega
@@ -1815,7 +1999,7 @@ def zebraVecDaqSetup(angle_start,imgWidth,exposurePeriodPerImage,numImages,fileP
   beamline_support.setPvValFromDescriptor("zebraGateWidth",numImages*imgWidth)
 ###  beamline_support.setPvValFromDescriptor("zebraGateWidth",0.9995*imgWidth)    
 ###  beamline_support.setPvValFromDescriptor("zebraGateStep",imgWidth)
-  beamline_support.setPvValFromDescriptor("zebraGateStep",(numImages*imgWidth)+.01)
+  beamline_support.setPvValFromDescriptor("zebraGateStep",(numImages*imgWidth)+.001)
   beamline_support.setPvValFromDescriptor("zebraGateNumGates",1) #moved from loop
   beamline_support.setPvValFromDescriptor("zebraPulseTriggerSource",1)
   beamline_support.setPvValFromDescriptor("zebraPulseStart",0)
@@ -1849,14 +2033,14 @@ def setProcRam():
 
 def setProcGPFS():
   if (daq_utils.beamline == "amx"):
-    db_lib.setBeamlineConfigParam("amx","spotNode1","cpu-004")
-    db_lib.setBeamlineConfigParam("amx","spotNode2","cpu-005")
-    db_lib.setBeamlineConfigParam("amx","spotNode3","cpu-004")
-    db_lib.setBeamlineConfigParam("amx","spotNode4","cpu-005")
-    db_lib.setBeamlineConfigParam("amx","spotNode5","cpu-004")
-    db_lib.setBeamlineConfigParam("amx","spotNode6","cpu-005")    
+    db_lib.setBeamlineConfigParam("amx","spotNode1","cpu-002")
+    db_lib.setBeamlineConfigParam("amx","spotNode2","cpu-003")
+    db_lib.setBeamlineConfigParam("amx","spotNode3","cpu-002")
+    db_lib.setBeamlineConfigParam("amx","spotNode4","cpu-003")
+    db_lib.setBeamlineConfigParam("amx","spotNode5","cpu-002")
+    db_lib.setBeamlineConfigParam("amx","spotNode6","cpu-003")    
     db_lib.setBeamlineConfigParam("amx","cbfComm","/usr/local/crys-local/bin/eiger2cbf-linux")
-    db_lib.setBeamlineConfigParam("amx","dialsComm","/usr/local/crys-local/dials-v1-2-0/build/bin/dials.find_spots_client")        
+    db_lib.setBeamlineConfigParam("amx","dialsComm","/usr/local/crys-local/phenix-1.12-2829/build/bin/dials.find_spots_client")        
     
   else:
     db_lib.setBeamlineConfigParam("fmx","spotNode1","cpu-007")
@@ -1882,3 +2066,13 @@ def lastOnSample():
     if (r["sample"] == db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')['sampleID']):
       return False
   return True
+
+def homePins():
+  beamline_support.setPvValFromDescriptor("homePinY",1)
+  time.sleep(5)
+  beamline_support.setPvValFromDescriptor("homePinZ",1)
+
+def recoverRobot():
+  robot_lib.warmupGripper()
+  homePins()
+

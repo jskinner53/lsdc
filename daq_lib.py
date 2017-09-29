@@ -395,7 +395,7 @@ def stopDCQueue(flag):
 
 def logMxRequestParams(currentRequest):
   resultObj = {"requestObj":currentRequest["request_obj"]}
-  db_lib.addResultforRequest("mxExpParams",currentRequest["uid"],owner=daq_utils.owner,result_obj=resultObj,proposalID=daq_utils.getProposalID())  
+  db_lib.addResultforRequest("mxExpParams",currentRequest["uid"],owner=daq_utils.owner,result_obj=resultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)  
   db_lib.beamlineInfo(daq_utils.beamline, 'currentSampleID', info_dict={'sampleID':currentRequest["sample"]})
   db_lib.beamlineInfo(daq_utils.beamline, 'currentRequestID', info_dict={'requestID':currentRequest["uid"]})
 
@@ -456,6 +456,9 @@ def collectData(currentRequest):
       beamline_lib.mvaDescriptor("sampleX",reqObj["pos_x"])
       beamline_lib.mvaDescriptor("sampleY",reqObj["pos_y"])
       beamline_lib.mvaDescriptor("sampleZ",reqObj["pos_z"])
+    elif (reqObj["centeringOption"] == "Interactive"): #robotic, pause and let user center
+      pause_data_collection()
+      check_pause()
     else:
       print("autoRaster")
       if not (daq_macros.autoRasterLoop(currentRequest)):
@@ -504,9 +507,10 @@ def collectData(currentRequest):
     elif (reqObj["protocol"] == "characterize" or reqObj["protocol"] == "ednaCol"):
       characterizationParams = reqObj["characterizationParams"]
       index_success = daq_macros.dna_execute_collection3(0.0,img_width,2,exposure_period,data_directory_name+"/",file_prefix,1,-89.0,1,currentRequest)
-      if (index_success):
+#      if (0):
+      if (index_success):        
         resultsList = db_lib.getResultsforRequest(currentRequest["uid"]) # because for testing I keep running the same request. Probably not in usual use.
-        results = resultsList[len(resultsList)-1]
+        results = resultsList[-2]
         strategyResults = results["result_obj"]["strategy"]
         stratStart = strategyResults["start"]
         stratEnd = strategyResults["end"]
@@ -530,7 +534,7 @@ def collectData(currentRequest):
         newReqObj["xia2"] = reqObj["xia2"]
         runNum = db_lib.incrementSampleRequestCount(sampleID)
         reqObj["runNum"] = runNum
-        newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],newReqObj,priority=0,owner=daq_utils.owner)
+        newStratRequest = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],daq_utils.owner,newReqObj,priority=0,proposalID=daq_utils.getProposalID())
         if (reqObj["protocol"] == "ednaCol"):
           db_lib.updatePriority(currentRequest["uid"],-1)
           refreshGuiTree()
@@ -575,6 +579,8 @@ def collect_detector_seq_hw(sweep_start,range_degrees,image_width,exposure_perio
   print("data directory = " + data_directory_name)
   reqObj = currentRequest["request_obj"]
   protocol = str(reqObj["protocol"])
+  if (daq_utils.beamline == "amx"):            
+    beamline_lib.mvaDescriptor("energy",reqObj["energy"])  
   sweep_start = sweep_start%360.0
   if (protocol == "vector" or protocol == "stepVector"):
     beamline_lib.mvaDescriptor("omega",sweep_start)    
@@ -684,5 +690,10 @@ def center_on_click(x,y,fovx,fovy,source="screen",maglevel=0,jog=0): #maglevel=0
     beamline_lib.mvrDescriptor("omega",float(jog))
 
 
+def setProposalID(proposalID):
+  daq_utils.setProposalID(proposalID)
+
+def getProposalID():
+  return daq_utils.getProposalID()
 
 

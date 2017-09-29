@@ -8,9 +8,12 @@ import os
 
 global client
 client = None
- 
-url = "https://xf17id2-ca1.cs.nsls2.local:9191/Olog"
+
+
+#url = "https://xf17id2-ca1.cs.nsls2.local:9191/Olog"
+#url = "https://logbook.nsls2.bnl.gov/17-ID-2/"
 logbook = "Operations"
+url = os.environ["OLOG_URL"]
 username = os.environ["OLOG_USER"]
 password = os.environ["OLOG_PASS"]
 default_owner="olog_logs"
@@ -37,5 +40,15 @@ def toOlogComment(comment):
 
   if (client==None):
     client = OlogClient(url, username, password) 
-  entry = LogEntry(text=comment, owner=owner, logbooks=[Logbook(logbook)], properties=[propOmega]) 
+  entry = LogEntry(text=comment, owner=owner, logbooks=[Logbook(logbook)]) 
+  client.log(entry) 
+
+def toOlogPicture(imagePath,comment):
+  global client
+
+  if (client==None):
+    client = OlogClient(url, username, password)
+  att = Attachment(open(imagePath,"rb"))       
+  entry = LogEntry(text=comment, owner=owner, logbooks=[Logbook(logbook)], attachments=[att])
+
   client.log(entry) 
