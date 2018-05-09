@@ -340,7 +340,7 @@ def init_motors():
   global motor_channel_dict
 
   for key in list(motor_dict.keys()):
-    motor_channel_dict[motor_dict[key]] = EpicsMotor(motor_dict[key])
+    motor_channel_dict[motor_dict[key]] = EpicsMotor(motor_dict[key],name = key)
 
 
 def initControlPVs():

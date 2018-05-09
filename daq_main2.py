@@ -1,4 +1,5 @@
-#!/opt/conda_envs/lsdc_dev3/bin/ipython -i
+#!/opt/conda_envs/collection-2018-1.0/bin/ipython -i
+##!/opt/conda_envs/lsdc_dev3/bin/ipython -i
 ###!/usr/bin/python -Wignore
 #from __future__ import (absolute_import, division, print_function,unicode_literals)
 import string

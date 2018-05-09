@@ -805,6 +805,14 @@ def getAllBeamlineConfigParams(beamline_id):
 #    print(configList[i]['info'])    
   return configList
 
+def printAllBeamlineConfigParams(beamline_id):
+  configList = getAllBeamlineConfigParams(beamline_id)
+  for i in range (0,len(configList)):
+    try:
+      print(configList[i]['info_name'] + " " + str(configList[i]['info']['val']))
+    except KeyError:
+      pass
+
 def deleteCompletedRequestsforSample(sid):
   return #short circuit, not what they wanted
   print("delete request " + sid)

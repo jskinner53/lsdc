@@ -24,7 +24,19 @@ def insertSpreadsheetDict(d,owner):
 #    print(d["item_name"][i])
     container_name = str(d["puckName"][i])
     position = d["position"][i]
-    item_name = str(d["sampleName"][i])
+    propNum = None
+    try:
+      propNum = int(d["proposalNum"][i])
+    except KeyError:
+      pass
+    except ValueError:
+      propNum = None      
+    if (propNum == ''):
+      propNum = None
+    print(propNum)
+    item_name = str(d["sampleName"][i]).replace(".","-")
+    modelFilename = str(d["model"][i])
+    sequenceFilename = str(d["sequence"][i])
     containerUID = db_lib.getContainerIDbyName(container_name,owner)
     if (containerUID == ''):
       print("create container " + str(container_name))
@@ -33,7 +45,9 @@ def insertSpreadsheetDict(d,owner):
     if (1):
 #    if (sampleUID == ''):      
       print("create sample " + str(item_name))
-      sampleUID = db_lib.createSample(item_name,owner,"pin")
+      sampleUID = db_lib.createSample(item_name,owner,"pin",model=modelFilename,sequence=sequenceFilename,proposalID=propNum)
+    else:
+      print("WARNING - DUPLICATE SAMPLE NAME " + str(item_name))      
     print("insertIntoContainer " + str(container_name) + "," + owner + "," + str(position) + "," + sampleUID)
     db_lib.insertIntoContainer(container_name, owner, position, sampleUID)
 

@@ -9,8 +9,8 @@ import det_lib
 #import string
 import math
 import robot_lib
-from PyQt4 import QtGui
-from PyQt4 import QtCore
+#from PyQt4 import QtGui
+#from PyQt4 import QtCore
 import time
 from random import randint
 import glob
@@ -25,9 +25,12 @@ import super_state_machine
 import _thread
 import parseSheet
 import attenCalc
+import ispybLib
 from XSDataMXv1 import XSDataResultCharacterisation
 global rasterRowResultsList, processedRasterRowCount
+global ednaActiveFlag
 
+ednaActiveFlag = 0
 
 rasterRowResultsList = []
 
@@ -202,6 +205,9 @@ def changeImageCenterHighMag(x,y,czoom):
   
 
 def autoRasterLoop(currentRequest):
+  if not (daq_lib.setGovRobotSA()):
+    return 0
+  
   reqObj = currentRequest["request_obj"]
   if ("centeringOption" in reqObj):
     if (reqObj["centeringOption"] == "AutoLoop"):
@@ -444,8 +450,8 @@ def generateGridMap(rasterRequest,rasterEncoderMap=None):
 ###############
 #  print(dialsResultLocalList)
 
-  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dozorRasterResult","resultObj":dialsResultLocalList}}
-#  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}  
+#  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dozorRasterResult","resultObj":dialsResultLocalList}}
+  rasterResultObj = {"sample_id": rasterRequest["sample"],"parentReqID":parentReqID,"rasterCellMap":rasterCellMap,"rasterCellResults":{"type":"dialsRasterResult","resultObj":dialsResultLocalList}}  
   rasterResultID = db_lib.addResultforRequest("rasterResult",rasterRequest["uid"], owner=daq_utils.owner,result_obj=rasterResultObj,proposalID=daq_utils.getProposalID(),beamline=daq_utils.beamline)
   rasterResult = db_lib.getResult(rasterResultID)
   return rasterResult
@@ -534,15 +540,23 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   global rasterRowResultsList,processedRasterRowCount
   time.sleep(1.0)
   cbfComm = db_lib.getBeamlineConfigParam(daq_utils.beamline,"cbfComm")
-  dialsComm = db_lib.getBeamlineConfigParam(daq_utils.beamline,"dialsComm")  
-  if (rowIndex%4 == 0):
+  dialsComm = db_lib.getBeamlineConfigParam(daq_utils.beamline,"dialsComm")
+  if (rowIndex%8 == 0):
     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")
-  elif (rowIndex%4 == 1):
+  elif (rowIndex%8 == 1):
     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode2")
-  elif (rowIndex%4 == 2):
+  elif (rowIndex%8 == 2):
     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode3")
+  elif (rowIndex%8 == 3):
+    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode4")
+  elif (rowIndex%8 == 4):
+    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode5")
+  elif (rowIndex%8 == 5):
+    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode6")
+  elif (rowIndex%8 == 6):
+    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode7")
   else:
-    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode4")  
+    node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode8")  
   if (seqNum>-1): #eiger
     cbfDir = directory+"/cbf"
     comm_s = "mkdir -p " + cbfDir
@@ -576,6 +590,7 @@ def runDialsThread(directory,prefix,rowIndex,rowCellCount,seqNum):
   retry = 3
   while(1):
     resultString = "<data>\n"+os.popen(comm_s).read()+"</data>\n"
+    print(resultString)
     localDialsResultDict = xmltodict.parse(resultString)
     if (localDialsResultDict["data"] == None and retry>0):
       print("ERROR \n" + resultString + " retry = " + str(retry))
@@ -726,8 +741,8 @@ def snakeRaster(rasterReqID,grain=""):
     zebraWait()
 #    time.sleep(1)
     zebraWaitDownload(numsteps)
-#    if (0):
-    if (daq_utils.beamline == "amx"):
+    if (0):
+################    if (daq_utils.beamline == "amx"):
       rasterRowEncoderVals = {"x":beamline_support.getPvValFromDescriptor("zebraEncX"),"y":beamline_support.getPvValFromDescriptor("zebraEncY"),"z":beamline_support.getPvValFromDescriptor("zebraEncZ"),"omega":beamline_support.getPvValFromDescriptor("zebraEncOmega")}
 #      print(rasterRowEncoderVals)
       for j in range (0,numsteps):
@@ -750,7 +765,8 @@ def snakeRaster(rasterReqID,grain=""):
   det_lib.detector_stop_acquire()
   det_lib.detector_wait()      
     
-  rasterTimeout = 900
+  rasterTimeout = 300
+#  rasterTimeout = 900  
   timerCount = 0
   while (1):
     timerCount +=1
@@ -764,8 +780,8 @@ def snakeRaster(rasterReqID,grain=""):
     print(processedRasterRowCount)
     if (processedRasterRowCount == rowCount):
       break
-#  if (0):
-  if (daq_utils.beamline == "amx"):                
+  if (0):
+#  if (daq_utils.beamline == "amx"):                
     rasterResult = generateGridMap(rasterRequest,rasterEncoderMap) #I think rasterRequest is entire request, of raster type    
   else:
     rasterResult = generateGridMap(rasterRequest)     
@@ -789,6 +805,8 @@ def snakeRaster(rasterReqID,grain=""):
   
   db_lib.updatePriority(rasterRequestID,-1)  
   set_field("xrecRasterFlag",rasterRequest["uid"])
+  time.sleep(1.0)
+#  mvaDescriptor("omega",omega)  
   if (lastOnSample()):  
     daq_lib.setGovRobotSA()      
   return 1
@@ -910,7 +928,21 @@ def snakeStepRaster(rasterReqID,grain=""):
 #      beamline_support.setPvValFromDescriptor("vectorEndY",yMotAbsoluteMove-((j+1)*stepY))
 #      beamline_support.setPvValFromDescriptor("vectorEndZ",zMotAbsoluteMove-((j+1)*stepZ))
       vectorSync()
-      zebraDaqNoDet(sweep_start_angle,range_degrees,img_width_per_cell,exptimePerCell,filePrefix,data_directory_name,file_number_start,3)      
+      if (j == 0):
+        zebraDaqNoDet(sweep_start_angle,range_degrees,img_width_per_cell,exptimePerCell,filePrefix,data_directory_name,file_number_start,3)
+      else:
+        angle_start = sweep_start_angle
+        scanWidth = range_degrees
+        angle_end = angle_start+scanWidth        
+        beamline_support.setPvValFromDescriptor("vectorStartOmega",angle_start)
+        beamline_support.setPvValFromDescriptor("vectorEndOmega",angle_end)
+        
+        beamline_support.setPvValFromDescriptor("vectorGo",1)
+        vectorActiveWait()  
+        vectorWait()
+        zebraWait()
+        beamline_support.setPvValFromDescriptor("vectorBufferTime",0)      
+
 #      beamline_support.setPvValFromDescriptor("vectorframeExptime",exptimePerCell*1000.0)
 #      beamline_support.setPvValFromDescriptor("vectorNumFrames",numImagesPerStep)
 #      beamline_support.setPvValFromDescriptor("vectorGo",1)
@@ -934,17 +966,19 @@ def runRasterScan(currentRequest,rasterType=""): #this actually defines and runs
   sampleID = currentRequest["sample"]
   if (rasterType=="Fine"):
     set_field("xrecRasterFlag","100")    
-    rasterReqID = defineRectRaster(currentRequest,50,50,10) 
+    rasterReqID = defineRectRaster(currentRequest,90,90,10)
+#    rasterReqID = defineRectRaster(currentRequest,50,50,10)     
     snakeRaster(rasterReqID)
   elif (rasterType=="Coarse"):
     set_field("xrecRasterFlag","100")    
-    rasterReqID = defineRectRaster(currentRequest,330,210,30) 
+#    rasterReqID = defineRectRaster(currentRequest,330,210,30)
+    rasterReqID = defineRectRaster(currentRequest,630,390,30)     
     snakeRaster(rasterReqID)
   elif (rasterType=="Line"):  
     set_field("xrecRasterFlag","100")    
     mvrDescriptor("omega",90)
-    rasterReqID = defineRectRaster(currentRequest,10,150,10)
-#    rasterReqID = defineVectorRaster(currentRequest,10,150,10)     
+#    rasterReqID = defineRectRaster(currentRequest,10,150,10)
+    rasterReqID = defineRectRaster(currentRequest,10,290,10)    
     snakeRaster(rasterReqID)
     set_field("xrecRasterFlag","100")    
   else:
@@ -990,7 +1024,8 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
     if (multiColThreshold>-1):
       print("doing multicol")
       if (scoreVal >= multiColThreshold):
-        hitFile = cellResults[i]["masterIndex"]
+        hitFile = cellResults[i]["image"]
+###        hitFile = cellResults[i]["masterIndex"]                
         hitCoords = rasterMap[hitFile[:-4]]
 #        sampID = rasterResult['result_obj']['sample_id']
         parentReqID = rasterResult['result_obj']["parentReqID"]
@@ -999,7 +1034,7 @@ def gotoMaxRaster(rasterResult,multiColThreshold=-1):
         else:
           addMultiRequestLocation(parentReqID,hitCoords,i)        
     if (scoreOption == "d_min"):
-      if (scoreVal < floor):
+      if (scoreVal < floor and scoreVal != -1):
         floor = scoreVal
         hotFile = cellResults[i]["image"]        
 #        hotFile = str(int(cellResults[i]["masterIndex"]))
@@ -1034,8 +1069,9 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   dataDirectory = parentRequest["request_obj"]['directory']+"multi_"+str(locIndex)
   runNum = parentRequest["request_obj"]['runNum']
   tempnewStratRequest = daq_utils.createDefaultRequest(sampleID)
-  sweepStart = currentOmega - 10.0
-  sweepEnd = currentOmega + 10.0
+  ss = parentRequest["request_obj"]["sweep_start"]
+  sweepStart = ss - 2.5
+  sweepEnd = ss + 2.5
   imgWidth = parentRequest["request_obj"]['img_width']
   exptime = parentRequest["request_obj"]['exposure_time']
   currentDetDist = parentRequest["request_obj"]['detDist']
@@ -1052,6 +1088,7 @@ def addMultiRequestLocation(parentReqID,hitCoords,locIndex): #rough proto of wha
   newReqObj["pos_z"] = hitCoords['z']
   newReqObj["fastDP"] = False
   newReqObj["fastEP"] = False
+  newReqObj["dimple"] = False    
   newReqObj["xia2"] = False
   newReqObj["runNum"] = runNum
   newRequestUID = db_lib.addRequesttoSample(sampleID,newReqObj["protocol"],daq_utils.owner,newReqObj,priority=6000,proposalID=daq_utils.getProposalID()) # a higher priority
@@ -1142,7 +1179,7 @@ def defineRectRaster(currentRequest,raster_w_s,raster_h_s,stepsizeMicrons_s): #m
   return newRasterRequestUID
 
 
-def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
+def definePolyRasterNOTUSED(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,point_y,rasterPoly): #all come in as pixels
   sampleID = currentRequest["sample"]
   newRowDef = {}
   beamWidth = stepsizeMicrons
@@ -1215,7 +1252,7 @@ def definePolyRaster(currentRequest,raster_w,raster_h,stepsizeMicrons,point_x,po
 #  daq_lib.refreshGuiTree() # not sure
 
 
-def getXrecLoopShape(currentRequest):
+def getXrecLoopShapeNOTUSED(currentRequest):
   sampleID = currentRequest["sample"]
 #  beamline_support.set_any_epics_pv("XF:17IDC-ES:FMX{Cam:07}MJPGZOOM:NDArrayPort","VAL","ROI1") #not the best, but I had timing issues doing it w/o a sleep
   os.system("chmod 777 .")
@@ -1277,7 +1314,8 @@ def eScan(energyScanRequest):
   right = (steps*stepsize)/2
   mcaRoiLo = reqObj['mcaRoiLo']
   mcaRoiHi = reqObj['mcaRoiHi']
-  if (daq_utils.beamline == "fmx"):            
+  if (1):
+#  if (daq_utils.beamline == "fmx"):                
     beamline_support.setPvValFromDescriptor("mcaRoiLo",mcaRoiLo)
     beamline_support.setPvValFromDescriptor("mcaRoiHi",mcaRoiHi)      
   
@@ -1288,17 +1326,16 @@ def eScan(energyScanRequest):
   if not (daq_lib.setGovRobotXF()):    
     return
   open_shutter()
-  scanID = RE(relative_scan([mercury],vdcm.e,left,right,steps),[LivePlot("mercury_mca_rois_roi0_count")])
-#  scanID = RE(relative_scan([mercury],vdcm.e,-20,20,41),[LivePlot("mercury_mca_rois_roi0_count")])  
+  scanID = RE(bp.rel_scan([mercury],vdcm.e,left,right,steps),[LivePlot("mercury_mca_rois_roi0_count")])
   close_shutter()
   if (lastOnSample()):  
     daq_lib.setGovRobotSA()  
   scanData = db[scanID[0]]
-  for ev in get_events(scanData):
+  for ev in scanData.events():
     if ('mercury_mca_spectrum' in ev['data']):
       print(ev['seq_num'], ev['data']['mercury_mca_spectrum'].sum())
       
-  scanDataTable = get_table(scanData)
+  scanDataTable = scanData.table()
 #these next lines only make sense for the mca
   nowtime_s = str(int(time.time()))
   specFileName = "spectrumData_" + nowtime_s + ".txt"
@@ -1495,7 +1532,9 @@ def dna_execute_collection3(dna_startIgnore,dna_range,dna_number_of_images,dna_e
   global collect_and_characterize_success,dna_have_strategy_results,dna_have_index_results,picture_taken
   global dna_strategy_exptime,dna_strategy_start,dna_strategy_range,dna_strategy_end,dna_strat_dist
   global screeningoutputid
+  global ednaActiveFlag
 
+  ednaActiveFlag = 1
   dna_start = charRequest["request_obj"]["sweep_start"]
   characterizationParams = charRequest["request_obj"]["characterizationParams"]
   dna_res = float(characterizationParams["aimed_resolution"])
@@ -1540,6 +1579,8 @@ def dna_execute_collection3(dna_startIgnore,dna_range,dna_number_of_images,dna_e
 #####    daq_lib.take_image(colstart,dna_range,dna_exptime,filename,daq_lib.get_field("scan_axis"),0,1)
 #####ZZZZZZZZ    daq_utils.take_crystal_picture(reqID=charRequest["uid"])
     charRequest["request_obj"]["sweep_start"] = colstart
+    if (i == int(dna_number_of_images)-1): # a temporary crap kludge to keep the governor from SA when more images are needed.
+      ednaActiveFlag = 0
     imagesAttempted = collect_detector_seq_hw(colstart,dna_range,dna_range,dna_exptime,dna_prefix,dna_directory,image_number,charRequest) 
     dna_filename_list.append(filename)
 ###4/16, don't bother with image server for now    diffImgJpegData = daq_utils.diff2jpeg(filename,reqID=charRequest["request_id"]) #returns a dictionary
@@ -1568,8 +1609,11 @@ def dna_execute_collection3(dna_startIgnore,dna_range,dna_number_of_images,dna_e
     time.sleep(1.0)
     if (timeout_check > 10):
       break
-  flux = beamline_support.getPvValFromDescriptor("flux")
-  comm_s = "ssh -q xf17id2-srv1 \"source /nfs/skinner/wrappers/ednaWrap;cd " + dna_directory + ";" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_prefix_long + "_0001.h5 " + dna_prefix_long + "_0002.h5 " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + str(charRequest["uid"]) + "\""
+  if (daq_utils.beamline == "fmx"):                  
+    flux = beamline_support.getPvValFromDescriptor("flux")
+  else:
+    flux = beamline_support.getPvValFromDescriptor("flux") * beamline_support.getPvValFromDescriptor("transmissionRBV")  
+  comm_s = "ssh -q xf17id2-srv1 \"source /nfs/skinner/projects/wrappers/ednaWrap;cd " + dna_directory + ";" + os.environ["LSDCHOME"] + "/runEdna.py " + dna_prefix_long + "_0001.h5 " + dna_prefix_long + "_0002.h5 " + str(aimed_ISig) + " " + str(flux) + " " + str(xbeam_size) + " " + str(ybeam_size) + " " + str(charRequest["uid"]) + "\""
   print(comm_s)
   os.system(comm_s)
   print("EDNA DONE\n")
@@ -1698,6 +1742,15 @@ def dna_execute_collection3(dna_startIgnore,dna_range,dna_number_of_images,dna_e
 
   return 1
 
+def setTrans(transmission): #where transmission = 0.0-1.0
+  beamline_support.setPvValFromDescriptor("transmissionSet",transmission)
+  beamline_support.setPvValFromDescriptor("transmissionGo",1)
+  time.sleep(0.5)
+  while (not beamline_support.getPvValFromDescriptor("transmissionDone")):
+    time.sleep(0.1)
+  
+  
+  
 
 def setAttens(transmission): #where transmission = 0.0-1.0
   attenValList = []
@@ -1756,7 +1809,8 @@ def zebraWaitDownload(numsteps):
 def loop_center_xrec():
   global face_on
 
-  if (daq_utils.beamline == "fmx"):            
+#  if (1):
+  if (daq_utils.beamline == "fmx"):                
     return loop_center_xrec_slow()
   daq_lib.abort_flag = 0    
   os.system("chmod 777 .")
@@ -1830,7 +1884,7 @@ def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix
   beamline_support.setPvValFromDescriptor("vectorExpose",0)  
   angle_end = angle_start+scanWidth
   numImages = int(round(scanWidth/imgWidth))
-  time.sleep(1.0)  
+#  time.sleep(0.5)  
   beamline_support.setPvValFromDescriptor("vectorStartOmega",angle_start)
   beamline_support.setPvValFromDescriptor("vectorEndOmega",angle_end)
   beamline_support.setPvValFromDescriptor("vectorNumFrames",numImages)    
@@ -1841,7 +1895,7 @@ def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix
 ###  vectorHoldWait()
   zebraDaqPrep()
   beamline_support.setPvValFromDescriptor("zebraEncoder",scanEncoder)
-  time.sleep(1.0)
+##  time.sleep(1.0)
   beamline_support.setPvValFromDescriptor("zebraDirection",0)  #direction 0 = positive
   beamline_support.setPvValFromDescriptor("zebraGateSelect",0)
   beamline_support.setPvValFromDescriptor("zebraGateStart",angle_start) #this will change for motors other than omega
@@ -1851,7 +1905,7 @@ def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix
   beamline_support.setPvValFromDescriptor("zebraGateNumGates",numImages)  
 
   beamline_support.setPvValFromDescriptor("lowMagAcquire",0,wait=False)
-  time.sleep(1)
+  time.sleep(1.0) #this sleep definitely needed
   beamline_support.setPvValFromDescriptor("lowMagTrigMode",1)
   beamline_support.setPvValFromDescriptor("lowMagJpegNumImages",numImages)
   beamline_support.setPvValFromDescriptor("lowMagJpegFilePath",data_directory_name)
@@ -1860,7 +1914,7 @@ def zebraCamDaq(angle_start,scanWidth,imgWidth,exposurePeriodPerImage,filePrefix
   beamline_support.setPvValFromDescriptor("lowMagJpegCapture",1,wait=False)
   beamline_support.setPvValFromDescriptor("lowMagAcquire",1,wait=False)
 ###  zebraArm()
-  time.sleep(1.0)
+  time.sleep(0.5)
   beamline_support.setPvValFromDescriptor("vectorGo",1)
   vectorActiveWait()    
   vectorWait()
@@ -2058,9 +2112,17 @@ def setProcGPFS():
 def setFastDPNode(nodeName):
   db_lib.setBeamlineConfigParam(daq_utils.beamline,"fastDPNode",nodeName)
 
+def setDimpleNode(nodeName):
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"dimpleNode",nodeName)
+
+def setDimpleCommand(commName):
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"dimpleComm",commName)
+  
 
     
 def lastOnSample():
+  if (ednaActiveFlag == 1):
+    return False
   r = db_lib.popNextRequest(daq_utils.beamline)
   if (r != {}):
     if (r["sample"] == db_lib.beamlineInfo(daq_utils.beamline, 'mountedSample')['sampleID']):
@@ -2069,10 +2131,47 @@ def lastOnSample():
 
 def homePins():
   beamline_support.setPvValFromDescriptor("homePinY",1)
-  time.sleep(5)
+#  time.sleep(5)
   beamline_support.setPvValFromDescriptor("homePinZ",1)
+  time.sleep(2)  
+  beamline_support.setPvValFromDescriptor("syncPinY",1)
+  beamline_support.setPvValFromDescriptor("syncPinZ",1)    
+  
 
 def recoverRobot():
+  robot_lib.rebootEMBL()
+  time.sleep(8.0)
   robot_lib.warmupGripper()
-  homePins()
+  beamline_support.setPvValFromDescriptor("boostSelect",0)  
+  if (beamline_support.getPvValFromDescriptor("sampleDetected") == 0): #reverse logic, 0 = true
+    beamline_support.setPvValFromDescriptor("boostSelect",1)
+  else:
+    homePins()
+    beamline_support.setPvValFromDescriptor("robotGovActive",1)      
+
+def queueCollectOn():
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"queueCollect",1)
+
+def queueCollectOff():
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"queueCollect",0)
+
+def guiLocal(): #monitor omega RBV
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"omegaMonitorPV","RBV")
+
+def guiRemote(): #monitor omega VAL
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"omegaMonitorPV","VAL")
+
+def spotNodes(*args):
+  if (len(args) != 8):
+    print("C'mon, I need 8 nodes. No change. Try again.")
+  else:
+    for i in range (0,len(args)):
+      db_lib.setBeamlineConfigParam(daq_utils.beamline,"spotNode"+str(i+1),"cpu-%03d" % args[i])
+
+def setVisitName(vname):
+  db_lib.setBeamlineConfigParam(daq_utils.beamline,"visitName",str(vname))
+
+def getVisitName(beamline):
+  return db_lib.getBeamlineConfigParam(beamline,"visitName")
+
 

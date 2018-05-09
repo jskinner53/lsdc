@@ -5,6 +5,7 @@ from math import *
 import requests
 import xmltodict
 import getpass
+import ispybLib
 
 #import metadatastore.commands as mdsc
 
@@ -158,7 +159,8 @@ def distance_from_reso(det_radius,reso,wave,theta):
     dx = det_radius/(tan(2*(asin(float(wave)/(2*reso)))-theta_radians))
     return float("%.2f" % dx)
   except ValueError:  
-    return 500.0 #a safe value for now
+    return 501.0 #a safe value for now
+#    return 500.0 #a safe value for now  
 
 
 def energy2wave(e):
@@ -179,7 +181,15 @@ def createDefaultRequest(sample_id):
     with the default parameters that can be passed to addRequesttoSample().
     """
 
-
+    sample = db_lib.getSampleByID(sample_id)
+    try:
+      propNum = sample["proposalID"]
+    except KeyError:
+      propNum = 999999
+    if (propNum == None):
+      propNum = 999999        
+    if (propNum != getProposalID()):
+      setProposalID(propNum)
     screenPhist = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phist"))
     screenPhiend = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_phi_end"))
     screenWidth = float(db_lib.getBeamlineConfigParam(beamline,"screen_default_width"))
@@ -207,7 +217,8 @@ def createDefaultRequest(sample_id):
                "parentReqID": -1,
                "basePath": basePath,
                "file_prefix": sampleName,
-               "directory": basePath+"/projID/"+sampleName+"/" + str(runNum) + "/" +db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/",
+               "directory": basePath+"/" + str(getVisitName()) + "/"+sampleName+"/" + str(runNum) + "/" +db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/",
+#               "directory": basePath+"/" + str(getProposalID()) + "/"+sampleName+"/" + str(runNum) + "/" +db_lib.getContainerNameByID(containerID)+"_"+str(samplePositionInContainer+1)+"/",  
                "file_number_start": 1,
                "energy":screenEnergy,
                "wavelength": energy2wave(screenEnergy),
@@ -453,10 +464,20 @@ def readPVDesc():
 
 
 def setProposalID(proposalID):
+  if (getProposalID() != proposalID): #proposalID changed - create a new visit.
+    print("you changed proposals!")
+    visitName = ispybLib.createVisit(proposalID)
+    setVisitName(visitName)
   db_lib.setBeamlineConfigParam(beamline,"proposal",proposalID)
 
 def getProposalID():
   return db_lib.getBeamlineConfigParam(beamline,"proposal")
+
+def getVisitName():
+  return db_lib.getBeamlineConfigParam(beamline,"visitName")
+
+def setVisitName(visitName):
+  return db_lib.setBeamlineConfigParam(beamline,"visitName",visitName)
 
 #def calc_reso_edge(distance,wave,theta):
 #  if (distance < 1.0):
