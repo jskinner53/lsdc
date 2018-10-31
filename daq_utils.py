@@ -179,6 +179,7 @@ def createDefaultRequest(sample_id):
     """
     Doesn't really create a request, just returns a dictionary
     with the default parameters that can be passed to addRequesttoSample().
+    But note that these then get overwritten anyway, and I no longer expose them in screen params dialog
     """
 
     sample = db_lib.getSampleByID(sample_id)
@@ -465,8 +466,12 @@ def readPVDesc():
 
 def setProposalID(proposalID):
   if (getProposalID() != proposalID): #proposalID changed - create a new visit.
-    print("you changed proposals!")
-    visitName = ispybLib.createVisit(proposalID)
+    print("you changed proposals! " + str(proposalID))
+    try:
+      visitName = ispybLib.createVisit(proposalID)
+    except:
+      visitName = "999999-1234"
+      print("ispyb error")
     setVisitName(visitName)
   db_lib.setBeamlineConfigParam(beamline,"proposal",proposalID)
 

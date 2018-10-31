@@ -11,7 +11,9 @@ import time
 import mysql.connector
 
 
-conf_file = '/nfs/skinner/projects/bnlpx_config/ispybConfig.cfg' #fix this hardcode
+#conf_file = '/nfs/skinner/projects/bnlpx_config/ispybConfig.cfg' #fix this hardcode
+
+conf_file = os.environ["CONFIGDIR"] + "ispybConfig.cfg"
 # visit = sys.argv[1]
 #visit = 'mx30816-1'
 visit = 'mx99999-1'
@@ -63,6 +65,7 @@ def createPerson(firstName,lastName,loginName):
   params['family_name'] = lastName
   params['login'] = loginName
   pid = core.upsert_person(list(params.values()))
+  cnx.commit()
   
 
 def createProposal(propNum,PI_login="boaty"):
@@ -80,6 +83,7 @@ def createProposal(propNum,PI_login="boaty"):
   cnx.commit()  #not sure why I needed to do this. Maybe mistake in stored proc?
 
 def createVisit(propNum):
+  print("creating visit for propnum " + str(propNum))
   propID = proposalIdFromProposal(propNum)
   if (propID == 0): #proposal doesn't exist, just create and assign to boaty
     createProposal(propNum)
@@ -95,13 +99,14 @@ def createVisit(propNum):
 #  params['proposal_number'] = daq_utils.getProposalID()
   params['proposal_number'] = propNum
   params['visit_number'] = newVisitNum
-  params['beamline_name'] = "AMX"
+  params['beamline_name'] = daq_utils.beamline.upper()
   params['startdate'] = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
   params['enddate'] = datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
   
   params['comments'] = 'For software testing'
 #  params['external_pk_uuid'] = '88173030C90C4696BC3D4D0C24FD1516' #skinner - no clue
   sid = core.upsert_session_for_proposal_code_number(list(params.values()))
+  cnx.commit() 
   assert sid is not None
   assert sid > 0
 #  params = core.get_session_for_proposal_code_number_params()
@@ -132,6 +137,7 @@ def createVisit(propNum):
   params['role'] = 'Co-Investigator'
   params['remote'] = True
   core.upsert_session_has_person(list(params.values()))
+  cnx.commit()
 
         # Test upsert_proposal_has_person:
 #        params = core.get_proposal_has_person_params()
@@ -142,6 +148,17 @@ def createVisit(propNum):
 #        assert phpid is not None
 #        assert phpid > 0
   return visitName  
+
+def insertPlotResult(dc_id,imageNumber,spotTotal,goodBraggCandidates,method2Res,totalIntegratedSignal):
+  params = mxprocessing.get_quality_indicators_params()
+  params['datacollectionid'] = dc_id
+  params['imageNumber'] = imageNumber
+  params['spotTotal'] = spotTotal
+  params['goodBraggCandidates'] = goodBraggCandidates
+  params['method2Res'] = method2Res
+  params['totalIntegratedSignal'] = totalIntegratedSignal
+  id = mxprocessing.upsert_quality_indicators(list(params.values()))
+  cnx.commit()         
 
 def insertResult(result,resultType,request,visitName,dc_id=None,xmlFileName=None): #xmlfilename for fastDP
 #keep in mind that request type can be standard and result type be fastDP - multiple results per req.
@@ -173,7 +190,8 @@ def insertResult(result,resultType,request,visitName,dc_id=None,xmlFileName=None
      daq_utils.take_crystal_picture(filename=jpegImagePrefix)
      jpegImageFilename = jpegImagePrefix+".jpg"
      jpegImageThumbFilename = jpegImagePrefix+"t.jpg"
-     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")     
+     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"adxvNode")
+#     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")          
      comm_s = "ssh -q " + node + " \"convert " + jpegImageFilename + " -resize 40% " + jpegImageThumbFilename + "\"&"     
      print(comm_s)
      os.system(comm_s)
@@ -188,8 +206,9 @@ def insertResult(result,resultType,request,visitName,dc_id=None,xmlFileName=None
      cbfDir = directory
      CBF_conversion_pattern = cbfDir + "/" + filePrefix+"_"
      JPEG_conversion_pattern = fullJpegDirectory + "/" + filePrefix+"_"
-     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")
-     adxvComm = db_lib.getBeamlineConfigParam(daq_utils.beamline,"adxvComm")     
+     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"adxvNode")
+#     node = db_lib.getBeamlineConfigParam(daq_utils.beamline,"spotNode1")     
+     adxvComm = os.environ["PROJDIR"] + db_lib.getBeamlineConfigParam(daq_utils.beamline,"adxvComm")     
      comm_s = "ssh -q " + node + " \"sleep 6;" + cbfComm + " "  + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "0001.cbf;" + adxvComm + " -sa "  + CBF_conversion_pattern + "0001.cbf " + JPEG_conversion_pattern + "0001.jpeg;convert " + JPEG_conversion_pattern + "0001.jpeg -resize 10% " + JPEG_conversion_pattern + "0001.thumb.jpeg\"&"
 #     comm_s = "ssh -q " + node + " \"sleep 6;" + cbfComm + " "  + hdfRowFilepattern  + " 1 " + CBF_conversion_pattern + "0001.cbf;" + adxvComm + " -sa "  + CBF_conversion_pattern + "0001.cbf " + JPEG_conversion_pattern + "0001.jpeg;cp " + JPEG_conversion_pattern + "0001.jpeg " + JPEG_conversion_pattern + "0001.thumb.jpeg\"&"     
      print(comm_s)

@@ -181,6 +181,9 @@ def det_set_exptime(exptime): #exposure_time = exposure_period - .0024 for nsls1
 def det_set_image_period(period):
   set_det_pv("image_period",period)
 
+def det_set_trigger_exposure(expTime):
+  set_det_pv("det_trigger_exposure",expTime)
+
 def det_start():
   if (offline):
     return

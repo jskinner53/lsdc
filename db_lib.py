@@ -446,6 +446,20 @@ def insertIntoContainer(container_name, owner, position, itemID):
         return False
 
 
+def emptyContainer(uid):
+    c = getContainerByID(uid)
+    if c is not None:
+        cnt = c['content']
+        for i in range (len(cnt)):        
+          cnt[i] = ''
+        c['content'] = cnt
+        updateContainer(c)
+        return True
+    else:
+        print("container not found")
+        return False
+
+
 def getContainers(filters=None): 
     """get *all* containers"""
     if filters is not None:
@@ -651,6 +665,7 @@ def updateRequest(request_dict):
         s_time = request_dict.pop('time', '')
         r = request_ref.update({'uid':r_uid},request_dict)
         request_dict["uid"] = r_uid
+        request_dict["time"] = s_time
 #        addRequesttoSample(**request_dict) #skinner maybe not needed in new db because the requests arent stored in the sample
 
 

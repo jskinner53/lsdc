@@ -86,7 +86,10 @@ def detector_stop_acquire():
   
 def detector_set_trigger_mode(mode):
   epics_det.det_set_trigger_mode(mode)
-  
+
+def detector_set_trigger_exposure(expTime):
+  epics_det.det_set_trigger_exposure(expTime)
+
 def detector_set_num_triggers(numTrigs):
   epics_det.det_set_num_triggers(numTrigs)
   

@@ -44,7 +44,8 @@ prefix_long = directory+"/"+filePrefix+"_"+str(numstart)
 hdfFilepattern = prefix_long+"_master.h5"
 CBF_conversion_pattern = cbfDir + "/"+filePrefix + "_"
 #comm_s = "ssh  -q " + node + " \"cd " + runningDir +";source /home/jjakoncic/jean_fastdp_prep.sh;fast_dp -j 12 -J 12 -k 60 " + hdfFilepattern  + "\""
-fastdpComm = db_lib.getBeamlineConfigParam(os.environ["BEAMLINE_ID"],"fastdpComm")
+fastdpComm = ";source " + os.environ["PROJDIR"] + "wrappers/fastDPWrap2;" + db_lib.getBeamlineConfigParam(os.environ["BEAMLINE_ID"],"fastdpComm")
+#fastdpComm = db_lib.getBeamlineConfigParam(os.environ["BEAMLINE_ID"],"fastdpComm")
 dimpleComm = db_lib.getBeamlineConfigParam(os.environ["BEAMLINE_ID"],"dimpleComm")  
 comm_s = "ssh  -q " + node + " \"cd " + runningDir + fastdpComm + hdfFilepattern  + "\""
 #comm_s = "ssh  -q " + node + " \"cd " + runningDir +";source /nfs/skinner/wrappers/fastDPWrap2;fast_dp -j 12 -J 12 -k 60 " + hdfFilepattern  + "\"" 
@@ -62,7 +63,10 @@ print(resultObj)
 resultID = db_lib.addResultforRequest("fastDP",request_id,owner,resultObj,beamline=os.environ["BEAMLINE_ID"])
 newResult = db_lib.getResult(resultID)
 visitName = db_lib.getBeamlineConfigParam(os.environ["BEAMLINE_ID"],"visitName")
-ispybLib.insertResult(newResult,"fastDP",request,visitName,ispybDCID,fastDPResultFile)
+try:
+  ispybLib.insertResult(newResult,"fastDP",request,visitName,ispybDCID,fastDPResultFile)
+except:
+  print("ispyb error")
 if (runFastEP):
   os.system("fast_ep") #looks very bad! running on ca1!
 if (runDimple):

@@ -22,7 +22,7 @@ def insertSpreadsheetDict(d,owner):
 #    print(d["container_name"][i])
 #    print(d["position"][i])
 #    print(d["item_name"][i])
-    container_name = str(d["puckName"][i])
+    container_name = str(d["puckName"][i]).replace(" ","")
     position = d["position"][i]
     propNum = None
     try:
@@ -34,7 +34,8 @@ def insertSpreadsheetDict(d,owner):
     if (propNum == ''):
       propNum = None
     print(propNum)
-    item_name = str(d["sampleName"][i]).replace(".","-")
+    item_name1 = str(d["sampleName"][i]).replace(".","-")
+    item_name = item_name1.replace(" ","-")    
     modelFilename = str(d["model"][i])
     sequenceFilename = str(d["sequence"][i])
     containerUID = db_lib.getContainerIDbyName(container_name,owner)
